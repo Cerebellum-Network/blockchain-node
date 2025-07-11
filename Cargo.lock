@@ -1965,15 +1965,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3b5ca7a04898ad4bcd41c90c5285445ff5b791899bb1b0abdd2a2aa791211d7"
 
 [[package]]
-name = "byte-unit"
-version = "4.0.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da78b32057b8fdfc352504708feeba7216dcd65a2c9ab02978cbd288d1279b6c"
-dependencies = [
- "utf8-width",
-]
-
-[[package]]
 name = "bytemuck"
 version = "1.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2517,7 +2508,6 @@ dependencies = [
  "iana-time-zone",
  "js-sys",
  "num-traits",
- "serde",
  "wasm-bindgen",
  "windows-link",
 ]
@@ -3954,52 +3944,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "ddc-api"
-version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev#6b89a70caae79465dd3085f6e56559d1f224044d"
-dependencies = [
- "blake2 0.10.6",
- "ddc-primitives",
- "frame-support",
- "frame-system",
- "hex",
- "log",
- "parity-scale-codec",
- "polkadot-ckb-merkle-mountain-range 0.7.0",
- "prost 0.13.5",
- "prost-build",
- "scale-info",
- "serde",
- "serde_json",
- "serde_with",
- "sp-application-crypto",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "ddc-primitives"
-version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev#639781818c399e70b612683ff6f92f182d55b886"
+version = "0.1.0"
 dependencies = [
- "blake2 0.10.6",
- "frame-support",
- "frame-system",
- "hex",
- "log",
  "parity-scale-codec",
- "polkadot-ckb-merkle-mountain-range 0.7.0",
- "prost 0.13.5",
- "prost-build",
  "scale-info",
  "serde",
- "serde_json",
- "serde_with",
- "sp-application-crypto",
- "sp-core",
- "sp-io",
  "sp-runtime",
  "sp-std",
 ]
@@ -8978,30 +8928,13 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-payouts"
-version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#0ec895b5fcbf6e8d9ea93ac3050004a99c286ca1"
+version = "0.1.0"
 dependencies = [
- "array-bytes",
- "byte-unit",
- "ddc-api",
- "ddc-primitives",
- "frame-benchmarking",
- "frame-election-provider-support",
  "frame-support",
  "frame-system",
- "hex",
- "itertools 0.13.0",
- "log",
  "parity-scale-codec",
- "polkadot-ckb-merkle-mountain-range 0.7.0",
  "scale-info",
- "serde",
- "serde_json",
- "sp-application-crypto",
- "sp-core",
- "sp-io",
  "sp-runtime",
- "sp-staking",
  "sp-std",
 ]
 
@@ -9035,36 +8968,13 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-verification"
-version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#0f1080f1b418b30ee6c70c378bf0c2395541ea9c"
+version = "0.1.0"
 dependencies = [
- "array-bytes",
- "base64ct",
- "byte-unit",
- "ddc-api",
- "ddc-primitives",
- "frame-benchmarking",
- "frame-election-provider-support",
  "frame-support",
  "frame-system",
- "hex",
- "itertools 0.13.0",
- "log",
  "parity-scale-codec",
- "polkadot-ckb-merkle-mountain-range 0.7.0",
- "prost 0.13.5",
- "prost-build",
- "rand 0.8.5",
  "scale-info",
- "scopeguard",
- "serde",
- "serde_json",
- "serde_with",
- "sp-application-crypto",
- "sp-core",
- "sp-io",
  "sp-runtime",
- "sp-staking",
  "sp-std",
 ]
 
@@ -10072,6 +9982,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-security-audit"
+version = "7.3.3"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "pallet-balances",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "serde_json",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-session"
 version = "40.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11012,16 +10942,6 @@ dependencies = [
  "thiserror 1.0.69",
  "tokio 1.45.0",
  "tracing-gum",
-]
-
-[[package]]
-name = "polkadot-ckb-merkle-mountain-range"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4b44320e5f7ce2c18227537a3032ae5b2c476a7e8eddba45333e1011fc31b92"
-dependencies = [
- "cfg-if",
- "itertools 0.10.5",
 ]
 
 [[package]]
@@ -15630,34 +15550,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde_with"
-version = "3.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6b6f7f2fcb69f747921f79f3926bd1e203fce4fef62c268dd3abfb6d86029aa"
-dependencies = [
- "base64 0.22.1",
- "chrono",
- "hex",
- "serde",
- "serde_derive",
- "serde_json",
- "serde_with_macros",
- "time",
-]
-
-[[package]]
-name = "serde_with_macros"
-version = "3.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d00caa5193a3c8362ac2b73be6b9e768aa5a4b2f721d8f4b339600c3cb51f8e"
-dependencies = [
- "darling",
- "proc-macro2",
- "quote",
- "syn 2.0.101",
-]
-
-[[package]]
 name = "serdect"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -16642,7 +16534,7 @@ checksum = "10ebcc2d106515a20ecf22b8d41d69e710f8e860849afde777ff73cb46f1bf29"
 dependencies = [
  "log",
  "parity-scale-codec",
- "polkadot-ckb-merkle-mountain-range 0.8.1",
+ "polkadot-ckb-merkle-mountain-range",
  "scale-info",
  "serde",
  "sp-api",
@@ -18436,12 +18328,6 @@ name = "utf-8"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09cc8ee72d2a9becf2f2febe0205bbed8fc6615b7cb429ad062dc7b7ddd036a9"
-
-[[package]]
-name = "utf8-width"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86bd8d4e895da8537e5315b8254664e6b769c4ff3db18321b297a1e7004392e3"
 
 [[package]]
 name = "utf8_iter"

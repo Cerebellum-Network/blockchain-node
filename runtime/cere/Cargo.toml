@@ -99,6 +99,7 @@ pallet-ddc-clusters = { workspace = true }
 pallet-ddc-clusters-gov = { workspace = true }
 pallet-ddc-customers = { workspace = true }
 pallet-ddc-nodes = { workspace = true }
+# Using dummy pallet temporarily due to repository access issues
 pallet-ddc-payouts = { workspace = true }
 pallet-ddc-staking = { workspace = true }
 pallet-ddc-verification = { workspace = true }

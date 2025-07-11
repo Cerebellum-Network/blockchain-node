@@ -1362,6 +1362,7 @@ impl<T: frame_system::Config> PalletVisitor<T> for TreasuryWrapper {
 	}
 }
 
+// Using dummy pallet temporarily due to repository access issues
 impl pallet_ddc_payouts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
@@ -1687,6 +1688,7 @@ mod runtime {
 	pub type DdcClusters = pallet_ddc_clusters::Pallet<Runtime>;
 
 	#[runtime::pallet_index(39)]
+	// Using dummy pallet temporarily due to repository access issues
 	pub type DdcPayouts = pallet_ddc_payouts::Pallet<Runtime>;
 
 	#[runtime::pallet_index(40)]
@@ -1808,6 +1810,7 @@ pub mod migrations {
 		UpgradeSessionKeys,
 		// pallet_ddc_verification::migrations::v1::MigrateToV1<Runtime>, // ignore as the
 		// `ddc-verification` pallet was never deployed on MAINNET
+		// Using dummy pallet temporarily due to repository access issues
 		pallet_ddc_payouts::migrations::v1::MigrateToV1<Runtime>,
 		pallet_ddc_payouts::migrations::v2::MigrateToV2<Runtime>,
 		pallet_ddc_payouts::migrations::v3::MigrateToV3<Runtime>,
@@ -1882,6 +1885,7 @@ mod benches {
 		[pallet_whitelist, Whitelist]
 		[pallet_collective, TechComm]
 		[pallet_ddc_clusters_gov, DdcClustersGov]
+		// Using dummy pallet temporarily due to repository access issues
 		[pallet_ddc_payouts, DdcPayouts]
 		[pallet_token_gateway, TokenGateway]
 		[pallet_migrations, MultiBlockMigrations]

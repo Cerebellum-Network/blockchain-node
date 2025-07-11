@@ -1,0 +1,269 @@
+global:
+  smtp_smarthost: 'localhost:587'
+  smtp_from: 'alertmanager@blockchain-node.com'
+  smtp_auth_username: 'alertmanager'
+  smtp_auth_password: 'secure_password'
+  smtp_require_tls: true
+  slack_api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+
+# Templates for notifications
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Routing configuration
+route:
+  group_by: ['alertname', 'severity']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: 'default'
+  routes:
+    # Critical security alerts - immediate notification
+    - match:
+        severity: critical
+      receiver: 'security-critical'
+      group_wait: 0s
+      repeat_interval: 15m
+      routes:
+        - match:
+            category: security
+          receiver: 'security-team'
+          group_wait: 0s
+          repeat_interval: 5m
+    
+    # High severity alerts
+    - match:
+        severity: high
+      receiver: 'high-priority'
+      group_wait: 5s
+      repeat_interval: 30m
+    
+    # Warning alerts
+    - match:
+        severity: warning
+      receiver: 'warnings'
+      group_wait: 30s
+      repeat_interval: 2h
+    
+    # Specific alert categories
+    - match:
+        category: consensus
+      receiver: 'consensus-alerts'
+      group_wait: 0s
+      repeat_interval: 10m
+    
+    - match:
+        category: network
+      receiver: 'network-alerts'
+      group_wait: 10s
+      repeat_interval: 30m
+    
+    - match:
+        category: monitoring
+      receiver: 'monitoring-alerts'
+      group_wait: 1m
+      repeat_interval: 1h
+
+# Receivers configuration
+receivers:
+  - name: 'default'
+    email_configs:
+      - to: 'admin@blockchain-node.com'
+        subject: 'Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          {{ end }}
+
+  - name: 'security-critical'
+    email_configs:
+      - to: 'security-team@blockchain-node.com'
+        subject: 'CRITICAL SECURITY ALERT: {{ .GroupLabels.alertname }}'
+        body: |
+          🚨 CRITICAL SECURITY ALERT 🚨
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          Category: {{ .Labels.category }}
+          Time: {{ .StartsAt }}
+          {{ end }}
+          
+          This requires immediate attention!
+        headers:
+          X-Priority: '1'
+    slack_configs:
+      - channel: '#security-alerts'
+        color: 'danger'
+        title: 'CRITICAL SECURITY ALERT'
+        text: |
+          {{ range .Alerts }}
+          🚨 **{{ .Annotations.summary }}**
+          {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          {{ end }}
+        send_resolved: true
+
+  - name: 'security-team'
+    email_configs:
+      - to: 'security-team@blockchain-node.com,devops@blockchain-node.com'
+        subject: 'Security Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          🔐 SECURITY ALERT
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          Category: {{ .Labels.category }}
+          Time: {{ .StartsAt }}
+          {{ end }}
+    slack_configs:
+      - channel: '#security'
+        color: 'warning'
+        title: 'Security Alert'
+        text: |
+          {{ range .Alerts }}
+          🔐 **{{ .Annotations.summary }}**
+          {{ .Annotations.description }}
+          {{ end }}
+
+  - name: 'high-priority'
+    email_configs:
+      - to: 'devops@blockchain-node.com'
+        subject: 'High Priority Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          ⚠️ HIGH PRIORITY ALERT
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          Category: {{ .Labels.category }}
+          Time: {{ .StartsAt }}
+          {{ end }}
+    slack_configs:
+      - channel: '#alerts'
+        color: 'warning'
+        title: 'High Priority Alert'
+        text: |
+          {{ range .Alerts }}
+          ⚠️ **{{ .Annotations.summary }}**
+          {{ .Annotations.description }}
+          {{ end }}
+
+  - name: 'warnings'
+    email_configs:
+      - to: 'monitoring@blockchain-node.com'
+        subject: 'Warning: {{ .GroupLabels.alertname }}'
+        body: |
+          ⚠️ WARNING ALERT
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          Category: {{ .Labels.category }}
+          Time: {{ .StartsAt }}
+          {{ end }}
+    slack_configs:
+      - channel: '#monitoring'
+        color: 'good'
+        title: 'Warning Alert'
+        text: |
+          {{ range .Alerts }}
+          ⚠️ **{{ .Annotations.summary }}**
+          {{ .Annotations.description }}
+          {{ end }}
+
+  - name: 'consensus-alerts'
+    email_configs:
+      - to: 'blockchain-team@blockchain-node.com'
+        subject: 'Consensus Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          🔗 CONSENSUS ALERT
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          Time: {{ .StartsAt }}
+          {{ end }}
+    slack_configs:
+      - channel: '#consensus'
+        color: 'danger'
+        title: 'Consensus Alert'
+        text: |
+          {{ range .Alerts }}
+          🔗 **{{ .Annotations.summary }}**
+          {{ .Annotations.description }}
+          {{ end }}
+
+  - name: 'network-alerts'
+    email_configs:
+      - to: 'network-team@blockchain-node.com'
+        subject: 'Network Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          🌐 NETWORK ALERT
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          Time: {{ .StartsAt }}
+          {{ end }}
+    slack_configs:
+      - channel: '#network'
+        color: 'warning'
+        title: 'Network Alert'
+        text: |
+          {{ range .Alerts }}
+          🌐 **{{ .Annotations.summary }}**
+          {{ .Annotations.description }}
+          {{ end }}
+
+  - name: 'monitoring-alerts'
+    email_configs:
+      - to: 'monitoring@blockchain-node.com'
+        subject: 'Monitoring Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          📊 MONITORING ALERT
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          Time: {{ .StartsAt }}
+          {{ end }}
+    slack_configs:
+      - channel: '#monitoring'
+        color: 'good'
+        title: 'Monitoring Alert'
+        text: |
+          {{ range .Alerts }}
+          📊 **{{ .Annotations.summary }}**
+          {{ .Annotations.description }}
+          {{ end }}
+
+# Inhibit rules
+inhibit_rules:
+  - source_matchers:
+      - severity="critical"
+    target_matchers:
+      - severity="warning"
+    equal: ['alertname', 'cluster', 'service']
+  
+  - source_matchers:
+      - severity="critical"
+    target_matchers:
+      - severity="high"
+    equal: ['alertname', 'cluster', 'service']
+    
+  - source_matchers:
+      - alertname="NodeDown"
+    target_matchers:
+      - alertname!="NodeDown"
+    equal: ['instance'] 

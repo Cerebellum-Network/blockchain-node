@@ -1,0 +1,303 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # System logs
+  - job_name: system
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: varlogs
+          __path__: /var/log/*log
+    pipeline_stages:
+      - match:
+          selector: '{job="varlogs"}'
+          stages:
+            - regex:
+                expression: '^(?P<timestamp>\S+\s+\S+\s+\S+)\s+(?P<hostname>\S+)\s+(?P<service>\S+):\s+(?P<message>.*)$'
+            - timestamp:
+                source: timestamp
+                format: 'Jan 02 15:04:05'
+            - labels:
+                service:
+                hostname:
+
+  # Docker container logs
+  - job_name: containers
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: containerlogs
+          __path__: /var/lib/docker/containers/*/*log
+    pipeline_stages:
+      - json:
+          expressions:
+            output: log
+            stream: stream
+            attrs:
+      - json:
+          expressions:
+            tag:
+          source: attrs
+      - regex:
+          expression: '^(?P<container_name>(?:[^/]*/)*)(?P<container_id>[^/]+)$'
+          source: tag
+      - timestamp:
+          source: time
+          format: RFC3339Nano
+      - labels:
+          stream:
+          container_name:
+          container_id:
+      - output:
+          source: output
+
+  # Blockchain node logs
+  - job_name: blockchain-node
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: blockchain-node
+          __path__: /var/log/blockchain-node/*.log
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<timestamp>\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d+)\s+(?P<level>\w+)\s+(?P<target>\S+)\s+(?P<message>.*)$'
+      - timestamp:
+          source: timestamp
+          format: '2006-01-02 15:04:05.000'
+      - labels:
+          level:
+          target:
+      - match:
+          selector: '{level="ERROR"}'
+          stages:
+            - labels:
+                alert_type: "error"
+      - match:
+          selector: '{level="WARN"}'
+          stages:
+            - labels:
+                alert_type: "warning"
+
+  # Security event logs
+  - job_name: security-events
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: security-events
+          __path__: /var/log/security/*.log
+    pipeline_stages:
+      - json:
+          expressions:
+            timestamp: timestamp
+            event_type: event_type
+            severity: severity
+            actor: actor
+            action: action
+            resource: resource
+            result: result
+            details: details
+            ip_address: ip_address
+            user_agent: user_agent
+      - timestamp:
+          source: timestamp
+          format: RFC3339
+      - labels:
+          event_type:
+          severity:
+          actor:
+          result:
+          ip_address:
+      - match:
+          selector: '{severity="critical"}'
+          stages:
+            - labels:
+                alert_priority: "critical"
+      - match:
+          selector: '{severity="high"}'
+          stages:
+            - labels:
+                alert_priority: "high"
+      - match:
+          selector: '{event_type="suspicious_activity"}'
+          stages:
+            - labels:
+                security_category: "threat"
+      - match:
+          selector: '{event_type="unauthorized_access"}'
+          stages:
+            - labels:
+                security_category: "access"
+      - match:
+          selector: '{event_type="authentication_failure"}'
+          stages:
+            - labels:
+                security_category: "auth"
+
+  # Consensus logs
+  - job_name: consensus
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: consensus
+          __path__: /var/log/consensus/*.log
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z)\s+(?P<level>\w+)\s+(?P<component>\S+)\s+(?P<message>.*)$'
+      - timestamp:
+          source: timestamp
+          format: RFC3339
+      - labels:
+          level:
+          component:
+      - match:
+          selector: '{component="grandpa"}'
+          stages:
+            - labels:
+                consensus_type: "finality"
+      - match:
+          selector: '{component="babe"}'
+          stages:
+            - labels:
+                consensus_type: "authoring"
+
+  # P2P network logs
+  - job_name: p2p-network
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: p2p-network
+          __path__: /var/log/p2p/*.log
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z)\s+(?P<level>\w+)\s+(?P<peer_id>\S+)\s+(?P<message>.*)$'
+      - timestamp:
+          source: timestamp
+          format: RFC3339
+      - labels:
+          level:
+          peer_id:
+      - match:
+          selector: '{level="ERROR"}'
+          stages:
+            - labels:
+                network_issue: "error"
+      - match:
+          selector: '{message=~".*connection.*failed.*"}'
+          stages:
+            - labels:
+                network_issue: "connection_failure"
+
+  # RPC logs
+  - job_name: rpc
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: rpc
+          __path__: /var/log/rpc/*.log
+    pipeline_stages:
+      - json:
+          expressions:
+            timestamp: timestamp
+            method: method
+            params: params
+            response_time: response_time
+            client_ip: client_ip
+            user_agent: user_agent
+            status: status
+      - timestamp:
+          source: timestamp
+          format: RFC3339
+      - labels:
+          method:
+          status:
+          client_ip:
+      - match:
+          selector: '{method=~"system_.*|author_.*|chain_.*"}'
+          stages:
+            - labels:
+                rpc_category: "sensitive"
+      - match:
+          selector: '{status!="200"}'
+          stages:
+            - labels:
+                rpc_status: "error"
+
+  # Database logs
+  - job_name: database
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: database
+          __path__: /var/log/database/*.log
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<timestamp>\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d+)\s+\[(?P<level>\w+)\]\s+(?P<message>.*)$'
+      - timestamp:
+          source: timestamp
+          format: '2006-01-02 15:04:05.000'
+      - labels:
+          level:
+      - match:
+          selector: '{level="ERROR"}'
+          stages:
+            - labels:
+                db_issue: "error"
+      - match:
+          selector: '{message=~".*corruption.*|.*integrity.*"}'
+          stages:
+            - labels:
+                db_issue: "corruption"
+
+  # Audit logs
+  - job_name: audit
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: audit
+          __path__: /var/log/audit/*.log
+    pipeline_stages:
+      - json:
+          expressions:
+            timestamp: timestamp
+            event_type: event_type
+            actor: actor
+            resource: resource
+            action: action
+            result: result
+            source_ip: source_ip
+            session_id: session_id
+      - timestamp:
+          source: timestamp
+          format: RFC3339
+      - labels:
+          event_type:
+          actor:
+          result:
+          source_ip:
+      - match:
+          selector: '{result="failure"}'
+          stages:
+            - labels:
+                audit_status: "failed"
+      - match:
+          selector: '{event_type="privileged_access"}'
+          stages:
+            - labels:
+                audit_category: "privileged" 

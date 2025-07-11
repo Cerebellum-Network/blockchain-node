@@ -1,0 +1,235 @@
+groups:
+  - name: blockchain_security
+    rules:
+      # Critical Security Alerts
+      - alert: SuspiciousTransactionPattern
+        expr: rate(substrate_runtime_transaction_pool_validations_invalid_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: critical
+          category: security
+        annotations:
+          summary: "High rate of invalid transactions detected"
+          description: "{{ $value }} invalid transactions per second in the last 5 minutes"
+          
+      - alert: UnauthorizedRPCAccess
+        expr: rate(substrate_rpc_calls_total{method=~"system_|author_|chain_"}[5m]) > 100
+        for: 1m
+        labels:
+          severity: critical
+          category: security
+        annotations:
+          summary: "Suspicious RPC access pattern detected"
+          description: "High frequency of sensitive RPC calls: {{ $value }} per second"
+
+      - alert: ConsensusFailure
+        expr: substrate_finality_grandpa_round_state != 1
+        for: 5m
+        labels:
+          severity: critical
+          category: consensus
+        annotations:
+          summary: "Consensus mechanism failure detected"
+          description: "GRANDPA finality round is not in active state"
+
+      - alert: P2PNetworkPartition
+        expr: substrate_sub_libp2p_connections_opened_total - substrate_sub_libp2p_connections_closed_total < 5
+        for: 3m
+        labels:
+          severity: high
+          category: network
+        annotations:
+          summary: "Network isolation detected"
+          description: "Low peer count: {{ $value }} active connections"
+
+      - alert: BlockProductionStopped
+        expr: rate(substrate_babe_block_production_total[5m]) == 0
+        for: 2m
+        labels:
+          severity: critical
+          category: consensus
+        annotations:
+          summary: "Block production has stopped"
+          description: "No blocks produced in the last 5 minutes"
+
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 85
+        for: 5m
+        labels:
+          severity: high
+          category: resources
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is {{ $value }}% of available memory"
+
+      - alert: HighCPUUsage
+        expr: 100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: high
+          category: resources
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is {{ $value }}% over the last 5 minutes"
+
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 10
+        for: 5m
+        labels:
+          severity: critical
+          category: resources
+        annotations:
+          summary: "Low disk space"
+          description: "Disk space is below 10%: {{ $value }}% remaining"
+
+      - alert: SecurityEventSpike
+        expr: rate(security_events_total[5m]) > 5
+        for: 1m
+        labels:
+          severity: high
+          category: security
+        annotations:
+          summary: "Security event spike detected"
+          description: "{{ $value }} security events per second in the last 5 minutes"
+
+      - alert: InvalidSignatureRate
+        expr: rate(substrate_runtime_transaction_pool_validations_invalid_total{reason="InvalidSignature"}[5m]) > 1
+        for: 2m
+        labels:
+          severity: high
+          category: security
+        annotations:
+          summary: "High rate of invalid signatures"
+          description: "{{ $value }} invalid signatures per second - possible attack"
+
+      - alert: NodeNotSyncing
+        expr: substrate_sync_extra_justifications{status="sync"} == 0
+        for: 10m
+        labels:
+          severity: high
+          category: sync
+        annotations:
+          summary: "Node is not syncing"
+          description: "Node has stopped syncing with the network"
+
+      - alert: DatabaseCorruption
+        expr: substrate_database_cache_bytes == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: database
+        annotations:
+          summary: "Database corruption detected"
+          description: "Database cache size is zero - possible corruption"
+
+      - alert: TooManyOrphanedTransactions
+        expr: substrate_runtime_transaction_pool_validations_invalid_total{reason="Future"} > 1000
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "High number of orphaned transactions"
+          description: "{{ $value }} future transactions in pool"
+
+      - alert: PeerConnectionFailures
+        expr: rate(substrate_sub_libp2p_connections_closed_total[5m]) > rate(substrate_sub_libp2p_connections_opened_total[5m])
+        for: 3m
+        labels:
+          severity: warning
+          category: network
+        annotations:
+          summary: "High peer connection failure rate"
+          description: "More connections closing than opening"
+
+      - alert: RPCResponseTimeHigh
+        expr: histogram_quantile(0.95, rate(substrate_rpc_calls_time_bucket[5m])) > 1000
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "High RPC response time"
+          description: "95th percentile RPC response time is {{ $value }}ms"
+
+  - name: blockchain_node_health
+    rules:
+      - alert: NodeDown
+        expr: up{job="blockchain-node"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: "Blockchain node is down"
+          description: "Node has been down for more than 1 minute"
+
+      - alert: NodeExporterDown
+        expr: up{job="node-exporter"} == 0
+        for: 1m
+        labels:
+          severity: high
+          category: monitoring
+        annotations:
+          summary: "Node exporter is down"
+          description: "System metrics unavailable"
+
+      - alert: PrometheusDown
+        expr: up{job="prometheus"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: monitoring
+        annotations:
+          summary: "Prometheus is down"
+          description: "Monitoring system is unavailable"
+
+      - alert: AlertmanagerDown
+        expr: up{job="alertmanager"} == 0
+        for: 1m
+        labels:
+          severity: high
+          category: monitoring
+        annotations:
+          summary: "Alertmanager is down"
+          description: "Alert notification system is unavailable"
+
+      - alert: GrafanaDown
+        expr: up{job="grafana"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          category: monitoring
+        annotations:
+          summary: "Grafana is down"
+          description: "Dashboard system is unavailable"
+
+      - alert: BlockImportSlow
+        expr: rate(substrate_block_height{status="imported"}[5m]) < 0.5
+        for: 10m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "Block import is slow"
+          description: "Block import rate is {{ $value }} blocks per second"
+
+      - alert: NetworkLatencyHigh
+        expr: substrate_sub_libp2p_ping_duration_seconds > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          category: network
+        annotations:
+          summary: "High network latency"
+          description: "Network ping duration is {{ $value }}s"
+
+      - alert: TooManyPendingTransactions
+        expr: substrate_runtime_transaction_pool_pending_transactions > 10000
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "High number of pending transactions"
+          description: "{{ $value }} pending transactions in pool" 

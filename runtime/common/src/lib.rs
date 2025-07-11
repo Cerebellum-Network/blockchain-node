@@ -2,6 +2,7 @@
 
 pub mod constants;
 pub mod migrations;
+pub mod audit_trail;
 
 use ddc_primitives::Balance;
 
