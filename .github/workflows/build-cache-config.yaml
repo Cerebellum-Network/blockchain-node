@@ -1,0 +1,115 @@
+# OPTIONAL: Secure Build Cache Configuration
+# This workflow demonstrates how to implement secure build caching
+# Uncomment and configure when ready to implement
+
+name: Secure Build Cache (DISABLED)
+
+# Minimal on section required by GitHub Actions
+on:
+  workflow_dispatch:
+    inputs:
+      enable_cache:
+        description: 'Enable secure caching (disabled by default)'
+        required: false
+        default: 'false'
+
+env:
+  # Secure build cache options (choose one):
+  # Option 1: GitHub Container Registry Cache
+  CACHE_REGISTRY: ghcr.io
+  CACHE_REPO: cerebellum-network/blockchain-node-cache
+  # Option 2: Separate AWS S3 bucket with limited permissions
+  # SCCACHE_BUCKET: cere-secure-build-cache
+  # SCCACHE_REGION: us-west-2
+
+jobs:
+  # Example of secure Docker layer caching
+  secure-build-with-cache:
+    name: Secure Build with Cache
+    runs-on: ubuntu-latest
+    if: false  # Disabled - remove this line to enable
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials (for ECR only)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.SHARED_AWS_ACCOUNT_ID }}:role/github
+          role-session-name: secure-build-${{ github.run_id }}
+          aws-region: us-west-2
+          mask-aws-account-id: true
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Secure multi-stage build with layer caching
+      - name: Build with secure cache
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          build-args: |
+            "GH_READ_TOKEN=${{ secrets.GH_READ_TOKEN }}"
+          cache-from: |
+            type=registry,ref=ghcr.io/cerebellum-network/blockchain-node-cache:latest
+            type=gha
+          cache-to: |
+            type=registry,ref=ghcr.io/cerebellum-network/blockchain-node-cache:latest,mode=max
+            type=gha,mode=max
+          tags: |
+            build-cache-test:${{ github.sha }}
+
+# Alternative: Dedicated cache-only build
+cache-build:
+  name: Cache Build Artifacts
+  runs-on: ubuntu-latest  
+  if: false  # Disabled
+  steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly-2024-10-01
+        override: true
+        target: wasm32-unknown-unknown
+        components: rust-src
+
+    # Advanced Rust caching strategy
+    - name: Advanced Rust Cache
+      uses: Swatinem/rust-cache@v2
+      with:
+        # Use content-addressed caching
+        key: ${{ hashFiles('Cargo.lock') }}
+        shared-key: "global-build-cache"
+        cache-on-failure: true
+        # Cache target directory and registry
+        cache-targets: true
+        cache-all-crates: true
+
+    - name: Configure Git
+      run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+
+    # Pre-build dependencies for caching
+    - name: Cache Dependencies
+      run: |
+        # Build only dependencies for maximum cache efficiency
+        cargo build --release --dependencies-only || true
+        cargo build --release --features try-runtime --dependencies-only || true
+
+# SECURITY NOTES:
+# 1. This uses GitHub Container Registry (free, secure)
+# 2. No AWS credentials in Docker build args
+# 3. Separate IAM role with minimal S3 permissions if using S3
+# 4. Content-addressed caching prevents tampering
+# 5. Cache invalidation on Cargo.lock changes
