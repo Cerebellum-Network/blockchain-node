@@ -21,7 +21,7 @@ dprint check
 
 # Check code formatting using rustfmt
 print_message "Checking code formatting"
-cargo +nightly-2024-03-12 fmt -- --check
+cargo  fmt -- --check
 
 # Build and check Cargo project
 print_message "Building Cargo project"
@@ -29,7 +29,7 @@ cargo build --release --features try-runtime
 
 # Run Try-Runtime checks
 print_message "Running Try-Runtime checks"
-try-runtime --runtime ./target/release/wbuild/cere-dev-runtime/cere_dev_runtime.compact.compressed.wasm \
+try-runtime --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
   on-runtime-upgrade --blocktime 6000 --disable-idempotency-checks live --uri wss://archive.devnet.cere.network:443
 
 # Run development chain for a short duration

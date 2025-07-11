@@ -40,8 +40,9 @@ impl<T: frame_system::Config> Node<T> {
 		node_params: NodeParams,
 	) -> Result<Self, NodeError> {
 		match node_pub_key {
-			NodePubKey::StoragePubKey(_) =>
-				StorageNode::new(node_pub_key, provider_id, node_params).map(|n| Node::Storage(n)),
+			NodePubKey::StoragePubKey(_) => {
+				StorageNode::new(node_pub_key, provider_id, node_params).map(|n| Node::Storage(n))
+			},
 		}
 	}
 }
