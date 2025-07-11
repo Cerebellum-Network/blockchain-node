@@ -1460,11 +1460,10 @@ impl pallet_fee_handler::Config for Runtime {
 	type WeightInfo = pallet_fee_handler::weights::SubstrateWeight<Runtime>;
 }
 
->>>>>>> origin/dev
 #[frame_support::runtime]
 mod runtime {
 	use super::*;
-	
+
 	type NegativeImbalance = <Balances as Currency<AccountId>>::NegativeImbalance;
 
 	pub struct DealWithFees;
@@ -2346,4 +2345,3 @@ mod tests {
 		);
 	}
 }
->>>>>>> origin/dev
