@@ -110,15 +110,21 @@ jobs:
           sudo rm -rf /home/runner/.dotnet
           sudo rm -rf /home/runner/.ghcup
           sudo rm -rf /tmp/*
+          sudo rm -rf /var/tmp/*
+          sudo rm -rf /var/cache/*
+          sudo rm -rf /var/log/*
           sudo apt-get autoremove -y
+          sudo apt-get autoclean -y
           sudo apt-get clean
-          sudo docker system prune -af
+          sudo docker system prune -af --volumes
+          sudo journalctl --vacuum-time=1d
           df -h
       - uses: actions/checkout@v4
+      
       - name: Increase swap space
         run: |
           sudo swapoff -a
-          sudo fallocate -l 10G /swapfile
+          sudo fallocate -l 12G /swapfile
           sudo chmod 600 /swapfile
           sudo mkswap /swapfile
           sudo swapon /swapfile
@@ -143,6 +149,7 @@ jobs:
           cache-on-failure: true
       - name: Configure Git
         run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+      
       - name: Debug CI Environment
         run: |
           echo "CI Environment Variables:"
@@ -157,7 +164,8 @@ jobs:
         run: |
           # Build with optimizations for speed but with memory constraints in mind
           # Use a more aggressive approach to limit memory usage
-          export RUSTFLAGS="-C linker=clang -C codegen-units=1"
+          export RUSTFLAGS="-C linker=clang -C codegen-units=1 -C debuginfo=0"
+          export CARGO_NET_GIT_FETCH_WITH_CLI=true
           
           echo "Checking cere-runtime..."
           CARGO_INCREMENTAL=0 RUST_LOG=info cargo check --release --features runtime-benchmarks --package cere-runtime --jobs 1
@@ -166,20 +174,32 @@ jobs:
           echo "Cleaning up intermediate files..."
           rm -rf target/release/deps/*cere_runtime*
           rm -rf target/release/build/cere-runtime*
+          rm -rf target/release/.fingerprint/*cere_runtime*
+          cargo clean -p cere-runtime --release
           df -h
           
           echo "Checking cere-dev-runtime..."
           CARGO_INCREMENTAL=0 RUST_LOG=info cargo check --release --features runtime-benchmarks --package cere-dev-runtime --jobs 1
+          
+          # Clean up after dev runtime
+          echo "Cleaning up dev runtime artifacts..."
+          rm -rf target/release/deps/*cere_dev_runtime*
+          rm -rf target/release/build/cere-dev-runtime*
+          rm -rf target/release/.fingerprint/*cere_dev_runtime*
+          cargo clean -p cere-dev-runtime --release
+          df -h
+          
       - name: Run dev chain (optimized)
         run: |
           # Clean up to free disk space before building
           echo "Cleaning target directory to free disk space..."
           rm -rf target/release/deps/*
           rm -rf target/release/build/*
+          rm -rf target/release/.fingerprint/*
           df -h
           
           # Build with WASM runtime required for dev chain
-          CARGO_INCREMENTAL=0 RUSTFLAGS="-C linker=clang -C codegen-units=1" cargo build --release --bin cere --jobs 1
+          CARGO_INCREMENTAL=0 RUSTFLAGS="-C linker=clang -C codegen-units=1 -C debuginfo=0" cargo build --release --bin cere --jobs 1
           
           # Run with a shorter timeout to verify basic functionality
           echo "Starting dev chain with 15s timeout..."
