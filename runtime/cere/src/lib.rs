@@ -707,8 +707,10 @@ frame_election_provider_support::generate_solution_type!(
 );
 
 /// The numbers configured here could always be more than the the maximum limits of staking pallet
-/// to ensure election snapshot will not run out of memory. For now, we set them to smaller values
-/// since the staking is bounded and the weight pipeline takes hours for this single pallet.
+/// to ensure election snapshot will not run out of memory.
+/// 
+/// For now, we set them to smaller values since the staking is bounded and the weight pipeline
+/// takes hours for this single pallet.
 pub struct ElectionProviderBenchmarkConfig;
 impl pallet_election_provider_multi_phase::BenchmarkingConfig for ElectionProviderBenchmarkConfig {
 	const VOTERS: [u32; 2] = [1000, 2000];
@@ -1639,7 +1641,6 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Tx
 // 		pallet_staking::migrations::v17::MigrateDisabledToSession<Runtime>,
 // 	>,
 // );
-
 type Migrations = ();
 
 parameter_types! {
@@ -2112,9 +2113,8 @@ impl_runtime_apis! {
 	impl frame_try_runtime::TryRuntime<Block> for Runtime {
 		fn on_runtime_upgrade(checks: frame_try_runtime::UpgradeCheckSelect) -> (Weight, Weight) {
 			log::info!("try-runtime::on_runtime_upgrade cere.");
-			let weight = Executive::try_runtime_upgrade(checks).map_err(|e| {
+			let weight = Executive::try_runtime_upgrade(checks).inspect_err(|e| {
 				log::error!("try_runtime_upgrade failed: {:?}", e);
-				e
 			}).unwrap_or_else(|_| Weight::zero());
 			(weight, RuntimeBlockWeights::get().max_block)
 		}
