@@ -230,3 +230,13 @@ codegen-units = 1
 panic = "abort"
 debug = false
 overflow-checks = false
+
+# NOTE: XCM Compatibility Issue
+# The pallet-token-gateway dependency (version 2503.0.0) brings in staging-xcm-builder 20.1.1
+# which is missing newer trait methods: try_successful_origin, ensure_successful, ensure_concluded
+# This causes compilation failures in CI. The issue will be resolved when:
+# 1. Hyperbridge updates their dependencies to use newer compatible XCM versions, OR
+# 2. A newer staging-xcm-builder version (21.0.0+) becomes available on crates.io
+# 
+# For now, this is a known compatibility issue that needs to be tracked and resolved
+# when upstream dependencies are updated.
