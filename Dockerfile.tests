@@ -32,13 +32,17 @@ RUN chown -R builder:builder /cerenetwork
 RUN chmod +x /usr/local/protoc/bin/protoc && \
     chmod +x /usr/local/bin/protoc
 
-# Switch to builder user and configure Git
-USER builder
+# Configure Git at system level for all users
 RUN if [ -n "${GH_READ_TOKEN}" ]; then \
-        git config --global url."https://${GH_READ_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"; \
+        echo "Configuring Git at system level with token (first 10 chars: ${GH_READ_TOKEN:0:10}...)"; \
+        git config --system url."https://${GH_READ_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"; \
+        git config --system --list | grep url; \
     else \
-        echo "Warning: GH_READ_TOKEN is not set, private repositories may fail to clone"; \
+        echo "Warning: GH_READ_TOKEN is not set or empty, private repositories may fail to clone"; \
     fi
+
+# Switch to builder user
+USER builder
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
     export PATH=$PATH:$HOME/.cargo/bin && \
