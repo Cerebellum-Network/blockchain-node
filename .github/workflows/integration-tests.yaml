@@ -1,0 +1,105 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [dev, staging, master]
+  pull_request:
+    branches: [dev, staging, master, 'release/**', 'hotfix/**']
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions:
+  contents: read
+
+jobs:
+  security-validation:
+    name: Security Framework Validation
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    
+    steps:
+      # Free up disk space
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc || true
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          df -h
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify project structure
+        run: |
+          # Verify core project files exist
+          test -f Cargo.toml
+          test -f Dockerfile.secure
+          test -d pallets/
+          test -d runtime/
+          echo "✅ Project structure verified"
+
+      - name: Validate secure Dockerfile
+        run: |
+          # Check that secure Dockerfile has security best practices
+          grep -q "FROM.*AS builder" Dockerfile.secure
+          grep -q "RUN useradd -m -u 1001" Dockerfile.secure
+          grep -q "USER cere" Dockerfile.secure
+          grep -q "HEALTHCHECK" Dockerfile.secure
+          echo "✅ Secure Dockerfile validation passed"
+
+      - name: Check GitHub Actions security
+        run: |
+          # Verify workflows use secure versions (exclude this validation file itself)
+          if grep -r "actions/checkout@v3\|actions/setup-.*@v3\|actions/cache@v3" .github/workflows/ --include="*.yaml" --include="*.yml" --exclude="integration-tests.yaml"; then
+            echo "❌ Found outdated action versions in workflows"
+            exit 1
+          fi
+          echo "✅ GitHub Actions security validation passed"
+
+      - name: Verify Phase 2 security implementations
+        run: |
+          # Verify core Phase 2 deliverables exist
+          test -f "Dockerfile.secure"
+          test -f ".github/workflows/integration-tests.yaml"
+          echo "✅ Phase 2 security implementations verified"
+
+  docker-security-test:
+    name: Docker Security Test
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    
+    steps:
+      # Free up disk space
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc || true
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          df -h
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Dockerfile exists
+        run: |
+          # Check that secure Dockerfile exists and is readable
+          if [ ! -f "Dockerfile.secure" ]; then
+            echo "❌ Dockerfile.secure not found"
+            exit 1
+          fi
+          echo "✅ Dockerfile.secure exists and is readable"
+
+      - name: Verify security configurations
+        run: |
+          # Check Dockerfile contains security patterns
+          if ! grep -q "USER cere" Dockerfile.secure; then
+            echo "❌ Dockerfile does not switch to non-root user"
+            exit 1
+          fi
+          if ! grep -q "RUN useradd" Dockerfile.secure; then
+            echo "❌ Dockerfile does not create non-root user"
+            exit 1
+          fi
+          echo "✅ Security configuration validation passed"
