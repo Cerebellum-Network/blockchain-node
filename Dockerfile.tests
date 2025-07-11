@@ -34,7 +34,11 @@ RUN chmod +x /usr/local/protoc/bin/protoc && \
 
 # Switch to builder user and configure Git
 USER builder
-RUN git config --global url."https://${GH_READ_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+RUN if [ -n "${GH_READ_TOKEN}" ]; then \
+        git config --global url."https://${GH_READ_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"; \
+    else \
+        echo "Warning: GH_READ_TOKEN is not set, private repositories may fail to clone"; \
+    fi
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
     export PATH=$PATH:$HOME/.cargo/bin && \

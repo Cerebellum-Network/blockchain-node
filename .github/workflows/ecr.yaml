@@ -24,6 +24,9 @@ jobs:
     runs-on: ubuntu-latest
     concurrency: dev
     timeout-minutes: 60
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
