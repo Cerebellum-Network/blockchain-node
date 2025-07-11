@@ -18,6 +18,7 @@ on:
 
 env:
   PROFILE: release
+  GH_READ_TOKEN: ${{ secrets.GH_READ_TOKEN }}
 
 jobs:
   build:
@@ -66,4 +67,5 @@ jobs:
           push: false
           build-args: |
             "ECR_REGISTRY=${{ steps.login-ecr-org.outputs.registry }}"
+          secrets: |
             "GH_READ_TOKEN=${{ secrets.GH_READ_TOKEN }}"
