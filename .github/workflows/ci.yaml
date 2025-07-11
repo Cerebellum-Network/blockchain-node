@@ -143,7 +143,6 @@ jobs:
           # Build with optimizations for speed but with memory constraints in mind
           # Use a more aggressive approach to limit memory usage
           export RUSTFLAGS="-C linker=clang -C codegen-units=1"
-          export SKIP_WASM_BUILD=1
           
           echo "Checking cere-runtime..."
           CARGO_INCREMENTAL=0 RUST_LOG=info cargo check --release --features runtime-benchmarks --package cere-runtime --jobs 1
@@ -152,8 +151,7 @@ jobs:
           CARGO_INCREMENTAL=0 RUST_LOG=info cargo check --release --features runtime-benchmarks --package cere-dev-runtime --jobs 1
       - name: Run dev chain (optimized)
         run: |
-          # Build with minimal features and optimized for CI environment
-          export SKIP_WASM_BUILD=1
+          # Build with WASM runtime required for dev chain
           CARGO_INCREMENTAL=0 RUSTFLAGS="-C linker=clang -C codegen-units=1" cargo build --release --bin cere --jobs 1
           
           # Run with a shorter timeout to verify basic functionality
@@ -288,9 +286,8 @@ jobs:
         
       - name: Build for try-runtime (optimized)
         run: |
-          # Set optimized flags for CI environment
+          # Set optimized flags for CI environment - WASM build needed for try-runtime
           export RUSTFLAGS="-C linker=clang -C codegen-units=1"
-          export SKIP_WASM_BUILD=1
           CARGO_INCREMENTAL=0 RUST_LOG=info cargo build --release --features try-runtime --jobs 1
           
       - name: Check Try-Runtime
