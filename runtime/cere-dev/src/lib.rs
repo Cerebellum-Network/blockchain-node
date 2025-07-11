@@ -31,9 +31,11 @@ pub use ddc_primitives::{AccountId, Signature};
 use frame_election_provider_support::{
 	bounds::ElectionBoundsBuilder, onchain, BalancingConfig, SequentialPhragmen, VoteWeight,
 };
+use frame_support::traits::fungible::Balanced;
 //use pallet_treasury::{PositiveImbalanceOf, NegativeImbalanceOf};
 use pallet_balances::WeightInfo;
 extern crate alloc;
+use frame_support::traits::tokens::Precision;
 use frame_support::{
 	derive_impl,
 	dispatch::DispatchClass,
@@ -48,9 +50,9 @@ use frame_support::{
 			imbalance::ResolveTo, DepositConsequence, Fortitude, PayFromAccount, Preservation,
 			Provenance, UnityAssetBalanceConversion, WithdrawConsequence,
 		},
-		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
-		EqualPrivilegeOnly, ExistenceRequirement, Imbalance, InstanceFilter, KeyOwnerProofSystem,
-		LinearStoragePrice, Nothing, OnUnbalanced, VariantCountOf, WithdrawReasons,
+		ConstBool, ConstU128, ConstU16, ConstU32, ConstU64, Currency, EitherOf, EitherOfDiverse,
+		EqualPrivilegeOnly, Imbalance, InstanceFilter, KeyOwnerProofSystem, LinearStoragePrice,
+		Nothing, OnUnbalanced, VariantCountOf, WithdrawReasons,
 	},
 	weights::{
 		constants::{
@@ -84,9 +86,8 @@ use pallet_session::historical::{self as pallet_session_historical};
 pub use pallet_staking::StakerStatus;
 #[cfg(any(feature = "std", test))]
 pub use pallet_sudo::Call as SudoCall;
-#[allow(deprecated)]
-pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
-use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
+use pallet_transaction_payment::{FeeDetails, FungibleAdapter, RuntimeDispatchInfo};
+pub use pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use sp_api::impl_runtime_apis;
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
@@ -118,7 +119,6 @@ use cere_runtime_common::{
 	constants::{currency::*, time::*},
 	CurrencyToVote,
 };
-use impls::Author;
 use sp_runtime::generic::Era;
 
 // Governance configurations.
@@ -138,6 +138,7 @@ use ismp::{
 	host::StateMachine,
 	router::{Request, Response},
 };
+use pallet_treasury::TreasuryAccountId;
 use sp_core::H256;
 mod hyperbridge_ismp;
 mod weights;
@@ -166,7 +167,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73161,
+	spec_version: 73162,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 25,
@@ -188,18 +189,42 @@ pub fn native_version() -> NativeVersion {
 
 // Type will be defined after runtime module
 
-pub struct DealWithFees;
-impl OnUnbalanced<NegativeImbalance> for DealWithFees {
-	fn on_unbalanceds(mut fees_then_tips: impl Iterator<Item = NegativeImbalance>) {
+/// Logic for the author to get a portion of fees.
+pub struct ToAuthor<R>(core::marker::PhantomData<R>);
+impl<R> OnUnbalanced<Credit<R::AccountId, pallet_balances::Pallet<R>>> for ToAuthor<R>
+where
+	R: pallet_balances::Config + pallet_authorship::Config,
+	<R as frame_system::Config>::AccountId: From<AccountId>,
+	<R as frame_system::Config>::AccountId: Into<AccountId>,
+{
+	fn on_nonzero_unbalanced(
+		amount: Credit<<R as frame_system::Config>::AccountId, pallet_balances::Pallet<R>>,
+	) {
+		if let Some(author) = <pallet_authorship::Pallet<R>>::author() {
+			let _ = <pallet_balances::Pallet<R>>::resolve(&author, amount);
+		}
+	}
+}
+
+pub struct DealWithFees<R>(core::marker::PhantomData<R>);
+impl<R> OnUnbalanced<Credit<R::AccountId, pallet_balances::Pallet<R>>> for DealWithFees<R>
+where
+	R: pallet_balances::Config + pallet_authorship::Config + pallet_treasury::Config,
+	<R as frame_system::Config>::AccountId: From<AccountId>,
+	<R as frame_system::Config>::AccountId: Into<AccountId>,
+{
+	fn on_unbalanceds(
+		mut fees_then_tips: impl Iterator<Item = Credit<R::AccountId, pallet_balances::Pallet<R>>>,
+	) {
 		if let Some(fees) = fees_then_tips.next() {
 			// for fees, 50% to treasury, 50% to author
 			let mut split = fees.ration(50, 50);
 			if let Some(tips) = fees_then_tips.next() {
-				// for tips, if any, 50% to treasury, 50% to author (though this can be anything)
+				// for tips, if any, 50% to author and 50% to treasury
 				tips.ration_merge_into(50, 50, &mut split);
 			}
-			Treasury::on_unbalanced(split.0);
-			Author::on_unbalanced(split.1);
+			ResolveTo::<TreasuryAccountId<R>, pallet_balances::Pallet<R>>::on_unbalanced(split.0);
+			<ToAuthor<R> as OnUnbalanced<_>>::on_unbalanced(split.1);
 		}
 	}
 }
@@ -496,8 +521,7 @@ parameter_types! {
 // <https://github.com/paritytech/polkadot-sdk/issues/226>
 impl pallet_transaction_payment::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	#[allow(deprecated)]
-	type OnChargeTransaction = CurrencyAdapter<Balances, DealWithFees>;
+	type OnChargeTransaction = FungibleAdapter<Balances, DealWithFees<Runtime>>;
 	type OperationalFeeMultiplier = OperationalFeeMultiplier;
 	type WeightToFee = IdentityFee<Balance>;
 	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
@@ -603,12 +627,14 @@ impl OnUnbalanced<PositiveImbalanceOf<Runtime>> for RewardSource {
 	fn on_unbalanced(amount: PositiveImbalanceOf<Runtime>) {
 		let fee_pot_pallet_account: AccountId = FeeHandlerPalletId::get().into_account_truncating();
 
-		if let Ok(remaining_balance) = Balances::withdraw(
-			&fee_pot_pallet_account,
-			amount.peek(),
-			WithdrawReasons::TRANSFER,
-			ExistenceRequirement::KeepAlive,
-		) {
+		if let Ok(remaining_balance) =
+			<pallet_balances::Pallet<Runtime> as Balanced<AccountId>>::withdraw(
+				&fee_pot_pallet_account,
+				amount.peek(),
+				Precision::Exact,
+				Preservation::Expendable,
+				Fortitude::Force,
+			) {
 			// Handle the successful withdrawal (burn)
 			let _ = remaining_balance;
 		} else {
@@ -1220,6 +1246,21 @@ impl pallet_erc20::Config for Runtime {
 }
 
 parameter_types! {
+	pub const DelegatedStakingPalletId: PalletId = PalletId(*b"py/dlstk");
+	pub const SlashRewardFraction: Perbill = Perbill::from_percent(1);
+}
+
+impl pallet_delegated_staking::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type PalletId = DelegatedStakingPalletId;
+	type Currency = Balances;
+	type OnSlash = ResolveTo<TreasuryAccount, Balances>;
+	type SlashRewardFraction = SlashRewardFraction;
+	type RuntimeHoldReason = RuntimeHoldReason;
+	type CoreStaking = Staking;
+}
+
+parameter_types! {
 	pub const PoolsPalletId: PalletId = PalletId(*b"py/nopls");
 	// Allow pools that got slashed up to 90% to remain operational.
 	pub const MaxPointsToBalance: u8 = 10;
@@ -1242,8 +1283,8 @@ impl pallet_nomination_pools::Config for Runtime {
 	type MaxPointsToBalance = MaxPointsToBalance;
 	type WeightInfo = ();
 	type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
-	#[allow(deprecated)]
-	type StakeAdapter = pallet_nomination_pools::adapter::TransferStake<Self, Staking>;
+	type StakeAdapter =
+		pallet_nomination_pools::adapter::DelegateStake<Self, Staking, DelegatedStaking>;
 }
 
 parameter_types! {
@@ -1593,6 +1634,8 @@ mod runtime {
 
 	#[runtime::pallet_index(52)]
 	pub type FeeHandler = pallet_fee_handler::Pallet<Runtime>;
+	#[runtime::pallet_index(53)]
+	pub type DelegatedStaking = pallet_delegated_staking;
 }
 
 // Define types that depend on the runtime module
