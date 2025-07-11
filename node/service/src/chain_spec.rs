@@ -226,10 +226,6 @@ pub fn cere_dev_genesis(
 		  "clustersProtocolParams": [],
 		  "clustersNodes": []
 		},
-		"ddcPayouts": {
-		  "feederAccount": null,
-		  "debtorCustomers": []
-		},
 		"sudo": { "key": Some(root_key) },
 		"babe": {
 			"authorities": [],
@@ -549,10 +545,6 @@ pub fn cere_thirdparty_genesis(
 		  "clusters": [],
 		  "clustersProtocolParams": [],
 		  "clustersNodes": []
-		},
-		"ddcPayouts": {
-		  "feederAccount": null,
-		  "debtorCustomers": []
 		},
 		"sudo": { "key": Some(root_key) },
 		"babe": {

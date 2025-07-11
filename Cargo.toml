@@ -79,7 +79,7 @@ pallet-child-bounties = { version = "39.0.0", default-features = false }
 pallet-collective = { version = "40.1.0", default-features = false }
 pallet-contracts = { version = "40.1.0", default-features = false }
 pallet-democracy = { version = "40.1.0", default-features = false }
-pallet-election-provider-multi-phase = { version = "39.2.0", default-features = false }
+pallet-election-provider-multi-phase = { version = "39.1.0", default-features = false }
 pallet-election-provider-support-benchmarking = { version = "39.0.0", default-features = false }
 pallet-elections-phragmen = { version = "41.1.0", default-features = false }
 pallet-fast-unstake = { version = "39.0.0", default-features = false }
@@ -99,8 +99,8 @@ pallet-offences-benchmarking = { version = "40.0.0", default-features = false }
 pallet-preimage = { version = "40.0.0", default-features = false }
 pallet-proxy = { version = "40.1.0", default-features = false }
 pallet-recovery = { version = "40.0.0", default-features = false }
-pallet-scheduler = { version = "41.2.0", default-features = false }
-pallet-session = { version = "40.0.1", default-features = false, features = ["historical"] }
+pallet-scheduler = { version = "41.0.0", default-features = false }
+pallet-session = { version = "40.0.0", default-features = false, features = ["historical"] }
 pallet-session-benchmarking = { version = "40.0.0", default-features = false }
 pallet-staking = { version = "40.1.0", default-features = false }
 pallet-staking-reward-curve = { version = "12.0.0", default-features = false }
@@ -173,10 +173,6 @@ substrate-frame-rpc-system = { version = "43.0.0", default-features = false }
 substrate-state-trie-migration-rpc = { version = "42.0.0", default-features = false }
 substrate-test-utils = { version = "3.0.0", default-features = false }
 substrate-wasm-builder = { version = "26.0.1", default-features = false }
-staging-xcm = { version = "16.2.0", default-features = false }
-staging-xcm-builder = { version = "20.1.1", default-features = false }
-staging-xcm-executor = { version = "19.1.2", default-features = false }
-environmental = { version = "1.2.0", default-features = false }
 
 # Cere Dependenies
 cere-client = { path = "node/client" }

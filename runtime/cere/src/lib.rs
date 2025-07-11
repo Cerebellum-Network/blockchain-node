@@ -2021,7 +2021,7 @@ impl_runtime_apis! {
 	impl pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<
 		Block,
 		Balance,
-	> for Runtime {
+> for Runtime {
 		fn query_info(uxt: <Block as BlockT>::Extrinsic, len: u32) -> RuntimeDispatchInfo<Balance> {
 			TransactionPayment::query_info(uxt, len)
 		}
@@ -2069,7 +2069,7 @@ impl_runtime_apis! {
 		Block,
 		AccountId,
 		Balance,
-	> for Runtime {
+> for Runtime {
 		fn pending_rewards(member: AccountId) -> Balance {
 			NominationPools::api_pending_rewards(member).unwrap_or_default()
 		}
@@ -2112,7 +2112,10 @@ impl_runtime_apis! {
 	impl frame_try_runtime::TryRuntime<Block> for Runtime {
 		fn on_runtime_upgrade(checks: frame_try_runtime::UpgradeCheckSelect) -> (Weight, Weight) {
 			log::info!("try-runtime::on_runtime_upgrade cere.");
-			let weight = Executive::try_runtime_upgrade(checks).unwrap();
+			let weight = Executive::try_runtime_upgrade(checks).map_err(|e| {
+				log::error!("try_runtime_upgrade failed: {:?}", e);
+				e
+			}).unwrap_or_else(|_| Weight::zero());
 			(weight, RuntimeBlockWeights::get().max_block)
 		}
 

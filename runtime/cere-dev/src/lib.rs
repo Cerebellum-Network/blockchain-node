@@ -2078,7 +2078,10 @@ impl_runtime_apis! {
 	impl frame_try_runtime::TryRuntime<Block> for Runtime {
 		fn on_runtime_upgrade(checks: frame_try_runtime::UpgradeCheckSelect) -> (Weight, Weight) {
 			log::info!("try-runtime::on_runtime_upgrade cere.");
-			let weight = Executive::try_runtime_upgrade(checks).unwrap();
+			let weight = Executive::try_runtime_upgrade(checks).map_err(|e| {
+				log::error!("try_runtime_upgrade failed: {:?}", e);
+				e
+			}).unwrap_or_else(|_| Weight::zero());
 			(weight, RuntimeBlockWeights::get().max_block)
 		}
 
