@@ -82,7 +82,7 @@ use pallet_grandpa::{
 };
 use pallet_identity::legacy::IdentityInfo;
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
-pub use pallet_network_monitor;
+// pub use pallet_network_monitor;
 use pallet_session::historical::{self as pallet_session_historical};
 pub use pallet_staking::StakerStatus;
 #[cfg(any(feature = "std", test))]
