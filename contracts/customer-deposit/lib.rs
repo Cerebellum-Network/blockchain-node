@@ -35,10 +35,14 @@ mod customer_deposit {
 	use ink::{prelude::vec::Vec, storage::Mapping};
 
 	use super::Error;
+	use super::AccountId32;
 
 	pub type ClusterId = [u8; 20];
 	pub const UNLOCK_DELAY_BLOCKS: u32 = 10;
 	pub const MIN_EXISTENTIAL_DEPOSIT: Balance = 10000000000;
+
+	// todo(yahortsaryk): request from the chain via extension
+	pub const PAYOUTS_PALLET: AccountId32 = AccountId32::new([0x6d, 0x6f, 0x64, 0x6c, 0x70, 0x61, 0x79, 0x6f, 0x75, 0x74, 0x73, 0x5f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
 
 	#[derive(Debug, Clone, PartialEq, Eq)]
 	#[ink::scale_derive(Encode, Decode, TypeInfo)]
@@ -329,12 +333,15 @@ mod customer_deposit {
             payout_vault: crate::AccountId32,
             batch: Vec<(crate::AccountId32, u128)>,
         ) -> Vec<(crate::AccountId32, u128)> {
+			let caller = self.env().caller();
+			
+			assert!(caller == from_account_32(&PAYOUTS_PALLET));
 
             let mut charged_amounts = Vec::new();
-			let payout_vault = from_chain_account_id(&payout_vault);
+			let payout_vault = from_account_32(&payout_vault);
 
             for (chain_customer_id, amount_to_deduct) in batch {
-				let customer_id = from_chain_account_id(&chain_customer_id);
+				let customer_id = from_account_32(&chain_customer_id);
 				
                 // Check if the customer has a ledger
                 if let Some(mut ledger) = self.balances.get(&customer_id) {
@@ -375,7 +382,7 @@ mod customer_deposit {
         }
 	}
 
-	pub fn from_chain_account_id(account_id: &crate::AccountId32) -> AccountId {
+	pub fn from_account_32(account_id: &crate::AccountId32) -> AccountId {
 		AccountId::from(<[u8; 32]>::from(account_id.clone()))
 	}
 
@@ -388,7 +395,8 @@ mod tests {
 
 	use super::*;
 	use crate::customer_deposit::{
-		ClusterId, CustomerDepositContract, MIN_EXISTENTIAL_DEPOSIT, UNLOCK_DELAY_BLOCKS
+		ClusterId, CustomerDepositContract, MIN_EXISTENTIAL_DEPOSIT, UNLOCK_DELAY_BLOCKS, PAYOUTS_PALLET,
+		from_account_32
 	};
 	use sp_runtime::AccountId32;
     use ddc_primitives::traits::DdcPayoutsPayer;
@@ -632,6 +640,13 @@ mod tests {
         test::set_caller::<ink::env::DefaultEnvironment>(bob);
         test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT * 5);
         assert!(contract.deposit().is_ok());
+
+		let payout_pallet_id = from_account_32(&PAYOUTS_PALLET);
+		test::set_caller::<ink::env::DefaultEnvironment>(payout_pallet_id);
+		ink::env::test::set_account_balance::<ink::env::DefaultEnvironment>(
+			payout_pallet_id,
+			ENDOWMENT,
+		);
 
         // Charge Alice (10 units) and Bob (7 units, partial charge expected)
         let batch = vec![
