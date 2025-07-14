@@ -139,11 +139,13 @@ mod customer_deposit {
 			Self { balances, cluster_id }
 		}
 
+		/// Get the deposit balance for specific owner
 		#[ink(message)]
 		pub fn balance(&self, owner: AccountId) -> Option<Ledger> {
 			self.balances.get(&owner)
 		}
 
+		/// Top up deposit balance on behalf its owner
 		#[ink(message, payable)]
 		pub fn deposit(&mut self) -> Result<(), Error> {
 			let owner = self.env().caller();
@@ -182,6 +184,7 @@ mod customer_deposit {
 			Ok(())
 		}
 
+		/// Top up deposit balance for specific owner on behalf faucet
 		#[ink(message, payable)]
 		pub fn deposit_for(&mut self, owner: AccountId) -> Result<(), Error> {
 			let _funder = self.env().caller();
@@ -223,6 +226,7 @@ mod customer_deposit {
 			Ok(())
 		}
 
+		/// Initiate unlocking of deposit balance on behalf its owner
 		#[ink(message)]
 		pub fn unlock_deposit(&mut self, value: Balance) -> Result<(), Error> {
 			let owner = self.env().caller();
@@ -278,6 +282,7 @@ mod customer_deposit {
 			Ok(())
 		}
 
+		/// Withdraw unlocked deposit balance on behalf its owner
 		#[ink(message)]
 		pub fn withdraw_unlocked(&mut self) -> Result<(), Error> {
 			let owner = self.env().caller();
