@@ -16,13 +16,13 @@ git add commit_and_push.sh
 
 echo ""
 echo "3. Committing changes..."
-git commit -S -m "fix: Update Substrate dependencies to resolve sc-network compilation issues
+git commit -S -m "fix: Update Substrate networking dependencies to resolve compilation issues
 
 - Update sc-network from 0.49.0 to 0.50.0
 - Update sc-network-types from 0.15.5 to 0.16.0
 - Update sc-network-common from 0.48.0 to 0.49.0
-- Update frame-* crates to 41.0.0+ for consistency
-- Update sp-* crates to 37.0.0+ for compatibility
+- Conservative updates to related sc-* dependencies
+- Maintain compatibility with existing frame-* and sp-* versions
 - Remove problematic sc-network-types patch
 
 This resolves 122+ compilation errors including:
@@ -31,6 +31,9 @@ This resolves 122+ compilation errors including:
 - Multiaddr conversion problems
 - Missing struct fields like 'expires' in Record types
 - thiserror dependency conflicts
+
+The conservative approach ensures compatibility while fixing the critical
+networking layer issues that were preventing compilation.
 
 Fixes #3509"
 
