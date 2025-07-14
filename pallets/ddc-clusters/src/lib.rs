@@ -873,6 +873,12 @@ pub mod pallet {
 			Ok(cluster.reserve_id)
 		}
 
+		fn get_customer_deposit_contract(cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> { 
+			let cluster_protocol_params = ClustersGovParams::<T>::try_get(cluster_id)
+				.map_err(|_| Error::<T>::ClusterProtocolParamsNotSet)?;
+			Ok(cluster_protocol_params.customer_deposit_contract.clone())
+		}
+
 		fn activate_cluster_protocol(cluster_id: &ClusterId) -> DispatchResult {
 			Self::do_activate_cluster_protocol(cluster_id)
 		}

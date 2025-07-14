@@ -170,6 +170,10 @@ impl ClusterProtocol<AccountId, BlockNumber, Balance> for TestClusterProtocol {
 		unimplemented!()
 	}
 
+	fn get_customer_deposit_contract(_cluster_id: &ClusterId) -> Result<AccountId, DispatchError> {
+		unimplemented!()
+	}
+
 	fn activate_cluster_protocol(_cluster_id: &ClusterId) -> DispatchResult {
 		unimplemented!()
 	}

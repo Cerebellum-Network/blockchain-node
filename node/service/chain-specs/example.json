@@ -194,7 +194,8 @@
               "unit_per_mb_stored": 0,
               "unit_per_mb_streamed": 0,
               "unit_per_put_request": 0,
-              "unit_per_get_request": 0
+              "unit_per_get_request": 0,
+              "customer_deposit_contract": "6Q9XEgZfZwvtb9oQoTv7co7xX4a59JDhZ4FhEixKEQfPBnYp"
             }
           ]
         ],
