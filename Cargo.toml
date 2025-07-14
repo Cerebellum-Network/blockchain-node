@@ -217,8 +217,6 @@ panic = "unwind"
 lto = "thin"
 codegen-units = 1
 
-
-
 # Optimized profile for CI builds - faster compilation
 [profile.fast-ci]
 inherits = "release"
