@@ -130,8 +130,9 @@ sc-consensus-grandpa = { version = "0.34.0", default-features = false }
 sc-consensus-grandpa-rpc = { version = "0.34.0", default-features = false }
 sc-consensus-slots = { version = "0.48.0", default-features = false }
 sc-executor = { version = "0.42.0", default-features = false }
-sc-network = { version = "=0.49.0", default-features = false }
+sc-network = { version = "=0.49.0", default-features = false, features = [] }
 sc-network-common = { version = "0.48.0", default-features = false }
+sc-network-types = { version = "=0.15.5", default-features = false }
 sc-rpc = { version = "44.0.0", default-features = false }
 sc-rpc-api = { version = "0.48.0", default-features = false }
 sc-service = { version = "0.50.0", default-features = false }
