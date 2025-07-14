@@ -16,8 +16,11 @@ use sp_std::prelude::*;
 
 use crate::{Pallet as DdcClusters, *};
 
-pub fn config_cluster<T: Config>(user: T::AccountId, cluster_id: ClusterId)
-where
+pub fn config_cluster<T: Config>(
+	user: T::AccountId,
+	cluster_id: ClusterId,
+	customer_deposit_contract: T::AccountId,
+) where
 	T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 {
 	let cluster_params = ClusterParams {
@@ -26,19 +29,23 @@ where
 		erasure_coding_total: 6,
 		replication_total: 3,
 	};
-	let cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>> =
-		ClusterProtocolParams {
-			treasury_share: Perquintill::default(),
-			validators_share: Perquintill::default(),
-			cluster_reserve_share: Perquintill::default(),
-			storage_bond_size: 100u32.into(),
-			storage_chill_delay: 50u32.into(),
-			storage_unbonding_delay: 50u32.into(),
-			unit_per_mb_stored: 10,
-			unit_per_mb_streamed: 10,
-			unit_per_put_request: 10,
-			unit_per_get_request: 10,
-		};
+	let cluster_protocol_params: ClusterProtocolParams<
+		BalanceOf<T>,
+		BlockNumberFor<T>,
+		T::AccountId,
+	> = ClusterProtocolParams {
+		treasury_share: Perquintill::default(),
+		validators_share: Perquintill::default(),
+		cluster_reserve_share: Perquintill::default(),
+		storage_bond_size: 100u32.into(),
+		storage_chill_delay: 50u32.into(),
+		storage_unbonding_delay: 50u32.into(),
+		unit_per_mb_stored: 10,
+		unit_per_mb_streamed: 10,
+		unit_per_put_request: 10,
+		unit_per_get_request: 10,
+		customer_deposit_contract,
+	};
 
 	let _ = DdcClusters::<T>::create_cluster(
 		RawOrigin::Signed(user.clone()).into(),
@@ -53,6 +60,7 @@ pub fn config_cluster_and_node<T: Config>(
 	user: T::AccountId,
 	node_pub_key: NodePubKey,
 	cluster_id: ClusterId,
+	customer_deposit_contract: T::AccountId,
 ) -> Result<(), Box<BenchmarkError>>
 where
 	T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
@@ -73,19 +81,23 @@ where
 		p2p_port: 15000u16,
 	};
 
-	let cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>> =
-		ClusterProtocolParams {
-			treasury_share: Perquintill::default(),
-			validators_share: Perquintill::default(),
-			cluster_reserve_share: Perquintill::default(),
-			storage_bond_size: 100u32.into(),
-			storage_chill_delay: 50u32.into(),
-			storage_unbonding_delay: 50u32.into(),
-			unit_per_mb_stored: 10,
-			unit_per_mb_streamed: 10,
-			unit_per_put_request: 10,
-			unit_per_get_request: 10,
-		};
+	let cluster_protocol_params: ClusterProtocolParams<
+		BalanceOf<T>,
+		BlockNumberFor<T>,
+		T::AccountId,
+	> = ClusterProtocolParams {
+		treasury_share: Perquintill::default(),
+		validators_share: Perquintill::default(),
+		cluster_reserve_share: Perquintill::default(),
+		storage_bond_size: 100u32.into(),
+		storage_chill_delay: 50u32.into(),
+		storage_unbonding_delay: 50u32.into(),
+		unit_per_mb_stored: 10,
+		unit_per_mb_streamed: 10,
+		unit_per_put_request: 10,
+		unit_per_get_request: 10,
+		customer_deposit_contract,
+	};
 
 	let _ = DdcClusters::<T>::create_cluster(
 		RawOrigin::Signed(user.clone()).into(),

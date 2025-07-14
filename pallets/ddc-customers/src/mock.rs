@@ -176,7 +176,7 @@ impl ClusterProtocol<AccountId, BlockNumber, Balance> for TestClusterProtocol {
 
 	fn update_cluster_protocol(
 		_cluster_id: &ClusterId,
-		_cluster_protocol_params: ClusterProtocolParams<Balance, BlockNumber>,
+		_cluster_protocol_params: ClusterProtocolParams<Balance, BlockNumber, AccountId>,
 	) -> DispatchResult {
 		unimplemented!()
 	}
@@ -275,7 +275,7 @@ impl ClusterCreator<AccountId, BlockNumber, Balance> for TestClusterCreator {
 		_cluster_manager_id: AccountId,
 		_cluster_reserve_id: AccountId,
 		_cluster_params: ClusterParams<AccountId>,
-		_cluster_protocol_params: ClusterProtocolParams<Balance, BlockNumber>,
+		_cluster_protocol_params: ClusterProtocolParams<Balance, BlockNumber, AccountId>,
 	) -> DispatchResult {
 		Ok(())
 	}

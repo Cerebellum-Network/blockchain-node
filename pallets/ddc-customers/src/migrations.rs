@@ -905,19 +905,25 @@ pub mod v4_mbm {
 
 			let cluster_id = ClusterId::from(DEFAULT_CLUSTER);
 			let cluster_owner: T::AccountId = frame_benchmarking::account("account", 1, 0);
-			let cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>> =
-				ClusterProtocolParams {
-					treasury_share: Perquintill::default(),
-					validators_share: Perquintill::default(),
-					cluster_reserve_share: Perquintill::default(),
-					storage_bond_size: 100u32.into(),
-					storage_chill_delay: 50u32.into(),
-					storage_unbonding_delay: 50u32.into(),
-					unit_per_mb_stored: 10,
-					unit_per_mb_streamed: 10,
-					unit_per_put_request: 10,
-					unit_per_get_request: 10,
-				};
+			let customer_deposit_contract =
+				frame_benchmarking::account::<T::AccountId>("customer_deposit_contract", 1, 0);
+			let cluster_protocol_params: ClusterProtocolParams<
+				BalanceOf<T>,
+				BlockNumberFor<T>,
+				T::AccountId,
+			> = ClusterProtocolParams {
+				treasury_share: Perquintill::default(),
+				validators_share: Perquintill::default(),
+				cluster_reserve_share: Perquintill::default(),
+				storage_bond_size: 100u32.into(),
+				storage_chill_delay: 50u32.into(),
+				storage_unbonding_delay: 50u32.into(),
+				unit_per_mb_stored: 10,
+				unit_per_mb_streamed: 10,
+				unit_per_put_request: 10,
+				unit_per_get_request: 10,
+				customer_deposit_contract,
+			};
 
 			let cluster_params = ClusterParams {
 				node_provider_auth_contract: None,

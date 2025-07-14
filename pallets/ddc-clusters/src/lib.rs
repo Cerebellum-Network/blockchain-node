@@ -148,7 +148,7 @@ pub mod pallet {
 		_,
 		Twox64Concat,
 		ClusterId,
-		ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
+		ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>, T::AccountId>,
 	>;
 
 	#[pallet::storage]
@@ -171,7 +171,7 @@ pub mod pallet {
 		pub clusters: Vec<Cluster<T::AccountId>>,
 		#[allow(clippy::type_complexity)]
 		pub clusters_protocol_params:
-			Vec<(ClusterId, ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>)>,
+			Vec<(ClusterId, ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>, T::AccountId>)>,
 		#[allow(clippy::type_complexity)]
 		pub clusters_nodes: Vec<(ClusterId, Vec<(NodePubKey, ClusterNodeKind, ClusterNodeStatus)>)>,
 	}
@@ -269,7 +269,11 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			cluster_reserve_id: T::AccountId,
 			cluster_params: ClusterParams<T::AccountId>,
-			initial_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
+			initial_protocol_params: ClusterProtocolParams<
+				BalanceOf<T>,
+				BlockNumberFor<T>,
+				T::AccountId,
+			>,
 		) -> DispatchResult {
 			let cluster_manager_id = ensure_signed(origin)?;
 			Self::do_create_cluster(
@@ -433,7 +437,11 @@ pub mod pallet {
 			cluster_manager_id: T::AccountId,
 			cluster_reserve_id: T::AccountId,
 			cluster_params: ClusterParams<T::AccountId>,
-			initial_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
+			initial_protocol_params: ClusterProtocolParams<
+				BalanceOf<T>,
+				BlockNumberFor<T>,
+				T::AccountId,
+			>,
 		) -> DispatchResult {
 			ensure!(!Clusters::<T>::contains_key(cluster_id), Error::<T>::ClusterAlreadyExists);
 
@@ -516,7 +524,11 @@ pub mod pallet {
 
 		fn do_update_cluster_protocol(
 			cluster_id: &ClusterId,
-			cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
+			cluster_protocol_params: ClusterProtocolParams<
+				BalanceOf<T>,
+				BlockNumberFor<T>,
+				T::AccountId,
+			>,
 		) -> DispatchResult {
 			ensure!(
 				ClustersGovParams::<T>::contains_key(cluster_id),
@@ -867,7 +879,11 @@ pub mod pallet {
 
 		fn update_cluster_protocol(
 			cluster_id: &ClusterId,
-			cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
+			cluster_protocol_params: ClusterProtocolParams<
+				BalanceOf<T>,
+				BlockNumberFor<T>,
+				T::AccountId,
+			>,
 		) -> DispatchResult {
 			Self::do_update_cluster_protocol(cluster_id, cluster_protocol_params)
 		}
@@ -997,7 +1013,11 @@ pub mod pallet {
 			cluster_manager_id: T::AccountId,
 			cluster_reserve_id: T::AccountId,
 			cluster_params: ClusterParams<T::AccountId>,
-			initial_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
+			initial_protocol_params: ClusterProtocolParams<
+				BalanceOf<T>,
+				BlockNumberFor<T>,
+				T::AccountId,
+			>,
 		) -> DispatchResult {
 			Self::do_create_cluster(
 				cluster_id,

@@ -1,7 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
+use ddc_primitives::{
+	Balance as ChainBalance, BlockNumber as ChainBlockNumber, Timestamp as ChainTimestamp,
+};
 use ink::env::Environment;
-use ddc_primitives::{Balance as ChainBalance, BlockNumber as ChainBlockNumber, Timestamp as ChainTimestamp};
 use sp_runtime::AccountId32;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,15 +36,18 @@ pub enum Error {
 mod customer_deposit {
 	use ink::{prelude::vec::Vec, storage::Mapping};
 
-	use super::Error;
-	use super::AccountId32;
+	use super::{AccountId32, Error};
 
 	pub type ClusterId = [u8; 20];
 	pub const UNLOCK_DELAY_BLOCKS: u32 = 10;
 	pub const MIN_EXISTENTIAL_DEPOSIT: Balance = 10000000000;
 
 	// todo(yahortsaryk): request from the chain via extension
-	pub const PAYOUTS_PALLET: AccountId32 = AccountId32::new([0x6d, 0x6f, 0x64, 0x6c, 0x70, 0x61, 0x79, 0x6f, 0x75, 0x74, 0x73, 0x5f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+	pub const PAYOUTS_PALLET: AccountId32 = AccountId32::new([
+		0x6d, 0x6f, 0x64, 0x6c, 0x70, 0x61, 0x79, 0x6f, 0x75, 0x74, 0x73, 0x5f, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00,
+	]);
 
 	#[derive(Debug, Clone, PartialEq, Eq)]
 	#[ink::scale_derive(Encode, Decode, TypeInfo)]
@@ -94,7 +99,7 @@ mod customer_deposit {
 	pub struct Deposited {
 		#[ink(topic)]
 		cluster_id: ClusterId,
-        #[ink(topic)]
+		#[ink(topic)]
 		owner_id: AccountId,
 		amount: Balance,
 	}
@@ -103,7 +108,7 @@ mod customer_deposit {
 	pub struct InitialDepositUnlock {
 		#[ink(topic)]
 		cluster_id: ClusterId,
-        #[ink(topic)]
+		#[ink(topic)]
 		owner_id: AccountId,
 		amount: Balance,
 	}
@@ -112,12 +117,12 @@ mod customer_deposit {
 	pub struct Withdrawn {
 		#[ink(topic)]
 		cluster_id: ClusterId,
-        #[ink(topic)]
+		#[ink(topic)]
 		owner_id: AccountId,
 		amount: Balance,
 	}
 
-    #[ink(event)]
+	#[ink(event)]
 	pub struct Charged {
 		#[ink(topic)]
 		cluster_id: ClusterId,
@@ -327,79 +332,77 @@ mod customer_deposit {
 	}
 
 	impl ddc_primitives::traits::DdcPayoutsPayer for CustomerDepositContract {
-        #[ink(message)]
-        fn charge(
-            &mut self,
-            payout_vault: crate::AccountId32,
-            batch: Vec<(crate::AccountId32, u128)>,
-        ) -> Vec<(crate::AccountId32, u128)> {
+		#[ink(message)]
+		fn charge(
+			&mut self,
+			payout_vault: crate::AccountId32,
+			batch: Vec<(crate::AccountId32, u128)>,
+		) -> Vec<(crate::AccountId32, u128)> {
 			let caller = self.env().caller();
-			
+
 			assert!(caller == from_account_32(&PAYOUTS_PALLET));
 
-            let mut charged_amounts = Vec::new();
+			let mut charged_amounts = Vec::new();
 			let payout_vault = from_account_32(&payout_vault);
 
-            for (chain_customer_id, amount_to_deduct) in batch {
+			for (chain_customer_id, amount_to_deduct) in batch {
 				let customer_id = from_account_32(&chain_customer_id);
-				
-                // Check if the customer has a ledger
-                if let Some(mut ledger) = self.balances.get(&customer_id) {
-                    // Calculate the actual amount that can be charged (partial or full)
-                    let actually_charged = ledger.active.min(amount_to_deduct);
-        
-                    // Deduct the charged amount from the active and total balances
-                    ledger.active = ledger.active.saturating_sub(actually_charged);
-                    ledger.total = ledger.total.saturating_sub(actually_charged);
-                    self.balances.insert(&customer_id, &ledger);
-        
-                    // Transfer the tokens from the contract's vault to the payout_vault
-                    if actually_charged > 0 {
-                        if let Err(_) = self.env().transfer(payout_vault, actually_charged) {
-                            // Revert balance changes if transfer fails
-                            ledger.active = ledger.active.saturating_add(actually_charged);
-                            ledger.total = ledger.total.saturating_add(actually_charged);
-                            self.balances.insert(&customer_id, &ledger);
-                            // Skip adding to `charged_amounts` if transfer failed
-                            continue;
-                        }
-        
-                        // Emit `Charged` event (partial or full)
-                        self.env().emit_event(Charged {
-                            cluster_id: self.cluster_id,
-                            owner_id: customer_id,
-                            charged: actually_charged,
-                            expected_to_charge: amount_to_deduct,
-                        });
-        
-                        // Record the successfully charged amount
-                        charged_amounts.push((chain_customer_id, actually_charged));
-                    }
-                }
-            }
+
+				// Check if the customer has a ledger
+				if let Some(mut ledger) = self.balances.get(&customer_id) {
+					// Calculate the actual amount that can be charged (partial or full)
+					let actually_charged = ledger.active.min(amount_to_deduct);
+
+					// Deduct the charged amount from the active and total balances
+					ledger.active = ledger.active.saturating_sub(actually_charged);
+					ledger.total = ledger.total.saturating_sub(actually_charged);
+					self.balances.insert(&customer_id, &ledger);
+
+					// Transfer the tokens from the contract's vault to the payout_vault
+					if actually_charged > 0 {
+						if let Err(_) = self.env().transfer(payout_vault, actually_charged) {
+							// Revert balance changes if transfer fails
+							ledger.active = ledger.active.saturating_add(actually_charged);
+							ledger.total = ledger.total.saturating_add(actually_charged);
+							self.balances.insert(&customer_id, &ledger);
+							// Skip adding to `charged_amounts` if transfer failed
+							continue;
+						}
+
+						// Emit `Charged` event (partial or full)
+						self.env().emit_event(Charged {
+							cluster_id: self.cluster_id,
+							owner_id: customer_id,
+							charged: actually_charged,
+							expected_to_charge: amount_to_deduct,
+						});
+
+						// Record the successfully charged amount
+						charged_amounts.push((chain_customer_id, actually_charged));
+					}
+				}
+			}
 
 			charged_amounts
-        }
+		}
 	}
 
 	pub fn from_account_32(account_id: &crate::AccountId32) -> AccountId {
 		AccountId::from(<[u8; 32]>::from(account_id.clone()))
 	}
-
 }
-
 
 #[cfg(test)]
 mod tests {
+	use ddc_primitives::traits::DdcPayoutsPayer;
 	use ink::env::test;
+	use sp_runtime::AccountId32;
 
 	use super::*;
 	use crate::customer_deposit::{
-		ClusterId, CustomerDepositContract, MIN_EXISTENTIAL_DEPOSIT, UNLOCK_DELAY_BLOCKS, PAYOUTS_PALLET,
-		from_account_32
+		from_account_32, ClusterId, CustomerDepositContract, MIN_EXISTENTIAL_DEPOSIT,
+		PAYOUTS_PALLET, UNLOCK_DELAY_BLOCKS,
 	};
-	use sp_runtime::AccountId32;
-    use ddc_primitives::traits::DdcPayoutsPayer;
 
 	const TEST_CLUSTER_ID: ClusterId = [0; 20];
 	const ENDOWMENT: Balance = MIN_EXISTENTIAL_DEPOSIT * 1_000_000;
@@ -417,7 +420,9 @@ mod tests {
 		(contract, accounts)
 	}
 
-	fn to_account_32(account_id: &<ink::env::DefaultEnvironment as Environment>::AccountId) -> Result<AccountId32, ()> {
+	fn to_account_32(
+		account_id: &<ink::env::DefaultEnvironment as Environment>::AccountId,
+	) -> Result<AccountId32, ()> {
 		if let Ok(bytes) = <[u8; 32]>::try_from(account_id.as_ref()) {
 			Ok(AccountId32::from(bytes))
 		} else {
@@ -625,21 +630,21 @@ mod tests {
 		assert!(contract.balance(accounts.alice).is_none());
 	}
 
-    #[ink::test]
-    fn test_charge_return_value() {
-        let (mut contract, accounts) = setup();
-        let alice = accounts.alice;
-        let bob = accounts.bob;
-        let payout_vault = to_account_32(&accounts.charlie).expect("Invalid contract account id");
+	#[ink::test]
+	fn test_charge_return_value() {
+		let (mut contract, accounts) = setup();
+		let alice = accounts.alice;
+		let bob = accounts.bob;
+		let payout_vault = to_account_32(&accounts.charlie).expect("Invalid contract account id");
 
-        // Deposit funds for Alice (10 units) and Bob (5 units)
-        test::set_caller::<ink::env::DefaultEnvironment>(alice);
-        test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT * 10);
-        assert!(contract.deposit().is_ok());
+		// Deposit funds for Alice (10 units) and Bob (5 units)
+		test::set_caller::<ink::env::DefaultEnvironment>(alice);
+		test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT * 10);
+		assert!(contract.deposit().is_ok());
 
-        test::set_caller::<ink::env::DefaultEnvironment>(bob);
-        test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT * 5);
-        assert!(contract.deposit().is_ok());
+		test::set_caller::<ink::env::DefaultEnvironment>(bob);
+		test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT * 5);
+		assert!(contract.deposit().is_ok());
 
 		let payout_pallet_id = from_account_32(&PAYOUTS_PALLET);
 		test::set_caller::<ink::env::DefaultEnvironment>(payout_pallet_id);
@@ -648,18 +653,30 @@ mod tests {
 			ENDOWMENT,
 		);
 
-        // Charge Alice (10 units) and Bob (7 units, partial charge expected)
-        let batch = vec![
-            (to_account_32(&alice).expect("Invalid contract account id"), MIN_EXISTENTIAL_DEPOSIT * 10),
-            (to_account_32(&bob).expect("Invalid contract account id"), MIN_EXISTENTIAL_DEPOSIT * 7),
-        ];
-        let charged_amounts = contract.charge(payout_vault, batch);
+		// Charge Alice (10 units) and Bob (7 units, partial charge expected)
+		let batch = vec![
+			(
+				to_account_32(&alice).expect("Invalid contract account id"),
+				MIN_EXISTENTIAL_DEPOSIT * 10,
+			),
+			(
+				to_account_32(&bob).expect("Invalid contract account id"),
+				MIN_EXISTENTIAL_DEPOSIT * 7,
+			),
+		];
+		let charged_amounts = contract.charge(payout_vault, batch);
 
-        // Verify return value:
-        // - Alice: 10 units charged (full)
-        // - Bob: 5 units charged (partial)
-        assert_eq!(charged_amounts.len(), 2);
-        assert!(charged_amounts.contains(&(to_account_32(&alice).expect("Invalid contract account id"), MIN_EXISTENTIAL_DEPOSIT * 10)));
-        assert!(charged_amounts.contains(&(to_account_32(&bob).expect("Invalid contract account id"), MIN_EXISTENTIAL_DEPOSIT * 5)));
-    }
+		// Verify return value:
+		// - Alice: 10 units charged (full)
+		// - Bob: 5 units charged (partial)
+		assert_eq!(charged_amounts.len(), 2);
+		assert!(charged_amounts.contains(&(
+			to_account_32(&alice).expect("Invalid contract account id"),
+			MIN_EXISTENTIAL_DEPOSIT * 10
+		)));
+		assert!(charged_amounts.contains(&(
+			to_account_32(&bob).expect("Invalid contract account id"),
+			MIN_EXISTENTIAL_DEPOSIT * 5
+		)));
+	}
 }

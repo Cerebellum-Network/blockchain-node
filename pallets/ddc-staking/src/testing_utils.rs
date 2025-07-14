@@ -97,6 +97,8 @@ pub fn create_stash_controller_node_with_balance<T: Config>(
 ) -> Result<(T::AccountId, T::AccountId, NodePubKey), &'static str> {
 	let stash = create_funded_user_with_balance::<T>("stash", n, balance_factor);
 	let controller = create_funded_user_with_balance::<T>("controller", n, balance_factor);
+	let customer_deposit_contract =
+		create_funded_user_with_balance::<T>("customer-deposit-contract", 0, 0);
 	let controller_lookup: <T::Lookup as StaticLookup>::Source =
 		T::Lookup::unlookup(controller.clone());
 
@@ -126,19 +128,23 @@ pub fn create_stash_controller_node_with_balance<T: Config>(
 		erasure_coding_total: 6,
 		replication_total: 3,
 	};
-	let cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>> =
-		ClusterProtocolParams {
-			treasury_share: Perquintill::default(),
-			validators_share: Perquintill::default(),
-			cluster_reserve_share: Perquintill::default(),
-			storage_bond_size: 10u32.into(),
-			storage_chill_delay: 50u32.into(),
-			storage_unbonding_delay: 50u32.into(),
-			unit_per_mb_stored: 10,
-			unit_per_mb_streamed: 10,
-			unit_per_put_request: 10,
-			unit_per_get_request: 10,
-		};
+	let cluster_protocol_params: ClusterProtocolParams<
+		BalanceOf<T>,
+		BlockNumberFor<T>,
+		T::AccountId,
+	> = ClusterProtocolParams {
+		treasury_share: Perquintill::default(),
+		validators_share: Perquintill::default(),
+		cluster_reserve_share: Perquintill::default(),
+		storage_bond_size: 10u32.into(),
+		storage_chill_delay: 50u32.into(),
+		storage_unbonding_delay: 50u32.into(),
+		unit_per_mb_stored: 10,
+		unit_per_mb_streamed: 10,
+		unit_per_put_request: 10,
+		unit_per_get_request: 10,
+		customer_deposit_contract,
+	};
 	T::ClusterCreator::create_cluster(
 		cluster_id,
 		stash.clone(),

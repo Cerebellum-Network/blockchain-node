@@ -192,7 +192,8 @@ pub(crate) type BuiltClusterBond = (AccountId, AccountId, ClusterId);
 pub(crate) type BuiltNodeBond = (AccountId, AccountId, NodePubKey, Balance, ClusterId);
 
 #[allow(clippy::type_complexity)]
-pub(crate) type BuiltCluster = (Cluster<AccountId>, ClusterProtocolParams<Balance, BlockNumber>);
+pub(crate) type BuiltCluster =
+	(Cluster<AccountId>, ClusterProtocolParams<Balance, BlockNumber, AccountId>);
 
 #[allow(clippy::type_complexity)]
 pub(crate) type BuiltNode = (NodePubKey, StorageNode<Test>, Option<ClusterAssignment>);
@@ -222,6 +223,7 @@ pub const NODE_CONTROLLER_4: [u8; 32] = [40; 32];
 pub const CLUSTER_ID: [u8; 20] = [1; 20];
 pub const CLUSTER_STASH: [u8; 32] = [102; 32];
 pub const CLUSTER_CONTROLLER: [u8; 32] = [101; 32];
+pub const CLUSTER_CUSTOMER_DEPOSIT_CONTRACT: [u8; 32] = [103; 32];
 
 pub const USER_KEY_1: [u8; 32] = [1; 32];
 pub const USER_KEY_2: [u8; 32] = [2; 32];
@@ -252,6 +254,7 @@ pub(crate) fn build_default_setup(
 				unit_per_mb_streamed: 3,
 				unit_per_put_request: 4,
 				unit_per_get_request: 5,
+				customer_deposit_contract: AccountId::from(CLUSTER_CUSTOMER_DEPOSIT_CONTRACT),
 			},
 			ClusterStatus::Activated,
 		)],
@@ -312,7 +315,7 @@ pub(crate) fn build_cluster(
 	manager_id: [u8; 32],
 	reserve_id: [u8; 32],
 	params: ClusterParams<AccountId>,
-	protocol_params: ClusterProtocolParams<Balance, BlockNumber>,
+	protocol_params: ClusterProtocolParams<Balance, BlockNumber, AccountId>,
 	status: ClusterStatus,
 ) -> BuiltCluster {
 	let mut cluster = Cluster::new(
