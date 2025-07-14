@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C] Changes is `Cere` Runtime
 - [D] Changes is `Cere Dev` Runtime
 
+## [7.3.11]
+
+- [C,D] Fixed low Transaction fee issue, removed deprecated dependencies and implemented.
+
 ## [7.3.10]
 
 - [C,D] Redirect Dust Balances to Treasury Instead of Burning to Fix total Issuance issue.
