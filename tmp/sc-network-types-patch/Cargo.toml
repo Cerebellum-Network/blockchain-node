@@ -20,4 +20,4 @@ zeroize = { version = "1.8.0", default-features = false }
 
 [features]
 default = []
-std = [] 
+std = []
