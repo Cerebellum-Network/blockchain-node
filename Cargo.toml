@@ -177,6 +177,7 @@ substrate-frame-rpc-system = { version = "43.0.0", default-features = false }
 substrate-state-trie-migration-rpc = { version = "42.0.0", default-features = false }
 substrate-test-utils = { version = "3.0.0", default-features = false }
 substrate-wasm-builder = { version = "26.0.1", default-features = false }
+pallet-delegated-staking = { version = "7.0.0", default-features = false }
 
 # Cere Dependenies
 cere-client = { path = "node/client" }

@@ -92,6 +92,7 @@ sp-std = { workspace = true }
 sp-storage = { workspace = true }
 sp-transaction-pool = { workspace = true }
 sp-version = { workspace = true }
+pallet-delegated-staking = { workspace = true }
 
 # cere dependencies
 cere-runtime-common = { workspace = true }
@@ -215,6 +216,7 @@ std = [
   "pallet-token-gateway/std",
   "pallet-fee-handler/std",
   "pallet-migrations/std",
+  "pallet-delegated-staking/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
@@ -269,6 +271,7 @@ runtime-benchmarks = [
   "pallet-origins/runtime-benchmarks",
   "pallet-token-gateway/runtime-benchmarks",
   "pallet-migrations/runtime-benchmarks",
+  "pallet-delegated-staking/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-executive/try-runtime",
@@ -328,6 +331,7 @@ try-runtime = [
   "ismp-grandpa/try-runtime",
   "pallet-token-gateway/try-runtime",
   "pallet-migrations/try-runtime",
+  "pallet-delegated-staking/try-runtime",
 ]
 
 # Enable the metadata hash generation in the wasm builder.
