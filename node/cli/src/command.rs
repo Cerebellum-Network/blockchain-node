@@ -203,7 +203,7 @@ pub fn run() -> sc_cli::Result<()> {
 		None => {
 			let runner = cli.create_runner(&cli.run.base)?;
 			runner.run_node_until_exit(|config| async move {
-				cere_service::build_full::<sc_network::Litep2pNetworkBackend>(
+				cere_service::build_full::<sc_network::NetworkBackend>(
 					config,
 					cli.run.no_hardware_benchmarks,
 				)

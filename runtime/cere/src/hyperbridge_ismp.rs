@@ -70,6 +70,7 @@ impl IsmpRouter for ModuleRouter {
 impl ismp_grandpa::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type IsmpHost = Ismp;
+	type RootOrigin = EnsureRoot<AccountId>;
 	type WeightInfo = weights::ismp_grandpa::WeightInfo<Runtime>;
 }
 

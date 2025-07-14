@@ -1,0 +1,12 @@
+[package]
+name = "sc-network-types"
+version = "0.15.5"
+edition = "2021"
+
+[dependencies]
+libp2p = "0.54.1"
+array-bytes = "6.2.3"
+multiaddr = "0.18.2"
+multihash = "0.19.3"
+codec = { package = "parity-scale-codec", version = "3.6.12", default-features = false, features = ["derive"] }
+scale-info = { version = "2.11.3", default-features = false, features = ["derive"] } 

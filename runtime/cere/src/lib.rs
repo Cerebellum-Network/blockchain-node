@@ -1460,11 +1460,12 @@ impl pallet_fee_handler::Config for Runtime {
 	type WeightInfo = pallet_fee_handler::weights::SubstrateWeight<Runtime>;
 }
 
+// Type alias for negative imbalance - moved outside runtime module to avoid pallet index requirement
+// Note: This is already defined at line 184, so removing duplicate
+
 #[frame_support::runtime]
 mod runtime {
 	use super::*;
-
-	type NegativeImbalance = <Balances as Currency<AccountId>>::NegativeImbalance;
 
 	pub struct DealWithFees;
 	impl OnUnbalanced<NegativeImbalance> for DealWithFees {
@@ -1688,8 +1689,11 @@ mod runtime {
 	pub type FeeHandler = pallet_fee_handler::Pallet<Runtime>;
 
 	#[runtime::pallet_index(53)]
-	pub type DelegatedStaking = pallet_delegated_staking;
+	pub type DelegatedStaking = pallet_delegated_staking::Pallet<Runtime>;
 }
+
+// Runtime types are automatically exposed by the #[frame_support::runtime] macro
+// No manual re-export needed
 
 /// The address format for describing accounts.
 pub type Address = sp_runtime::MultiAddress<AccountId, AccountIndex>;
@@ -1707,25 +1711,25 @@ pub type BlockId = generic::BlockId<Block>;
 ///
 /// [`sign`]: <../../testing/src/keyring.rs.html>
 pub type TxExtension = (
-	frame_system::CheckNonZeroSender<runtime::Runtime>,
-	frame_system::CheckSpecVersion<runtime::Runtime>,
-	frame_system::CheckTxVersion<runtime::Runtime>,
-	frame_system::CheckGenesis<runtime::Runtime>,
-	frame_system::CheckEra<runtime::Runtime>,
-	frame_system::CheckNonce<runtime::Runtime>,
-	frame_system::CheckWeight<runtime::Runtime>,
-	pallet_transaction_payment::ChargeTransactionPayment<runtime::Runtime>,
-	frame_metadata_hash_extension::CheckMetadataHash<runtime::Runtime>,
-	frame_system::WeightReclaim<runtime::Runtime>,
+	frame_system::CheckNonZeroSender<Runtime>,
+	frame_system::CheckSpecVersion<Runtime>,
+	frame_system::CheckTxVersion<Runtime>,
+	frame_system::CheckGenesis<Runtime>,
+	frame_system::CheckEra<Runtime>,
+	frame_system::CheckNonce<Runtime>,
+	frame_system::CheckWeight<Runtime>,
+	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+	frame_metadata_hash_extension::CheckMetadataHash<Runtime>,
+	frame_system::WeightReclaim<Runtime>,
 );
 
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic =
-	generic::UncheckedExtrinsic<Address, runtime::RuntimeCall, Signature, TxExtension>;
+	generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, TxExtension>;
 /// The payload being signed in transactions.
-pub type SignedPayload = generic::SignedPayload<runtime::RuntimeCall, TxExtension>;
+pub type SignedPayload = generic::SignedPayload<RuntimeCall, TxExtension>;
 /// Extrinsic type that has already been checked.
-pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, runtime::RuntimeCall, TxExtension>;
+pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, TxExtension>;
 
 /// Migrations for FRAME pallets, unreleased to MAINNET
 // type Migrations = (
