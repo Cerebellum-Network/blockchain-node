@@ -39,6 +39,7 @@ pallet-child-bounties = { workspace = true }
 pallet-collective = { workspace = true }
 pallet-contracts = { workspace = true }
 pallet-conviction-voting = { workspace = true }
+pallet-delegated-staking = { workspace = true }
 pallet-democracy = { workspace = true }
 pallet-election-provider-multi-phase = { workspace = true }
 pallet-election-provider-support-benchmarking = { workspace = true, optional = true }
@@ -92,7 +93,6 @@ sp-std = { workspace = true }
 sp-storage = { workspace = true }
 sp-transaction-pool = { workspace = true }
 sp-version = { workspace = true }
-pallet-delegated-staking = { workspace = true }
 
 # cere dependencies
 cere-runtime-common = { workspace = true }
