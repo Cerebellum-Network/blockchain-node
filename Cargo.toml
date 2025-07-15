@@ -61,7 +61,7 @@ scopeguard = { version = "1.2.0", default-features = false }
 # Please keey format such that:
 # dependency-name = { git = "X", tag = "Y", default-features = false }
 frame-benchmarking = { version = "40.0.0", default-features = false }
-frame-benchmarking-cli = { version = "=47.0.0", default-features = false }
+frame-benchmarking-cli = { version = "=40.0.0", default-features = false }
 frame-election-provider-support = { version = "40.1.0", default-features = false }
 frame-executive = { version = "40.0.0", default-features = false }
 frame-metadata-hash-extension = { version = "0.8.0", default-features = false }
