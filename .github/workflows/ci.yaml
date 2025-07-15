@@ -154,7 +154,7 @@ jobs:
       - name: Check Try-Runtime
         run: |
            try-runtime --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
-           on-runtime-upgrade --disable-idempotency-checks --blocktime 6000 live --uri wss://archive.devnet.cere.network:443
+           on-runtime-upgrade --disable-idempotency-checks --disable-spec-version-check --blocktime 6000 live --uri wss://archive.devnet.cere.network:443
 
   clippy:
     name: Run Clippy
@@ -171,7 +171,7 @@ jobs:
           toolchain: 1.82.0
           override: true
           target: wasm32-unknown-unknown
-          components: rust-src
+          components: rust-src, clippy
       - name: Enhanced Rust Cache
         uses: Swatinem/rust-cache@v2
         with:

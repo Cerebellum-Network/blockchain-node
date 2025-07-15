@@ -6,7 +6,7 @@ use cere_runtime as cere;
 use cere_runtime_common::constants::currency::DOLLARS as TEST_UNITS;
 #[cfg(feature = "cere-native")]
 use cere_runtime_common::constants::currency::DOLLARS;
-use ddc_primitives::sr25519::AuthorityId as DdcVerificationId;
+
 pub use ddc_primitives::{AccountId, Balance, Block, Signature};
 use jsonrpsee::core::__reexports::serde_json;
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
@@ -76,8 +76,7 @@ where
 // Helper function to generate stash, controller and session key from seed
 pub fn authority_keys_from_seed(
 	seed: &str,
-) -> (AccountId, AccountId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId, DdcVerificationId)
-{
+) -> (AccountId, AccountId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId) {
 	(
 		get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", seed)),
 		get_account_id_from_seed::<sr25519::Public>(seed),
@@ -85,7 +84,6 @@ pub fn authority_keys_from_seed(
 		get_from_seed::<BabeId>(seed),
 		get_from_seed::<ImOnlineId>(seed),
 		get_from_seed::<AuthorityDiscoveryId>(seed),
-		get_from_seed::<DdcVerificationId>(seed),
 	)
 }
 
@@ -95,9 +93,8 @@ fn cere_dev_session_keys(
 	babe: BabeId,
 	im_online: ImOnlineId,
 	authority_discovery: AuthorityDiscoveryId,
-	ddc_verification: DdcVerificationId,
 ) -> cere_dev::SessionKeys {
-	cere_dev::SessionKeys { grandpa, babe, im_online, authority_discovery, ddc_verification }
+	cere_dev::SessionKeys { grandpa, babe, im_online, authority_discovery }
 }
 
 /// Helper function to create Cere Dev `RuntimeGenesisConfig` for testing
@@ -110,7 +107,6 @@ pub fn cere_dev_genesis(
 		BabeId,
 		ImOnlineId,
 		AuthorityDiscoveryId,
-		DdcVerificationId,
 	)>,
 	initial_nominators: Vec<AccountId>,
 	root_key: AccountId,
@@ -193,7 +189,6 @@ pub fn cere_dev_genesis(
 							x.3.clone(),
 							x.4.clone(),
 							x.5.clone(),
-							x.6.clone(),
 						),
 					)
 				})
@@ -231,10 +226,6 @@ pub fn cere_dev_genesis(
 		  "clustersProtocolParams": [],
 		  "clustersNodes": []
 		},
-		"ddcPayouts": {
-		  "feederAccount": null,
-		  "debtorCustomers": []
-		},
 		"sudo": { "key": Some(root_key) },
 		"babe": {
 			"authorities": [],
@@ -266,9 +257,6 @@ pub fn cere_dev_genesis(
 				.take((endowed_accounts.len() + 1) / 2)
 				.cloned()
 				.collect::<Vec<_>>(),
-		},
-		"ddcVerification": {
-			"validators": []
 		}
 	})
 }
@@ -414,9 +402,8 @@ fn cere_session_keys(
 	babe: BabeId,
 	im_online: ImOnlineId,
 	authority_discovery: AuthorityDiscoveryId,
-	ddc_verification: DdcVerificationId,
 ) -> cere::SessionKeys {
-	cere::SessionKeys { grandpa, babe, im_online, authority_discovery, ddc_verification }
+	cere::SessionKeys { grandpa, babe, im_online, authority_discovery }
 }
 
 /// Returns the properties for the [`cere-dev-native`].
@@ -440,7 +427,6 @@ pub fn cere_thirdparty_genesis(
 		BabeId,
 		ImOnlineId,
 		AuthorityDiscoveryId,
-		DdcVerificationId,
 	)>,
 	initial_nominators: Vec<AccountId>,
 	root_key: AccountId,
@@ -523,7 +509,6 @@ pub fn cere_thirdparty_genesis(
 							x.3.clone(),
 							x.4.clone(),
 							x.5.clone(),
-							x.6.clone(),
 						),
 					)
 				})
@@ -561,10 +546,6 @@ pub fn cere_thirdparty_genesis(
 		  "clustersProtocolParams": [],
 		  "clustersNodes": []
 		},
-		"ddcPayouts": {
-		  "feederAccount": null,
-		  "debtorCustomers": []
-		},
 		"sudo": { "key": Some(root_key) },
 		"babe": {
 			"authorities": [],
@@ -596,9 +577,6 @@ pub fn cere_thirdparty_genesis(
 				.take((endowed_accounts.len() + 1) / 2)
 				.cloned()
 				.collect::<Vec<_>>(),
-		},
-		"ddcVerification": {
-			"validators": []
 		}
 	})
 }
