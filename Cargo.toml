@@ -258,3 +258,8 @@ overflow-checks = false
 # All issues are dependency version mismatches where external dependencies haven't been updated
 # to support current toolchain versions. These will be resolved when upstream dependencies
 # are updated to match the current Substrate and Rust version expectations.
+
+[patch.crates-io]
+# Force compatible base64ct version to avoid edition2024 requirement
+# This patches ALL uses of base64ct throughout the dependency tree
+base64ct = { version = "=1.6.0" }
