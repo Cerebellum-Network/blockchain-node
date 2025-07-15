@@ -202,7 +202,7 @@ ddc-api = { git = "https://github.com/Cerebellum-Network/ddc-api.git", branch = 
 # pallet-ddc-verification = { git = "https://github.com/Cerebellum-Network/ddc-verification.git", branch = "dev", default-features = false }
 # pallet-ddc-payouts = { git = "https://github.com/Cerebellum-Network/ddc-payouts.git", branch = "dev", default-features = false }
 
-# Hyperbridge - temporarily downgraded for substrate compatibility  
+# Hyperbridge - temporarily downgraded for substrate compatibility
 ismp = { default-features = false, version = "1.1.0" }
 ismp-grandpa = { default-features = false, version = "2412.0.0" }
 pallet-hyperbridge = { default-features = false, version = "2412.0.0" }
