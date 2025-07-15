@@ -60,16 +60,16 @@ scopeguard = { version = "1.2.0", default-features = false }
 # Substrate Dependencies
 # Please keey format such that:
 # dependency-name = { git = "X", tag = "Y", default-features = false }
-frame-benchmarking = { version = "40.0.0", default-features = false }
-frame-benchmarking-cli = { version = "=40.0.0", default-features = false }
-frame-election-provider-support = { version = "40.1.0", default-features = false }
-frame-executive = { version = "40.0.0", default-features = false }
+frame-benchmarking = { version = "41.0.0", default-features = false }
+frame-benchmarking-cli = { version = "43.0.0", default-features = false }
+frame-election-provider-support = { version = "40.0.0", default-features = false }
+frame-executive = { version = "40.0.1", default-features = false }
 frame-metadata-hash-extension = { version = "0.8.0", default-features = false }
-frame-support = { version = "40.1.0", default-features = false, features = ["tuples-96"] }
-frame-system = { version = "40.1.0", default-features = false }
+frame-support = { version = "40.0.1", default-features = false, features = ["tuples-96"] }
+frame-system = { version = "40.0.1", default-features = false }
 frame-system-benchmarking = { version = "40.0.0", default-features = false }
-frame-system-rpc-runtime-api = { version = "36.0.0", default-features = false }
-frame-try-runtime = { version = "0.46.0", default-features = false }
+frame-system-rpc-runtime-api = { version = "37.0.0", default-features = false }
+frame-try-runtime = { version = "0.47.0", default-features = false }
 pallet-authority-discovery = { version = "40.0.0", default-features = false }
 pallet-authorship = { version = "40.0.0", default-features = false }
 pallet-babe = { version = "40.0.0", default-features = false }
@@ -117,27 +117,27 @@ pallet-vesting = { version = "40.1.0", default-features = false }
 pallet-conviction-voting = { version = "40.1.0", default-features = false }
 pallet-referenda = { version = "40.1.0", default-features = false }
 pallet-whitelist = { version = "39.0.0", default-features = false }
-sc-authority-discovery = { version = "0.49.0", default-features = false }
-sc-basic-authorship = { version = "0.49.0", default-features = false }
-sc-chain-spec = { version = "42.0.0", default-features = false }
-sc-cli = { version = "0.51.0", default-features = false }
+sc-authority-discovery = { version = "0.51.0", default-features = false }
+sc-basic-authorship = { version = "0.50.0", default-features = false }
+sc-chain-spec = { version = "44.0.0", default-features = false }
+sc-cli = { version = "0.52.0", default-features = false }
 sc-client-api = { version = "39.0.0", default-features = false }
-sc-consensus = { version = "0.48.0", default-features = false }
-sc-consensus-babe = { version = "0.49.0", default-features = false }
-sc-consensus-babe-rpc = { version = "0.49.0", default-features = false }
-sc-consensus-epochs = { version = "0.48.0", default-features = false }
-sc-consensus-grandpa = { version = "0.34.0", default-features = false }
-sc-consensus-grandpa-rpc = { version = "0.34.0", default-features = false }
-sc-consensus-slots = { version = "0.48.0", default-features = false }
-sc-executor = { version = "0.42.0", default-features = false }
-sc-network = { version = "0.48.0", default-features = false }
-sc-network-common = { version = "0.48.0", default-features = false }
-sc-network-types = { version = "0.15.0", default-features = false }
-sc-rpc = { version = "44.0.0", default-features = false }
-sc-rpc-api = { version = "0.48.0", default-features = false }
-sc-service = { version = "0.50.0", default-features = false }
-sc-sync-state-rpc = { version = "0.49.0", default-features = false }
-sc-sysinfo = { version = "42.0.0", default-features = false }
+sc-consensus = { version = "0.50.0", default-features = false }
+sc-consensus-babe = { version = "0.51.0", default-features = false }
+sc-consensus-babe-rpc = { version = "0.51.0", default-features = false }
+sc-consensus-epochs = { version = "0.50.0", default-features = false }
+sc-consensus-grandpa = { version = "0.36.0", default-features = false }
+sc-consensus-grandpa-rpc = { version = "0.35.0", default-features = false }
+sc-consensus-slots = { version = "0.50.0", default-features = false }
+sc-executor = { version = "0.43.0", default-features = false }
+sc-network = { version = "0.49.2", default-features = false }
+sc-network-common = { version = "0.49.0", default-features = false }
+sc-network-types = { version = "0.15.4", default-features = false }
+sc-rpc = { version = "46.0.0", default-features = false }
+sc-rpc-api = { version = "0.50.0", default-features = false }
+sc-service = { version = "0.51.0", default-features = false }
+sc-sync-state-rpc = { version = "0.50.0", default-features = false }
+sc-sysinfo = { version = "43.0.0", default-features = false }
 sc-telemetry = { version = "28.1.0", default-features = false }
 sc-transaction-pool = { version = "39.0.0", default-features = false }
 sc-transaction-pool-api = { version = "39.0.0", default-features = false }
@@ -171,8 +171,8 @@ sp-transaction-storage-proof = { version = "36.1.0", default-features = false }
 sp-trie = { version = "39.1.0", default-features = false }
 sp-version = { version = "39.0.0", default-features = false }
 substrate-build-script-utils = { version = "11.0.0", default-features = false }
-substrate-frame-rpc-system = { version = "43.0.0", default-features = false }
-substrate-state-trie-migration-rpc = { version = "42.0.0", default-features = false }
+substrate-frame-rpc-system = { version = "45.0.0", default-features = false }
+substrate-state-trie-migration-rpc = { version = "40.0.0", default-features = false }
 substrate-test-utils = { version = "3.0.0", default-features = false }
 substrate-wasm-builder = { version = "26.0.1", default-features = false }
 pallet-delegated-staking = { version = "7.0.0", default-features = false }
@@ -202,14 +202,14 @@ ddc-api = { git = "https://github.com/Cerebellum-Network/ddc-api.git", branch = 
 # pallet-ddc-verification = { git = "https://github.com/Cerebellum-Network/ddc-verification.git", branch = "dev", default-features = false }
 # pallet-ddc-payouts = { git = "https://github.com/Cerebellum-Network/ddc-payouts.git", branch = "dev", default-features = false }
 
-# Hyperbridge - temporarily downgraded for substrate compatibility
+# Hyperbridge - updated to latest versions for trait compatibility
 ismp = { default-features = false, version = "1.1.0" }
-ismp-grandpa = { default-features = false, version = "2412.0.0" }
-pallet-hyperbridge = { default-features = false, version = "2412.0.0" }
-pallet-ismp = { default-features = false, version = "2412.0.0" }
-pallet-ismp-rpc = { default-features = false, version = "2412.0.0" }
-pallet-ismp-runtime-api = { default-features = false, version = "2412.0.0" }
-pallet-token-gateway = { default-features = false, version = "2412.0.0" }
+ismp-grandpa = { default-features = false, version = "2503.1.0" }
+pallet-hyperbridge = { default-features = false, version = "2503.1.0" }
+pallet-ismp = { default-features = false, version = "2503.1.0" }
+pallet-ismp-rpc = { default-features = false, version = "2503.1.0" }
+pallet-ismp-runtime-api = { default-features = false, version = "2503.1.0" }
+pallet-token-gateway = { default-features = false, version = "2503.1.0" }
 
 # Build profiles for different use cases
 [profile.release]
@@ -252,3 +252,6 @@ overflow-checks = false
 # Both issues are dependency version mismatches where external dependencies haven't been updated
 # to support newer Substrate trait interfaces. These will be resolved when upstream dependencies
 # are updated to match the current Substrate version expectations.
+
+# Force compatible versions to prevent sc-network v0.49.2 compatibility issues
+# Using cargo update to force correct versions
