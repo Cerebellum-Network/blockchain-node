@@ -201,7 +201,6 @@ jobs:
           override: true
           components: rust-src, clippy, rustfmt
           target: wasm32-unknown-unknown
-          components: rust-src
       - name: Configure Git
         run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
       - name: Enhanced Rust Cache
