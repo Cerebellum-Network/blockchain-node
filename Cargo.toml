@@ -19,7 +19,7 @@ members = [
   "pallets/ddc-staking",
   "pallets/erc20",
   "pallets/erc721",
-  # "pallets/ddc-clusters-gov", # TEMPORARILY DISABLED due to trait compatibility issues
+  "pallets/ddc-clusters-gov",
   "pallets/fee-handler",
   "pallets/network-monitor",
   "pallets/origins",
@@ -259,7 +259,8 @@ overflow-checks = false
 # to support current toolchain versions. These will be resolved when upstream dependencies
 # are updated to match the current Substrate and Rust version expectations.
 
-[patch.crates-io]
-# Force compatible base64ct version to avoid edition2024 requirement
-# This patches ALL uses of base64ct throughout the dependency tree
-base64ct = { version = "=1.6.0" }
+# [patch.crates-io] - Patches removed due to same-source conflicts
+# The base64ct v1.8.0 edition2024 issue requires either:
+# 1. Rust toolchain update to support edition2024
+# 2. Upstream dependency updates to use compatible base64ct versions
+# 3. Selective dependency downgrades (complex due to transitive dependencies)
