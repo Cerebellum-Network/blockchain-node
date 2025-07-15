@@ -1,12 +1,13 @@
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
     dispatch::DispatchResult,
-    traits::{Get, StorageVersion},
-    RuntimeDebug,
+    traits::Get,
+    BoundedVec,
 };
-use scale_info::TypeInfo;
-use sp_runtime::traits::{Hash, Saturating};
+use sp_runtime::{RuntimeDebug, traits::{Hash, Saturating}, SaturatedConversion};
+use sp_runtime::scale_info::TypeInfo;
 use sp_std::vec::Vec;
+use sp_io;
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -138,7 +139,7 @@ pub enum AuditEventResult {
 /// Comprehensive audit event structure
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct AuditEvent<AccountId, BlockNumber, Hash> {
+pub struct AuditEvent<AccountId> {
     /// Unique event identifier
     pub event_id: u64,
     /// Event category
@@ -150,39 +151,39 @@ pub struct AuditEvent<AccountId, BlockNumber, Hash> {
     /// Target account or resource
     pub target: Option<AccountId>,
     /// Resource identifier
-    pub resource_id: Option<Vec<u8>>,
+    pub resource_id: Option<BoundedVec<u8, frame_support::traits::ConstU32<256>>>,
     /// Event description
-    pub description: Vec<u8>,
+    pub description: BoundedVec<u8, frame_support::traits::ConstU32<1024>>,
     /// Additional event data
-    pub event_data: Vec<u8>,
+    pub event_data: BoundedVec<u8, frame_support::traits::ConstU32<2048>>,
     /// Event result
     pub result: AuditEventResult,
     /// Block number when event occurred
-    pub block_number: BlockNumber,
+    pub block_number: u32,
     /// Block hash when event occurred
-    pub block_hash: Hash,
+    pub block_hash: sp_core::H256,
     /// Timestamp when event occurred
     pub timestamp: u64,
     /// Session identifier
-    pub session_id: Option<Vec<u8>>,
+    pub session_id: Option<BoundedVec<u8, frame_support::traits::ConstU32<128>>>,
     /// IP address (if applicable)
-    pub ip_address: Option<Vec<u8>>,
+    pub ip_address: Option<BoundedVec<u8, frame_support::traits::ConstU32<64>>>,
     /// User agent (if applicable)
-    pub user_agent: Option<Vec<u8>>,
+    pub user_agent: Option<BoundedVec<u8, frame_support::traits::ConstU32<512>>>,
     /// Event hash for integrity verification
-    pub event_hash: Hash,
+    pub event_hash: sp_core::H256,
     /// Previous event hash for chain integrity
-    pub previous_event_hash: Option<Hash>,
+    pub previous_event_hash: Option<sp_core::H256>,
 }
 
 /// Audit trail statistics
-#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct AuditTrailStats {
     /// Total number of audit events
     pub total_events: u64,
     /// Number of events by category
-    pub events_by_category: Vec<(AuditEventCategory, u64)>,
+    pub events_by_category: BoundedVec<(AuditEventCategory, u64), frame_support::traits::ConstU32<32>>,
     /// Number of successful events
     pub successful_events: u64,
     /// Number of failed events
@@ -219,8 +220,6 @@ pub struct AuditTrailManager<T: Config> {
 }
 
 pub trait Config: frame_system::Config + pallet_timestamp::Config {
-    /// Hash type for event integrity
-    type Hash: Hash;
     /// Maximum size of event data
     type MaxEventDataSize: Get<u32>;
     /// Maximum size of event description
@@ -241,7 +240,7 @@ impl<T: Config> AuditTrailManager<T> {
         session_id: Option<Vec<u8>>,
         ip_address: Option<Vec<u8>>,
         user_agent: Option<Vec<u8>>,
-    ) -> Result<AuditEvent<T::AccountId, T::BlockNumber, T::Hash>, &'static str> {
+    ) -> Result<AuditEvent<T::AccountId>, &'static str> {
         // Validate input sizes
         if description.len() > T::MaxEventDescriptionSize::get() as usize {
             return Err("Event description too large");
@@ -251,9 +250,9 @@ impl<T: Config> AuditTrailManager<T> {
         }
 
         let event_id = Self::get_next_event_id();
-        let block_number = frame_system::Pallet::<T>::block_number();
-        let block_hash = frame_system::Pallet::<T>::block_hash(block_number);
-        let timestamp = pallet_timestamp::Pallet::<T>::get();
+        let block_number: u32 = frame_system::Pallet::<T>::block_number().saturated_into();
+        let block_hash: sp_core::H256 = frame_system::Pallet::<T>::block_hash(frame_system::Pallet::<T>::block_number()).into();
+        let timestamp: u64 = pallet_timestamp::Pallet::<T>::get().saturated_into();
         
         // Create event structure for hashing
         let event_for_hash = (
@@ -413,8 +412,8 @@ impl<T: Config> AuditTrailManager<T> {
         initiator: Option<T::AccountId>,
         target: Option<T::AccountId>,
         start_timestamp: Option<u64>,
-        end_timestamp: Option<u64>,
-        result: Option<AuditEventResult>,
+        _end_timestamp: Option<u64>,
+        _result: Option<AuditEventResult>,
     ) -> Vec<u64> {
         // Implementation depends on storage backend
         Vec::new()
@@ -422,9 +421,9 @@ impl<T: Config> AuditTrailManager<T> {
 
     /// Generate compliance report
     pub fn generate_compliance_report(
-        start_timestamp: u64,
-        end_timestamp: u64,
-        categories: Vec<AuditEventCategory>,
+        _start_timestamp: u64,
+        _end_timestamp: u64,
+        _categories: Vec<AuditEventCategory>,
     ) -> Result<Vec<u8>, &'static str> {
         // Implementation would generate a compliance report
         Ok(Vec::new())
@@ -436,17 +435,17 @@ impl<T: Config> AuditTrailManager<T> {
         1
     }
 
-    fn get_last_event_hash() -> Option<T::Hash> {
+    fn get_last_event_hash() -> Option<sp_core::H256> {
         // Implementation depends on storage backend
         None
     }
 
-    fn store_audit_event(event: &AuditEvent<T::AccountId, T::BlockNumber, T::Hash>) -> DispatchResult {
+    fn store_audit_event(event: &AuditEvent<T::AccountId>) -> DispatchResult {
         // Implementation depends on storage backend
         Ok(())
     }
 
-    fn update_audit_stats(event: &AuditEvent<T::AccountId, T::BlockNumber, T::Hash>) -> DispatchResult {
+    fn update_audit_stats(event: &AuditEvent<T::AccountId>) -> DispatchResult {
         // Implementation depends on storage backend
         Ok(())
     }
@@ -502,7 +501,7 @@ pub mod audit_helpers {
     /// Log transaction submission
     pub fn log_transaction_submitted<T: Config>(
         submitter: T::AccountId,
-        transaction_hash: T::Hash,
+        transaction_hash: sp_core::H256,
         transaction_type: &str,
     ) -> DispatchResult {
         AuditTrailManager::<T>::log_audit_event(
@@ -523,7 +522,7 @@ pub mod audit_helpers {
     /// Log transaction execution
     pub fn log_transaction_executed<T: Config>(
         executor: Option<T::AccountId>,
-        transaction_hash: T::Hash,
+        transaction_hash: sp_core::H256,
         success: bool,
         error_message: Option<&str>,
     ) -> DispatchResult {
@@ -629,7 +628,7 @@ pub mod audit_helpers {
     pub fn log_consensus_event<T: Config>(
         validator: Option<T::AccountId>,
         event_type: &str,
-        block_number: T::BlockNumber,
+        block_number: u32,
         success: bool,
     ) -> DispatchResult {
         let description = format!("Consensus event: {} at block {:?}", event_type, block_number);
@@ -653,7 +652,7 @@ pub mod audit_helpers {
     pub fn log_smart_contract_deployment<T: Config>(
         deployer: T::AccountId,
         contract_address: T::AccountId,
-        contract_code_hash: T::Hash,
+        contract_code_hash: sp_core::H256,
         success: bool,
     ) -> DispatchResult {
         let description = format!(

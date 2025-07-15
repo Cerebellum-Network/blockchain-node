@@ -2,7 +2,7 @@
 
 pub mod constants;
 pub mod migrations;
-pub mod audit_trail;
+// pub mod audit_trail; // Temporarily disabled due to compilation issues
 
 use ddc_primitives::Balance;
 
