@@ -237,7 +237,7 @@ overflow-checks = false
 
 # KNOWN COMPATIBILITY ISSUES
 #
-# There are currently two main compatibility issues causing CI compilation failures:
+# There are currently three main compatibility issues causing CI compilation failures:
 #
 # 1. XCM Compatibility Issue:
 #    - The pallet-token-gateway dependency (version 2503.0.0) brings in staging-xcm-builder 20.1.1
@@ -249,6 +249,12 @@ overflow-checks = false
 #    - This causes compilation failures in the Polling trait implementation
 #    - Resolution: Update to a newer pallet-referenda version when available or patch the trait compatibility
 #
-# Both issues are dependency version mismatches where external dependencies haven't been updated
-# to support newer Substrate trait interfaces. These will be resolved when upstream dependencies
-# are updated to match the current Substrate version expectations.
+# 3. Base64ct Edition2024 Issue:
+#    - Some transitive dependency is pulling in base64ct v1.8.0 which requires edition2024
+#    - Current Cargo version (1.83.0-nightly) doesn't support edition2024 feature
+#    - Workspace dependency pinned to =1.6.0 but transitive deps override this
+#    - Resolution: Update Rust toolchain or wait for compatible dependency versions
+#
+# All issues are dependency version mismatches where external dependencies haven't been updated
+# to support current toolchain versions. These will be resolved when upstream dependencies
+# are updated to match the current Substrate and Rust version expectations.
