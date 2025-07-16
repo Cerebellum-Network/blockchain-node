@@ -12,8 +12,6 @@ use sc_network::service::traits::NetworkService;
 use sp_runtime::traits::Block as BlockT;
 use std::marker::PhantomData;
 
-
-
 /// Network health status information
 #[derive(Debug, Clone)]
 pub struct NetworkHealthStatus {
