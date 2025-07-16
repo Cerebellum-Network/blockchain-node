@@ -62,7 +62,7 @@ ddc-primitives = { workspace = true }
 
 [features]
 default = ["cere-native"]
-cere-native = ["cere-runtime", "cere-client/cere"]
+cere-native = ["cere-runtime", "cere-runtime-common", "cere-client/cere"]
 cere-dev-native = ["cere-dev-runtime", "cere-runtime-common", "cere-client/cere-dev"]
 
 runtime-benchmarks = [

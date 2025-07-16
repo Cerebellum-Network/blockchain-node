@@ -104,11 +104,11 @@ jobs:
             
       - name: Run configuration validation tests
         run: |
-          cargo test validate_runtime_config --verbose
+          cargo test -p cere-service --features cere-dev-native config_validation --verbose
           
       - name: Check chain spec compilation
         run: |
-          cargo check --package cere-service --verbose
+          cargo check --package cere-service --features cere-dev-native --verbose
           
   security-validation:
     name: Security Configuration Validation
