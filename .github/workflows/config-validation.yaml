@@ -78,7 +78,9 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
+          toolchain: nightly-2024-10-01
+          components: rust-src
+          targets: wasm32-unknown-unknown
           
       - name: Install Protocol Buffers Compiler
         run: |
