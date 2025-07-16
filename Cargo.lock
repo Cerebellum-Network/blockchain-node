@@ -2419,6 +2419,7 @@ dependencies = [
  "sc-executor",
  "sc-network",
  "sc-network-common",
+ "sc-network-types",
  "sc-offchain",
  "sc-rpc",
  "sc-service",

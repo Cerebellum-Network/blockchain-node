@@ -129,7 +129,7 @@ fn validate_network_security(spec: &Value) -> Result<(), ValidationError> {
 	if let Some(telemetry) = spec.get("telemetryEndpoints").and_then(|v| v.as_array()) {
 		for endpoint in telemetry {
 			if let Some(endpoint_array) = endpoint.as_array() {
-				if let Some(url) = endpoint_array.get(0).and_then(|v| v.as_str()) {
+				if let Some(url) = endpoint_array.first().and_then(|v| v.as_str()) {
 					if !url.starts_with("wss://") && !url.starts_with("ws://localhost") {
 						errors.push(format!(
 							"Telemetry endpoint should use secure WebSocket (wss://): {}",
