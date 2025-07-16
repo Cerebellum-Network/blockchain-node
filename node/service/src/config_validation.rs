@@ -240,7 +240,7 @@ mod tests {
 			"id": "test_chain",
 			"chainType": "Development",
 			"bootNodes": [],
-			"telemetryEndpoints": null,
+			"telemetryEndpoints": [],
 			"protocolId": null,
 			"properties": {
 				"ss58Format": 42,
