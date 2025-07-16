@@ -35,41 +35,36 @@ jobs:
       - name: Validate devnet chain specification
         run: |
           ajv validate \
-            --spec=draft7 \
-            --schema=schemas/chain-spec.schema.json \
-            --data=node/service/chain-specs/devnet.json \
+            -s schemas/chain-spec.schema.json \
+            -d node/service/chain-specs/devnet.json \
             --verbose
             
       - name: Validate testnet chain specification
         run: |
           ajv validate \
-            --spec=draft7 \
-            --schema=schemas/chain-spec.schema.json \
-            --data=node/service/chain-specs/testnet.json \
+            -s schemas/chain-spec.schema.json \
+            -d node/service/chain-specs/testnet.json \
             --verbose
             
       - name: Validate mainnet chain specification
         run: |
           ajv validate \
-            --spec=draft7 \
-            --schema=schemas/chain-spec.schema.json \
-            --data=node/service/chain-specs/mainnet.json \
+            -s schemas/chain-spec.schema.json \
+            -d node/service/chain-specs/mainnet.json \
             --verbose
             
       - name: Validate qanet chain specification
         run: |
           ajv validate \
-            --spec=draft7 \
-            --schema=schemas/chain-spec.schema.json \
-            --data=node/service/chain-specs/qanet.json \
+            -s schemas/chain-spec.schema.json \
+            -d node/service/chain-specs/qanet.json \
             --verbose
             
       - name: Validate example chain specification
         run: |
           ajv validate \
-            --spec=draft7 \
-            --schema=schemas/chain-spec.schema.json \
-            --data=node/service/chain-specs/example.json \
+            -s schemas/chain-spec.schema.json \
+            -d node/service/chain-specs/example.json \
             --verbose
 
   validate-runtime-config:
