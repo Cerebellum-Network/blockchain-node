@@ -12,11 +12,11 @@ repository.workspace = true
 # 3rd-party dependencies
 futures = { workspace = true }
 jsonrpsee = { workspace = true }
+jsonschema = { version = "0.17", default-features = false }
+log = { workspace = true }
 rand = { workspace = true, default-features = true }
 serde = { workspace = true, default-features = true }
 serde_json = { workspace = true, default-features = true }
-jsonschema = { version = "0.17", default-features = false }
-log = { workspace = true }
 
 # Substrate dependencies
 frame-benchmarking-cli = { workspace = true }

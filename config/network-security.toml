@@ -72,16 +72,16 @@ enable_firewall = true
 
 # Allowed IP ranges (CIDR notation)
 allowed_ranges = [
-    "10.0.0.0/8",
-    "172.16.0.0/12",
-    "192.168.0.0/16"
+  "10.0.0.0/8",
+  "172.16.0.0/12",
+  "192.168.0.0/16",
 ]
 
 # Blocked IP ranges
 blocked_ranges = [
-    "127.0.0.0/8",  # Localhost (except for development)
-    "169.254.0.0/16", # Link-local
-    "224.0.0.0/4"   # Multicast
+  "127.0.0.0/8", # Localhost (except for development)
+  "169.254.0.0/16", # Link-local
+  "224.0.0.0/4", # Multicast
 ]
 
 # Rate limiting
@@ -119,7 +119,7 @@ enable_health_alerts = true
 low_peer_count_threshold = 3
 low_security_score_threshold = 70
 high_consensus_failure_threshold = 5
-network_partition_threshold = 60  # seconds
+network_partition_threshold = 60 # seconds
 
 [development]
 # Development mode settings (only for local/dev networks)
