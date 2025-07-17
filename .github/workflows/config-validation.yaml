@@ -86,6 +86,10 @@ jobs:
         run: |
           rustup component add rust-src --toolchain 1.82.0-x86_64-unknown-linux-gnu
           
+      - name: Override rust toolchain
+        run: |
+          rustup override set 1.82.0
+          
       - name: Install Protocol Buffers Compiler
         run: |
           sudo apt-get update
