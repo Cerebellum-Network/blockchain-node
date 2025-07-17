@@ -1,0 +1,228 @@
+name: Configuration Validation
+
+on:
+  pull_request:
+    paths:
+      - 'node/service/chain-specs/**'
+      - 'schemas/**'
+      - '.github/workflows/config-validation.yaml'
+  push:
+    branches:
+      - main
+      - dev
+    paths:
+      - 'node/service/chain-specs/**'
+      - 'schemas/**'
+
+jobs:
+  validate-chain-specs:
+    name: Validate Chain Specifications
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          
+      - name: Install JSON Schema CLI
+        run: |
+          npm install -g ajv-cli
+          
+      - name: Validate devnet chain specification
+        run: |
+          ajv validate \
+            -s schemas/chain-spec.schema.json \
+            -d node/service/chain-specs/devnet.json \
+            --verbose
+            
+      - name: Validate testnet chain specification
+        run: |
+          ajv validate \
+            -s schemas/chain-spec.schema.json \
+            -d node/service/chain-specs/testnet.json \
+            --verbose
+            
+      - name: Validate mainnet chain specification
+        run: |
+          ajv validate \
+            -s schemas/chain-spec.schema.json \
+            -d node/service/chain-specs/mainnet.json \
+            --verbose
+            
+      - name: Validate qanet chain specification
+        run: |
+          ajv validate \
+            -s schemas/chain-spec.schema.json \
+            -d node/service/chain-specs/qanet.json \
+            --verbose
+            
+      - name: Validate example chain specification
+        run: |
+          ajv validate \
+            -s schemas/chain-spec.schema.json \
+            -d node/service/chain-specs/example.json \
+            --verbose
+
+  validate-runtime-config:
+    name: Validate Runtime Configuration
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly-2024-10-01
+          components: rust-src
+          targets: wasm32-unknown-unknown
+          
+      - name: Install Protocol Buffers Compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+          protoc --version
+          
+      - name: Cache Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-config-validation-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-config-validation-
+            ${{ runner.os }}-cargo-
+            
+      - name: Run configuration validation tests
+        run: |
+          cargo test -p cere-service --features cere-dev-native config_validation --verbose
+          
+      - name: Check chain spec compilation
+        run: |
+          cargo check --package cere-service --features cere-dev-native --verbose
+          
+  security-validation:
+    name: Security Configuration Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Validate no hardcoded secrets in chain specs
+        run: |
+          echo "🔍 Checking for hardcoded secrets in chain specifications..."
+          
+          # Check for potential private keys, seeds, or secrets
+          if grep -r -i -E "(private_key|secret|seed|mnemonic|password)" node/service/chain-specs/ --exclude-dir=.git; then
+            echo "❌ Found potential secrets in chain specifications!"
+            exit 1
+          fi
+          
+          # Check for suspicious hex patterns that might be private keys
+          if grep -r -E "0x[a-fA-F0-9]{64,}" node/service/chain-specs/ | grep -v -E "(genesis|storage|code)" | head -5; then
+            echo "⚠️  Found suspicious hex patterns. Please review manually."
+            # Don't fail on this as genesis data contains legitimate hex
+          fi
+          
+          echo "✅ Security configuration validation passed"
+          
+      - name: Validate boot node addresses
+        run: |
+          echo "🔍 Validating boot node addresses..."
+          
+          # Extract and validate boot node addresses
+          python3 << 'EOF'
+          import json
+          import re
+          import sys
+          import glob
+          
+          def validate_boot_node(address):
+              # Pattern for multiaddr format: /ip4/IP/tcp/PORT/p2p/PEERID
+              pattern = r'^/ip[46]/[0-9a-fA-F.:]+/tcp/[0-9]+/p2p/[a-zA-Z0-9]+$'
+              return re.match(pattern, address) is not None
+          
+          errors = []
+          
+          for spec_file in glob.glob('node/service/chain-specs/*.json'):
+              try:
+                  with open(spec_file, 'r') as f:
+                      spec = json.load(f)
+                  
+                  if 'bootNodes' in spec and spec['bootNodes']:
+                      for boot_node in spec['bootNodes']:
+                          if not validate_boot_node(boot_node):
+                              errors.append(f"Invalid boot node in {spec_file}: {boot_node}")
+                              
+              except Exception as e:
+                  errors.append(f"Error processing {spec_file}: {e}")
+          
+          if errors:
+              for error in errors:
+                  print(f"❌ {error}")
+              sys.exit(1)
+          else:
+              print("✅ All boot node addresses are valid")
+          EOF
+          
+      - name: Validate network configuration consistency
+        run: |
+          echo "🔍 Checking network configuration consistency..."
+          
+          python3 << 'EOF'
+          import json
+          import sys
+          import glob
+          
+          specs = {}
+          errors = []
+          
+          # Load all chain specs
+          for spec_file in glob.glob('node/service/chain-specs/*.json'):
+              try:
+                  with open(spec_file, 'r') as f:
+                      spec = json.load(f)
+                  specs[spec_file] = spec
+              except Exception as e:
+                  errors.append(f"Error loading {spec_file}: {e}")
+          
+          # Check for duplicate chain IDs
+          chain_ids = {}
+          for file_path, spec in specs.items():
+              chain_id = spec.get('id')
+              if chain_id in chain_ids:
+                  errors.append(f"Duplicate chain ID '{chain_id}' in {file_path} and {chain_ids[chain_id]}")
+              else:
+                  chain_ids[chain_id] = file_path
+          
+          # Validate token properties consistency
+          for file_path, spec in specs.items():
+              props = spec.get('properties', {})
+              
+              # Check token decimals are reasonable
+              decimals = props.get('tokenDecimals')
+              if decimals is not None and (decimals < 0 or decimals > 18):
+                  errors.append(f"Invalid token decimals in {file_path}: {decimals}")
+              
+              # Check SS58 format is valid
+              ss58_format = props.get('ss58Format')
+              if ss58_format is not None and (ss58_format < 0 or ss58_format > 16383):
+                  errors.append(f"Invalid SS58 format in {file_path}: {ss58_format}")
+          
+          if errors:
+              for error in errors:
+                  print(f"❌ {error}")
+              sys.exit(1)
+          else:
+              print("✅ Network configuration consistency check passed")
+          EOF
