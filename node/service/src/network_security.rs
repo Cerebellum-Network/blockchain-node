@@ -126,9 +126,8 @@ impl SecurityMetrics {
 		let consensus_bonus = self.consensus_health * 10.0;
 		let incident_penalty = self.security_incidents as f64 * 5.0;
 
-		((base_score - malicious_penalty + consensus_bonus - incident_penalty)
-			.max(0.0)
-			.min(100.0)) as u8
+		(base_score - malicious_penalty + consensus_bonus - incident_penalty)
+			.clamp(0.0, 100.0) as u8
 	}
 }
 
@@ -137,6 +136,12 @@ impl SecurityMetrics {
 pub struct SecurityEventLogger {
 	events: Vec<AuditEvent>,
 	max_events: usize,
+}
+
+impl Default for SecurityEventLogger {
+	fn default() -> Self {
+		Self::new()
+	}
 }
 
 impl SecurityEventLogger {
@@ -281,13 +286,11 @@ impl<N> NetworkSecurityMonitor<N> {
 mod tests {
 	use super::*;
 
-	struct MockNetwork {
-		peer_count: usize,
-	}
+	struct MockNetwork;
 
 	impl MockNetwork {
-		fn new(peer_count: usize) -> Self {
-			Self { peer_count }
+		fn new(_peer_count: usize) -> Self {
+			Self
 		}
 	}
 
