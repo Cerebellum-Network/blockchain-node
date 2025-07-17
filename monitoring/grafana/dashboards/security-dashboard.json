@@ -1,0 +1,240 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Cere Blockchain Security Dashboard",
+    "tags": ["security", "blockchain", "monitoring"],
+    "style": "dark",
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Network Security Score",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "cere_network_security_score",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 50
+                },
+                {
+                  "color": "green",
+                  "value": 80
+                }
+              ]
+            },
+            "unit": "percent"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": 2,
+        "title": "Peer Count",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "cere_network_peer_count",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 5
+                },
+                {
+                  "color": "green",
+                  "value": 10
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        }
+      },
+      {
+        "id": 3,
+        "title": "Malicious Peer Attempts",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(cere_malicious_peer_attempts_total[5m])",
+            "refId": "A",
+            "legendFormat": "Malicious Attempts/sec"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Attempts per second",
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 8
+        }
+      },
+      {
+        "id": 4,
+        "title": "Consensus Failures",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(cere_consensus_failures_total[5m])",
+            "refId": "A",
+            "legendFormat": "Consensus Failures/sec"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Failures per second",
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        }
+      },
+      {
+        "id": 5,
+        "title": "Block Production Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "cere_block_production_rate",
+            "refId": "A",
+            "legendFormat": "Blocks/min"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Blocks per minute",
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 16
+        }
+      },
+      {
+        "id": 6,
+        "title": "Security Events by Type",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "sum by (event_type) (cere_security_events_total)",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 24
+        }
+      },
+      {
+        "id": 7,
+        "title": "Compliance Status",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "cere_compliance_audit_logging",
+            "refId": "A",
+            "legendFormat": "Audit Logging"
+          },
+          {
+            "expr": "cere_compliance_access_controls",
+            "refId": "B",
+            "legendFormat": "Access Controls"
+          },
+          {
+            "expr": "cere_compliance_configuration",
+            "refId": "C",
+            "legendFormat": "Configuration"
+          },
+          {
+            "expr": "cere_compliance_security_monitoring",
+            "refId": "D",
+            "legendFormat": "Security Monitoring"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 24
+        }
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {},
+    "templating": {
+      "list": []
+    },
+    "annotations": {
+      "list": [
+        {
+          "name": "Security Events",
+          "datasource": "Prometheus",
+          "enable": true,
+          "expr": "ALERTS{alertname=~\".*Security.*\"}",
+          "iconColor": "red",
+          "name": "Security Alerts",
+          "titleFormat": "{{alertname}}",
+          "textFormat": "{{description}}"
+        }
+      ]
+    },
+    "refresh": "30s",
+    "schemaVersion": 30,
+    "version": 1,
+    "links": []
+  }
+}
