@@ -2,36 +2,39 @@
 //!
 //! This module provides comprehensive network security monitoring capabilities for the Cere blockchain node.
 //! It includes peer monitoring, consensus health checks, security scoring, audit trails, and SOC2 compliance.
-//! 
+//!
 //! Phase 4: Enhanced with security event logging, audit trails, and compliance monitoring.
 
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use log::{warn, error, info};
-use sc_network::service::traits::{NetworkService, NetworkPeers, NetworkSigner, NetworkDHTProvider, NetworkEventStream, NetworkStateInfo, NetworkRequest};
-use sc_network::{NetworkStatusProvider};
+use futures::channel::oneshot;
+use log::{error, info, warn};
+use sc_network::config::ProtocolName;
+use sc_network::service::traits::{
+	NetworkDHTProvider, NetworkEventStream, NetworkPeers, NetworkRequest, NetworkService,
+	NetworkSigner, NetworkStateInfo,
+};
+use sc_network::NetworkStatusProvider;
+use sc_network_types::PeerId;
+use serde::{Deserialize, Serialize};
+use serde_json::json;
 use sp_runtime::traits::Block as BlockT;
 use std::marker::PhantomData;
-use serde::{Serialize, Deserialize};
-use serde_json::json;
-use sc_network_types::PeerId;
-use sc_network::config::ProtocolName;
-use futures::channel::oneshot;
 // Define missing types locally
 #[derive(Debug, Clone)]
 pub enum SyncStatus<BlockNumber> {
-    Idle,
-    Downloading { target: BlockNumber },
-    Importing { target: BlockNumber },
+	Idle,
+	Downloading { target: BlockNumber },
+	Importing { target: BlockNumber },
 }
 
 #[derive(Debug, Clone)]
 pub enum NetworkEvent {
-    NotConnected,
-    NotificationStreamOpened { remote: PeerId, protocol: ProtocolName },
-    NotificationStreamClosed { remote: PeerId, protocol: ProtocolName },
+	NotConnected,
+	NotificationStreamOpened { remote: PeerId, protocol: ProtocolName },
+	NotificationStreamClosed { remote: PeerId, protocol: ProtocolName },
 }
 
 /// Network health status information
@@ -124,10 +127,7 @@ pub struct SecurityEventLogger {
 
 impl SecurityEventLogger {
 	pub fn new(max_events: usize) -> Self {
-		Self {
-			audit_events: Vec::new(),
-			max_events,
-		}
+		Self { audit_events: Vec::new(), max_events }
 	}
 
 	/// Log a security event with full audit trail
@@ -141,10 +141,7 @@ impl SecurityEventLogger {
 		severity: SecuritySeverity,
 		details: HashMap<String, String>,
 	) {
-		let timestamp = SystemTime::now()
-			.duration_since(UNIX_EPOCH)
-			.unwrap_or_default()
-			.as_secs();
+		let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
 
 		let event = AuditEvent {
 			timestamp,
@@ -359,12 +356,12 @@ impl<Block: BlockT> NetworkSecurityMonitor<Block> {
 	/// Handle peer connection with audit logging
 	pub fn on_peer_connected(&mut self, peer_id: String) {
 		self.metrics.peer_reputation_scores.insert(peer_id.clone(), 100);
-		
+
 		// Log security event
 		let mut details = HashMap::new();
 		details.insert("peer_id".to_string(), peer_id.clone());
 		details.insert("initial_reputation".to_string(), "100".to_string());
-		
+
 		self.security_logger.log_security_event(
 			SecurityEventType::PeerConnection,
 			&peer_id,
@@ -379,14 +376,14 @@ impl<Block: BlockT> NetworkSecurityMonitor<Block> {
 	/// Handle peer disconnection with audit logging
 	pub fn on_peer_disconnected(&mut self, peer_id: String) {
 		let reputation = self.metrics.peer_reputation_scores.remove(&peer_id);
-		
+
 		// Log security event
 		let mut details = HashMap::new();
 		details.insert("peer_id".to_string(), peer_id.clone());
 		if let Some(rep) = reputation {
 			details.insert("final_reputation".to_string(), rep.to_string());
 		}
-		
+
 		self.security_logger.log_security_event(
 			SecurityEventType::PeerDisconnection,
 			&peer_id,
@@ -405,18 +402,18 @@ impl<Block: BlockT> NetworkSecurityMonitor<Block> {
 			if let Some(reputation) = self.metrics.peer_reputation_scores.get_mut(&peer_id) {
 				let old_reputation = *reputation;
 				*reputation = reputation.saturating_sub(10);
-				
+
 				// Log reputation change
 				let mut details = HashMap::new();
 				details.insert("peer_id".to_string(), peer_id.clone());
 				details.insert("message_count".to_string(), message_count.to_string());
 				details.insert("old_reputation".to_string(), old_reputation.to_string());
 				details.insert("new_reputation".to_string(), reputation.to_string());
-				
+
 				if *reputation < 50 {
 					warn!("Suspicious activity detected from peer: {}", peer_id);
 					self.metrics.malicious_peer_attempts += 1;
-					
+
 					// Log critical security event
 					self.security_logger.log_security_event(
 						SecurityEventType::MaliciousActivity,
@@ -530,12 +527,14 @@ impl<Block: BlockT> NetworkSecurityMonitor<Block> {
 	/// Generate SOC2 compliance report
 	pub fn generate_compliance_report(&self, start_time: u64, end_time: u64) -> ComplianceReport {
 		let audit_events = self.security_logger.export_compliance_report(start_time, end_time);
-		
+
 		let security_events_count = audit_events.len();
-		let critical_events = audit_events.iter()
+		let critical_events = audit_events
+			.iter()
 			.filter(|e| matches!(e.severity, SecuritySeverity::Critical))
 			.count();
-		let high_events = audit_events.iter()
+		let high_events = audit_events
+			.iter()
 			.filter(|e| matches!(e.severity, SecuritySeverity::High))
 			.count();
 
@@ -552,7 +551,13 @@ impl<Block: BlockT> NetworkSecurityMonitor<Block> {
 	}
 
 	/// Log configuration change for audit trail
-	pub fn log_configuration_change(&mut self, actor: &str, config_key: &str, old_value: &str, new_value: &str) {
+	pub fn log_configuration_change(
+		&mut self,
+		actor: &str,
+		config_key: &str,
+		old_value: &str,
+		new_value: &str,
+	) {
 		let mut details = HashMap::new();
 		details.insert("config_key".to_string(), config_key.to_string());
 		details.insert("old_value".to_string(), old_value.to_string());
@@ -574,7 +579,14 @@ impl<Block: BlockT> NetworkSecurityMonitor<Block> {
 		let mut details = HashMap::new();
 		details.insert("attempted_resource".to_string(), resource.to_string());
 		details.insert("attempted_action".to_string(), attempted_action.to_string());
-		details.insert("timestamp".to_string(), SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs().to_string());
+		details.insert(
+			"timestamp".to_string(),
+			SystemTime::now()
+				.duration_since(UNIX_EPOCH)
+				.unwrap_or_default()
+				.as_secs()
+				.to_string(),
+		);
 
 		self.security_logger.log_security_event(
 			SecurityEventType::UnauthorizedAccess,
@@ -697,24 +709,24 @@ mod tests {
 
 	#[test]
 	fn test_security_event_logging() {
-		use std::sync::Arc;
 		use sc_network::service::traits::NetworkService;
 		use sp_runtime::testing::{Block as TestBlock, TestXt};
-		
+		use std::sync::Arc;
+
 		// Create a mock network service
 		struct MockNetwork;
-		
+
 		impl NetworkSigner for MockNetwork {
 			fn sign_with_local_identity(&self, _msg: Vec<u8>) -> Result<Vec<u8>, ()> {
 				Ok(vec![0u8; 64]) // Mock signature
 			}
 		}
-		
+
 		impl NetworkDHTProvider for MockNetwork {
 			fn get_value(&self, _key: &libp2p::kad::record::Key) {}
 			fn put_value(&self, _key: libp2p::kad::record::Key, _value: Vec<u8>) {}
 		}
-		
+
 		impl NetworkPeers for MockNetwork {
 			fn set_authorized_peers(&self, _peers: std::collections::HashSet<PeerId>) {}
 			fn set_authorized_only(&self, _reserved_only: bool) {}
@@ -723,58 +735,122 @@ mod tests {
 			fn disconnect_peer(&self, _who: PeerId, _protocol: ProtocolName) {}
 			fn accept_unreserved_peers(&self) {}
 			fn deny_unreserved_peers(&self) {}
-			fn add_reserved_peer(&self, _peer: MultiaddrWithPeerId) -> Result<(), String> { Ok(()) }
+			fn add_reserved_peer(&self, _peer: MultiaddrWithPeerId) -> Result<(), String> {
+				Ok(())
+			}
 			fn remove_reserved_peer(&self, _peer_id: PeerId) {}
-			fn set_reserved_peers(&self, _protocol: ProtocolName, _peers: std::collections::HashSet<Multiaddr>) -> Result<(), String> { Ok(()) }
-			fn add_peers_to_reserved_set(&self, _protocol: ProtocolName, _peers: std::collections::HashSet<Multiaddr>) -> Result<(), String> { Ok(()) }
-			fn remove_peers_from_reserved_set(&self, _protocol: ProtocolName, _peers: std::collections::HashSet<PeerId>) -> Result<(), String> { Ok(()) }
-			fn sync_num_connected(&self) -> usize { 5 }
-			fn peer_reputation(&self, _peer_id: &PeerId) -> i32 { 0 }
-			fn peer_role(&self, _peer_id: PeerId, _handshake: Vec<u8>) -> Option<ObservedRole> { None }
-			fn reserved_peers(&self) -> Pin<Box<dyn Future<Output = Result<Vec<PeerId>, ()>> + Send + '_>> {
+			fn set_reserved_peers(
+				&self,
+				_protocol: ProtocolName,
+				_peers: std::collections::HashSet<Multiaddr>,
+			) -> Result<(), String> {
+				Ok(())
+			}
+			fn add_peers_to_reserved_set(
+				&self,
+				_protocol: ProtocolName,
+				_peers: std::collections::HashSet<Multiaddr>,
+			) -> Result<(), String> {
+				Ok(())
+			}
+			fn remove_peers_from_reserved_set(
+				&self,
+				_protocol: ProtocolName,
+				_peers: std::collections::HashSet<PeerId>,
+			) -> Result<(), String> {
+				Ok(())
+			}
+			fn sync_num_connected(&self) -> usize {
+				5
+			}
+			fn peer_reputation(&self, _peer_id: &PeerId) -> i32 {
+				0
+			}
+			fn peer_role(&self, _peer_id: PeerId, _handshake: Vec<u8>) -> Option<ObservedRole> {
+				None
+			}
+			fn reserved_peers(
+				&self,
+			) -> Pin<Box<dyn Future<Output = Result<Vec<PeerId>, ()>> + Send + '_>> {
 				Box::pin(async { Ok(Vec::new()) })
 			}
 		}
-		
+
 		impl NetworkStateInfo for MockNetwork {
-			fn external_addresses(&self) -> Vec<Multiaddr> { Vec::new() }
-			fn local_peer_id(&self) -> PeerId { PeerId::random() }
-			fn listen_addresses(&self) -> Vec<Multiaddr> { Vec::new() }
+			fn external_addresses(&self) -> Vec<Multiaddr> {
+				Vec::new()
+			}
+			fn local_peer_id(&self) -> PeerId {
+				PeerId::random()
+			}
+			fn listen_addresses(&self) -> Vec<Multiaddr> {
+				Vec::new()
+			}
 		}
-		
+
 		impl NetworkEventStream for MockNetwork {
-			fn event_stream(&self, _name: &'static str) -> Pin<Box<dyn Stream<Item = NetworkEvent> + Send>> {
+			fn event_stream(
+				&self,
+				_name: &'static str,
+			) -> Pin<Box<dyn Stream<Item = NetworkEvent> + Send>> {
 				Box::pin(futures::stream::empty())
 			}
 		}
-		
+
 		impl NetworkRequest for MockNetwork {
-			fn request(&self, _target: PeerId, _protocol: ProtocolName, _request: Vec<u8>, _fallback_request: Option<(Vec<u8>, ProtocolName)>, _if_disconnected: IfDisconnected) -> Pin<Box<dyn Future<Output = Result<(Vec<u8>, ProtocolName), sc_network::RequestFailure>> + Send>> {
+			fn request(
+				&self,
+				_target: PeerId,
+				_protocol: ProtocolName,
+				_request: Vec<u8>,
+				_fallback_request: Option<(Vec<u8>, ProtocolName)>,
+				_if_disconnected: IfDisconnected,
+			) -> Pin<
+				Box<
+					dyn Future<Output = Result<(Vec<u8>, ProtocolName), sc_network::RequestFailure>>
+						+ Send,
+				>,
+			> {
 				Box::pin(async { Ok((vec![], ProtocolName::from("test"))) })
 			}
-			fn start_request(&self, _target: PeerId, _protocol: ProtocolName, _request: Vec<u8>, _fallback_request: Option<(Vec<u8>, ProtocolName)>, _tx: oneshot::Sender<Result<(Vec<u8>, ProtocolName), sc_network::RequestFailure>>, _if_disconnected: IfDisconnected) {}
+			fn start_request(
+				&self,
+				_target: PeerId,
+				_protocol: ProtocolName,
+				_request: Vec<u8>,
+				_fallback_request: Option<(Vec<u8>, ProtocolName)>,
+				_tx: oneshot::Sender<Result<(Vec<u8>, ProtocolName), sc_network::RequestFailure>>,
+				_if_disconnected: IfDisconnected,
+			) {
+			}
 		}
-		
+
 		impl NetworkStatusProvider for MockNetwork {
 			fn status(&self) -> SyncStatus<NumberFor<TestBlock<TestXt<(), ()>>>> {
 				SyncStatus::Idle
 			}
-			fn network_state(&self) -> Result<serde_json::Value, ()> { Ok(serde_json::Value::Null) }
-			fn best_seen_block(&self) -> Option<NumberFor<TestBlock<TestXt<(), ()>>>> { None }
-			fn num_sync_peers(&self) -> usize { 0 }
-			fn num_connected_peers(&self) -> usize { 5 }
-			fn num_active_peers(&self) -> usize { 5 }
+			fn network_state(&self) -> Result<serde_json::Value, ()> {
+				Ok(serde_json::Value::Null)
+			}
+			fn best_seen_block(&self) -> Option<NumberFor<TestBlock<TestXt<(), ()>>>> {
+				None
+			}
+			fn num_sync_peers(&self) -> usize {
+				0
+			}
+			fn num_connected_peers(&self) -> usize {
+				5
+			}
+			fn num_active_peers(&self) -> usize {
+				5
+			}
 		}
-		
+
 		impl NetworkService for MockNetwork {}
-		
+
 		let network = Arc::new(MockNetwork) as Arc<dyn NetworkService>;
-		let mut monitor: NetworkSecurityMonitor<TestBlock<TestXt<(), ()>>> = NetworkSecurityMonitor::new(
-			network,
-			3,
-			50,
-			Duration::from_millis(12000),
-		);
+		let mut monitor: NetworkSecurityMonitor<TestBlock<TestXt<(), ()>>> =
+			NetworkSecurityMonitor::new(network, 3, 50, Duration::from_millis(12000));
 
 		// Test logging a configuration change
 		monitor.log_configuration_change("admin", "max_peers", "50", "100");
@@ -790,24 +866,24 @@ mod tests {
 
 	#[test]
 	fn test_unauthorized_access_logging() {
-		use std::sync::Arc;
 		use sc_network::service::traits::NetworkService;
 		use sp_runtime::testing::{Block as TestBlock, TestXt};
-		
+		use std::sync::Arc;
+
 		// Create a mock network service
 		struct MockNetwork;
-		
+
 		impl NetworkSigner for MockNetwork {
 			fn sign_with_local_identity(&self, _msg: Vec<u8>) -> Result<Vec<u8>, ()> {
 				Ok(vec![0u8; 64]) // Mock signature
 			}
 		}
-		
+
 		impl NetworkDHTProvider for MockNetwork {
 			fn get_value(&self, _key: &libp2p::kad::record::Key) {}
 			fn put_value(&self, _key: libp2p::kad::record::Key, _value: Vec<u8>) {}
 		}
-		
+
 		impl NetworkPeers for MockNetwork {
 			fn set_authorized_peers(&self, _peers: std::collections::HashSet<PeerId>) {}
 			fn set_authorized_only(&self, _reserved_only: bool) {}
@@ -816,58 +892,125 @@ mod tests {
 			fn disconnect_peer(&self, _who: PeerId, _protocol: ProtocolName) {}
 			fn accept_unreserved_peers(&self) {}
 			fn deny_unreserved_peers(&self) {}
-			fn add_reserved_peer(&self, _peer: MultiaddrWithPeerId) -> Result<(), String> { Ok(()) }
+			fn add_reserved_peer(&self, _peer: MultiaddrWithPeerId) -> Result<(), String> {
+				Ok(())
+			}
 			fn remove_reserved_peer(&self, _peer_id: PeerId) {}
-			fn set_reserved_peers(&self, _protocol: ProtocolName, _peers: std::collections::HashSet<Multiaddr>) -> Result<(), String> { Ok(()) }
-			fn add_peers_to_reserved_set(&self, _protocol: ProtocolName, _peers: std::collections::HashSet<Multiaddr>) -> Result<(), String> { Ok(()) }
-			fn remove_peers_from_reserved_set(&self, _protocol: ProtocolName, _peers: std::collections::HashSet<PeerId>) -> Result<(), String> { Ok(()) }
-			fn sync_num_connected(&self) -> usize { 5 }
-			fn peer_reputation(&self, _peer_id: &PeerId) -> i32 { 0 }
-			fn peer_role(&self, _peer_id: PeerId, _handshake: Vec<u8>) -> Option<ObservedRole> { None }
-			fn reserved_peers(&self) -> Pin<Box<dyn Future<Output = Result<Vec<PeerId>, ()>> + Send + '_>> {
+			fn set_reserved_peers(
+				&self,
+				_protocol: ProtocolName,
+				_peers: std::collections::HashSet<Multiaddr>,
+			) -> Result<(), String> {
+				Ok(())
+			}
+			fn add_peers_to_reserved_set(
+				&self,
+				_protocol: ProtocolName,
+				_peers: std::collections::HashSet<Multiaddr>,
+			) -> Result<(), String> {
+				Ok(())
+			}
+			fn remove_peers_from_reserved_set(
+				&self,
+				_protocol: ProtocolName,
+				_peers: std::collections::HashSet<PeerId>,
+			) -> Result<(), String> {
+				Ok(())
+			}
+			fn sync_num_connected(&self) -> usize {
+				5
+			}
+			fn peer_reputation(&self, _peer_id: &PeerId) -> i32 {
+				0
+			}
+			fn peer_role(&self, _peer_id: PeerId, _handshake: Vec<u8>) -> Option<ObservedRole> {
+				None
+			}
+			fn reserved_peers(
+				&self,
+			) -> Pin<Box<dyn Future<Output = Result<Vec<PeerId>, ()>> + Send + '_>> {
 				Box::pin(async { Ok(Vec::new()) })
 			}
 		}
-		
+
 		impl NetworkStateInfo for MockNetwork {
-			fn external_addresses(&self) -> Vec<Multiaddr> { Vec::new() }
-			fn local_peer_id(&self) -> PeerId { PeerId::random() }
-			fn listen_addresses(&self) -> Vec<Multiaddr> { Vec::new() }
+			fn external_addresses(&self) -> Vec<Multiaddr> {
+				Vec::new()
+			}
+			fn local_peer_id(&self) -> PeerId {
+				PeerId::random()
+			}
+			fn listen_addresses(&self) -> Vec<Multiaddr> {
+				Vec::new()
+			}
 		}
-		
+
 		impl NetworkEventStream for MockNetwork {
-			fn event_stream(&self, _name: &'static str) -> Pin<Box<dyn Stream<Item = NetworkEvent> + Send>> {
+			fn event_stream(
+				&self,
+				_name: &'static str,
+			) -> Pin<Box<dyn Stream<Item = NetworkEvent> + Send>> {
 				Box::pin(futures::stream::empty())
 			}
 		}
-		
+
 		impl NetworkRequest for MockNetwork {
-			fn request(&self, _target: PeerId, _protocol: ProtocolName, _request: Vec<u8>, _fallback_request: Option<(Vec<u8>, ProtocolName)>, _if_disconnected: IfDisconnected) -> Pin<Box<dyn Future<Output = Result<(Vec<u8>, ProtocolName), sc_network::RequestFailure>> + Send>> {
+			fn request(
+				&self,
+				_target: PeerId,
+				_protocol: ProtocolName,
+				_request: Vec<u8>,
+				_fallback_request: Option<(Vec<u8>, ProtocolName)>,
+				_if_disconnected: IfDisconnected,
+			) -> Pin<
+				Box<
+					dyn Future<Output = Result<(Vec<u8>, ProtocolName), sc_network::RequestFailure>>
+						+ Send,
+				>,
+			> {
 				Box::pin(async { Ok((vec![], ProtocolName::from("test"))) })
 			}
-			fn start_request(&self, _target: PeerId, _protocol: ProtocolName, _request: Vec<u8>, _fallback_request: Option<(Vec<u8>, ProtocolName)>, _tx: oneshot::Sender<Result<(Vec<u8>, ProtocolName), sc_network::RequestFailure>>, _if_disconnected: IfDisconnected) {}
+			fn start_request(
+				&self,
+				_target: PeerId,
+				_protocol: ProtocolName,
+				_request: Vec<u8>,
+				_fallback_request: Option<(Vec<u8>, ProtocolName)>,
+				_tx: oneshot::Sender<Result<(Vec<u8>, ProtocolName), sc_network::RequestFailure>>,
+				_if_disconnected: IfDisconnected,
+			) {
+			}
 		}
-		
+
 		impl NetworkStatusProvider for MockNetwork {
 			fn status(&self) -> SyncStatus<NumberFor<TestBlock<TestXt<(), ()>>>> {
 				SyncStatus::Idle
 			}
-			fn network_state(&self) -> Result<serde_json::Value, ()> { Ok(serde_json::Value::Null) }
-			fn best_seen_block(&self) -> Option<NumberFor<sp_runtime::testing::Block<sp_runtime::testing::TestXt<(), ()>>>> { None }
-			fn num_sync_peers(&self) -> usize { 0 }
-			fn num_connected_peers(&self) -> usize { 5 }
-			fn num_active_peers(&self) -> usize { 5 }
+			fn network_state(&self) -> Result<serde_json::Value, ()> {
+				Ok(serde_json::Value::Null)
+			}
+			fn best_seen_block(
+				&self,
+			) -> Option<NumberFor<sp_runtime::testing::Block<sp_runtime::testing::TestXt<(), ()>>>>
+			{
+				None
+			}
+			fn num_sync_peers(&self) -> usize {
+				0
+			}
+			fn num_connected_peers(&self) -> usize {
+				5
+			}
+			fn num_active_peers(&self) -> usize {
+				5
+			}
 		}
-		
+
 		impl NetworkService for MockNetwork {}
-		
+
 		let network = Arc::new(MockNetwork) as Arc<dyn NetworkService>;
-		let mut monitor: NetworkSecurityMonitor<TestBlock<TestXt<(), ()>>> = NetworkSecurityMonitor::new(
-			network,
-			3,
-			50,
-			Duration::from_millis(12000),
-		);
+		let mut monitor: NetworkSecurityMonitor<TestBlock<TestXt<(), ()>>> =
+			NetworkSecurityMonitor::new(network, 3, 50, Duration::from_millis(12000));
 
 		// Test logging unauthorized access
 		monitor.log_unauthorized_access("malicious_user", "/admin/config", "read");
@@ -882,24 +1025,24 @@ mod tests {
 
 	#[test]
 	fn test_compliance_check() {
-		use std::sync::Arc;
 		use sc_network::service::traits::NetworkService;
 		use sp_runtime::testing::{Block as TestBlock, TestXt};
-		
+		use std::sync::Arc;
+
 		// Create a mock network service
 		struct MockNetwork;
-		
+
 		impl NetworkSigner for MockNetwork {
 			fn sign_with_local_identity(&self, _msg: Vec<u8>) -> Result<Vec<u8>, ()> {
 				Ok(vec![0u8; 64]) // Mock signature
 			}
 		}
-		
+
 		impl NetworkDHTProvider for MockNetwork {
 			fn get_value(&self, _key: &libp2p::kad::record::Key) {}
 			fn put_value(&self, _key: libp2p::kad::record::Key, _value: Vec<u8>) {}
 		}
-		
+
 		impl NetworkPeers for MockNetwork {
 			fn set_authorized_peers(&self, _peers: std::collections::HashSet<PeerId>) {}
 			fn set_authorized_only(&self, _reserved_only: bool) {}
@@ -908,58 +1051,122 @@ mod tests {
 			fn disconnect_peer(&self, _who: PeerId, _protocol: ProtocolName) {}
 			fn accept_unreserved_peers(&self) {}
 			fn deny_unreserved_peers(&self) {}
-			fn add_reserved_peer(&self, _peer: MultiaddrWithPeerId) -> Result<(), String> { Ok(()) }
+			fn add_reserved_peer(&self, _peer: MultiaddrWithPeerId) -> Result<(), String> {
+				Ok(())
+			}
 			fn remove_reserved_peer(&self, _peer_id: PeerId) {}
-			fn set_reserved_peers(&self, _protocol: ProtocolName, _peers: std::collections::HashSet<Multiaddr>) -> Result<(), String> { Ok(()) }
-			fn add_peers_to_reserved_set(&self, _protocol: ProtocolName, _peers: std::collections::HashSet<Multiaddr>) -> Result<(), String> { Ok(()) }
-			fn remove_peers_from_reserved_set(&self, _protocol: ProtocolName, _peers: std::collections::HashSet<PeerId>) -> Result<(), String> { Ok(()) }
-			fn sync_num_connected(&self) -> usize { 5 }
-			fn peer_reputation(&self, _peer_id: &PeerId) -> i32 { 0 }
-			fn peer_role(&self, _peer_id: PeerId, _handshake: Vec<u8>) -> Option<ObservedRole> { None }
-			fn reserved_peers(&self) -> Pin<Box<dyn Future<Output = Result<Vec<PeerId>, ()>> + Send + '_>> {
+			fn set_reserved_peers(
+				&self,
+				_protocol: ProtocolName,
+				_peers: std::collections::HashSet<Multiaddr>,
+			) -> Result<(), String> {
+				Ok(())
+			}
+			fn add_peers_to_reserved_set(
+				&self,
+				_protocol: ProtocolName,
+				_peers: std::collections::HashSet<Multiaddr>,
+			) -> Result<(), String> {
+				Ok(())
+			}
+			fn remove_peers_from_reserved_set(
+				&self,
+				_protocol: ProtocolName,
+				_peers: std::collections::HashSet<PeerId>,
+			) -> Result<(), String> {
+				Ok(())
+			}
+			fn sync_num_connected(&self) -> usize {
+				5
+			}
+			fn peer_reputation(&self, _peer_id: &PeerId) -> i32 {
+				0
+			}
+			fn peer_role(&self, _peer_id: PeerId, _handshake: Vec<u8>) -> Option<ObservedRole> {
+				None
+			}
+			fn reserved_peers(
+				&self,
+			) -> Pin<Box<dyn Future<Output = Result<Vec<PeerId>, ()>> + Send + '_>> {
 				Box::pin(async { Ok(Vec::new()) })
 			}
 		}
-		
+
 		impl NetworkStateInfo for MockNetwork {
-			fn external_addresses(&self) -> Vec<Multiaddr> { Vec::new() }
-			fn local_peer_id(&self) -> PeerId { PeerId::random() }
-			fn listen_addresses(&self) -> Vec<Multiaddr> { Vec::new() }
+			fn external_addresses(&self) -> Vec<Multiaddr> {
+				Vec::new()
+			}
+			fn local_peer_id(&self) -> PeerId {
+				PeerId::random()
+			}
+			fn listen_addresses(&self) -> Vec<Multiaddr> {
+				Vec::new()
+			}
 		}
-		
+
 		impl NetworkEventStream for MockNetwork {
-			fn event_stream(&self, _name: &'static str) -> Pin<Box<dyn Stream<Item = NetworkEvent> + Send>> {
+			fn event_stream(
+				&self,
+				_name: &'static str,
+			) -> Pin<Box<dyn Stream<Item = NetworkEvent> + Send>> {
 				Box::pin(futures::stream::empty())
 			}
 		}
-		
+
 		impl NetworkRequest for MockNetwork {
-			fn request(&self, _target: PeerId, _protocol: ProtocolName, _request: Vec<u8>, _fallback_request: Option<(Vec<u8>, ProtocolName)>, _if_disconnected: IfDisconnected) -> Pin<Box<dyn Future<Output = Result<(Vec<u8>, ProtocolName), sc_network::RequestFailure>> + Send>> {
+			fn request(
+				&self,
+				_target: PeerId,
+				_protocol: ProtocolName,
+				_request: Vec<u8>,
+				_fallback_request: Option<(Vec<u8>, ProtocolName)>,
+				_if_disconnected: IfDisconnected,
+			) -> Pin<
+				Box<
+					dyn Future<Output = Result<(Vec<u8>, ProtocolName), sc_network::RequestFailure>>
+						+ Send,
+				>,
+			> {
 				Box::pin(async { Ok((vec![], ProtocolName::from("test"))) })
 			}
-			fn start_request(&self, _target: PeerId, _protocol: ProtocolName, _request: Vec<u8>, _fallback_request: Option<(Vec<u8>, ProtocolName)>, _tx: oneshot::Sender<Result<(Vec<u8>, ProtocolName), sc_network::RequestFailure>>, _if_disconnected: IfDisconnected) {}
+			fn start_request(
+				&self,
+				_target: PeerId,
+				_protocol: ProtocolName,
+				_request: Vec<u8>,
+				_fallback_request: Option<(Vec<u8>, ProtocolName)>,
+				_tx: oneshot::Sender<Result<(Vec<u8>, ProtocolName), sc_network::RequestFailure>>,
+				_if_disconnected: IfDisconnected,
+			) {
+			}
 		}
-		
+
 		impl NetworkStatusProvider for MockNetwork {
 			fn status(&self) -> SyncStatus<NumberFor<TestBlock<TestXt<(), ()>>>> {
 				SyncStatus::Idle
 			}
-			fn network_state(&self) -> Result<serde_json::Value, ()> { Ok(serde_json::Value::Null) }
-			fn best_seen_block(&self) -> Option<NumberFor<TestBlock<TestXt<(), ()>>>> { None }
-			fn num_sync_peers(&self) -> usize { 0 }
-			fn num_connected_peers(&self) -> usize { 5 }
-			fn num_active_peers(&self) -> usize { 5 }
+			fn network_state(&self) -> Result<serde_json::Value, ()> {
+				Ok(serde_json::Value::Null)
+			}
+			fn best_seen_block(&self) -> Option<NumberFor<TestBlock<TestXt<(), ()>>>> {
+				None
+			}
+			fn num_sync_peers(&self) -> usize {
+				0
+			}
+			fn num_connected_peers(&self) -> usize {
+				5
+			}
+			fn num_active_peers(&self) -> usize {
+				5
+			}
 		}
-		
+
 		impl NetworkService for MockNetwork {}
-		
+
 		let network = Arc::new(MockNetwork) as Arc<dyn NetworkService>;
-		let mut monitor: NetworkSecurityMonitor<TestBlock<TestXt<(), ()>>> = NetworkSecurityMonitor::new(
-			network,
-			3,
-			50,
-			Duration::from_millis(12000),
-		);
+		let mut monitor: NetworkSecurityMonitor<TestBlock<TestXt<(), ()>>> =
+			NetworkSecurityMonitor::new(network, 3, 50, Duration::from_millis(12000));
 
 		// Test initial compliance check (should fail with default settings)
 		let is_compliant = monitor.perform_compliance_check();
@@ -982,24 +1189,24 @@ mod tests {
 
 	#[test]
 	fn test_compliance_report_generation() {
-		use std::sync::Arc;
 		use sc_network::service::traits::NetworkService;
 		use sp_runtime::testing::{Block as TestBlock, TestXt};
-		
+		use std::sync::Arc;
+
 		// Create a mock network service
 		struct MockNetwork;
-		
+
 		impl NetworkSigner for MockNetwork {
 			fn sign_with_local_identity(&self, _msg: Vec<u8>) -> Result<Vec<u8>, ()> {
 				Ok(vec![0u8; 64]) // Mock signature
 			}
 		}
-		
+
 		impl NetworkDHTProvider for MockNetwork {
 			fn get_value(&self, _key: &libp2p::kad::record::Key) {}
 			fn put_value(&self, _key: libp2p::kad::record::Key, _value: Vec<u8>) {}
 		}
-		
+
 		impl NetworkPeers for MockNetwork {
 			fn set_authorized_peers(&self, _peers: std::collections::HashSet<PeerId>) {}
 			fn set_authorized_only(&self, _reserved_only: bool) {}
@@ -1008,58 +1215,122 @@ mod tests {
 			fn disconnect_peer(&self, _who: PeerId, _protocol: ProtocolName) {}
 			fn accept_unreserved_peers(&self) {}
 			fn deny_unreserved_peers(&self) {}
-			fn add_reserved_peer(&self, _peer: MultiaddrWithPeerId) -> Result<(), String> { Ok(()) }
+			fn add_reserved_peer(&self, _peer: MultiaddrWithPeerId) -> Result<(), String> {
+				Ok(())
+			}
 			fn remove_reserved_peer(&self, _peer_id: PeerId) {}
-			fn set_reserved_peers(&self, _protocol: ProtocolName, _peers: std::collections::HashSet<Multiaddr>) -> Result<(), String> { Ok(()) }
-			fn add_peers_to_reserved_set(&self, _protocol: ProtocolName, _peers: std::collections::HashSet<Multiaddr>) -> Result<(), String> { Ok(()) }
-			fn remove_peers_from_reserved_set(&self, _protocol: ProtocolName, _peers: std::collections::HashSet<PeerId>) -> Result<(), String> { Ok(()) }
-			fn sync_num_connected(&self) -> usize { 5 }
-			fn peer_reputation(&self, _peer_id: &PeerId) -> i32 { 0 }
-			fn peer_role(&self, _peer_id: PeerId, _handshake: Vec<u8>) -> Option<ObservedRole> { None }
-			fn reserved_peers(&self) -> Pin<Box<dyn Future<Output = Result<Vec<PeerId>, ()>> + Send + '_>> {
+			fn set_reserved_peers(
+				&self,
+				_protocol: ProtocolName,
+				_peers: std::collections::HashSet<Multiaddr>,
+			) -> Result<(), String> {
+				Ok(())
+			}
+			fn add_peers_to_reserved_set(
+				&self,
+				_protocol: ProtocolName,
+				_peers: std::collections::HashSet<Multiaddr>,
+			) -> Result<(), String> {
+				Ok(())
+			}
+			fn remove_peers_from_reserved_set(
+				&self,
+				_protocol: ProtocolName,
+				_peers: std::collections::HashSet<PeerId>,
+			) -> Result<(), String> {
+				Ok(())
+			}
+			fn sync_num_connected(&self) -> usize {
+				5
+			}
+			fn peer_reputation(&self, _peer_id: &PeerId) -> i32 {
+				0
+			}
+			fn peer_role(&self, _peer_id: PeerId, _handshake: Vec<u8>) -> Option<ObservedRole> {
+				None
+			}
+			fn reserved_peers(
+				&self,
+			) -> Pin<Box<dyn Future<Output = Result<Vec<PeerId>, ()>> + Send + '_>> {
 				Box::pin(async { Ok(Vec::new()) })
 			}
 		}
-		
+
 		impl NetworkStateInfo for MockNetwork {
-			fn external_addresses(&self) -> Vec<Multiaddr> { Vec::new() }
-			fn local_peer_id(&self) -> PeerId { PeerId::random() }
-			fn listen_addresses(&self) -> Vec<Multiaddr> { Vec::new() }
+			fn external_addresses(&self) -> Vec<Multiaddr> {
+				Vec::new()
+			}
+			fn local_peer_id(&self) -> PeerId {
+				PeerId::random()
+			}
+			fn listen_addresses(&self) -> Vec<Multiaddr> {
+				Vec::new()
+			}
 		}
-		
+
 		impl NetworkEventStream for MockNetwork {
-			fn event_stream(&self, _name: &'static str) -> Pin<Box<dyn Stream<Item = NetworkEvent> + Send>> {
+			fn event_stream(
+				&self,
+				_name: &'static str,
+			) -> Pin<Box<dyn Stream<Item = NetworkEvent> + Send>> {
 				Box::pin(futures::stream::empty())
 			}
 		}
-		
+
 		impl NetworkRequest for MockNetwork {
-			fn request(&self, _target: PeerId, _protocol: ProtocolName, _request: Vec<u8>, _fallback_request: Option<(Vec<u8>, ProtocolName)>, _if_disconnected: IfDisconnected) -> Pin<Box<dyn Future<Output = Result<(Vec<u8>, ProtocolName), sc_network::RequestFailure>> + Send>> {
+			fn request(
+				&self,
+				_target: PeerId,
+				_protocol: ProtocolName,
+				_request: Vec<u8>,
+				_fallback_request: Option<(Vec<u8>, ProtocolName)>,
+				_if_disconnected: IfDisconnected,
+			) -> Pin<
+				Box<
+					dyn Future<Output = Result<(Vec<u8>, ProtocolName), sc_network::RequestFailure>>
+						+ Send,
+				>,
+			> {
 				Box::pin(async { Ok((vec![], ProtocolName::from("test"))) })
 			}
-			fn start_request(&self, _target: PeerId, _protocol: ProtocolName, _request: Vec<u8>, _fallback_request: Option<(Vec<u8>, ProtocolName)>, _tx: oneshot::Sender<Result<(Vec<u8>, ProtocolName), sc_network::RequestFailure>>, _if_disconnected: IfDisconnected) {}
+			fn start_request(
+				&self,
+				_target: PeerId,
+				_protocol: ProtocolName,
+				_request: Vec<u8>,
+				_fallback_request: Option<(Vec<u8>, ProtocolName)>,
+				_tx: oneshot::Sender<Result<(Vec<u8>, ProtocolName), sc_network::RequestFailure>>,
+				_if_disconnected: IfDisconnected,
+			) {
+			}
 		}
-		
+
 		impl NetworkStatusProvider for MockNetwork {
 			fn status(&self) -> SyncStatus<NumberFor<TestBlock<TestXt<(), ()>>>> {
 				SyncStatus::Idle
 			}
-			fn network_state(&self) -> Result<serde_json::Value, ()> { Ok(serde_json::Value::Null) }
-			fn best_seen_block(&self) -> Option<NumberFor<TestBlock<TestXt<(), ()>>>> { None }
-			fn num_sync_peers(&self) -> usize { 0 }
-			fn num_connected_peers(&self) -> usize { 5 }
-			fn num_active_peers(&self) -> usize { 5 }
+			fn network_state(&self) -> Result<serde_json::Value, ()> {
+				Ok(serde_json::Value::Null)
+			}
+			fn best_seen_block(&self) -> Option<NumberFor<TestBlock<TestXt<(), ()>>>> {
+				None
+			}
+			fn num_sync_peers(&self) -> usize {
+				0
+			}
+			fn num_connected_peers(&self) -> usize {
+				5
+			}
+			fn num_active_peers(&self) -> usize {
+				5
+			}
 		}
-		
+
 		impl NetworkService for MockNetwork {}
-		
+
 		let network = Arc::new(MockNetwork) as Arc<dyn NetworkService>;
-		let mut monitor: NetworkSecurityMonitor<TestBlock<TestXt<(), ()>>> = NetworkSecurityMonitor::new(
-			network,
-			3,
-			50,
-			Duration::from_millis(12000),
-		);
+		let mut monitor: NetworkSecurityMonitor<TestBlock<TestXt<(), ()>>> =
+			NetworkSecurityMonitor::new(network, 3, 50, Duration::from_millis(12000));
 
 		// Generate some test events
 		monitor.log_configuration_change("admin", "test_key", "old", "new");
@@ -1081,24 +1352,24 @@ mod tests {
 
 	#[test]
 	fn test_peer_event_logging() {
-		use std::sync::Arc;
 		use sc_network::service::traits::NetworkService;
 		use sp_runtime::testing::{Block as TestBlock, TestXt};
-		
+		use std::sync::Arc;
+
 		// Create a mock network service
 		struct MockNetwork;
-		
+
 		impl NetworkSigner for MockNetwork {
 			fn sign_with_local_identity(&self, _msg: Vec<u8>) -> Result<Vec<u8>, ()> {
 				Ok(vec![0u8; 64]) // Mock signature
 			}
 		}
-		
+
 		impl NetworkDHTProvider for MockNetwork {
 			fn get_value(&self, _key: &libp2p::kad::record::Key) {}
 			fn put_value(&self, _key: libp2p::kad::record::Key, _value: Vec<u8>) {}
 		}
-		
+
 		impl NetworkPeers for MockNetwork {
 			fn set_authorized_peers(&self, _peers: std::collections::HashSet<PeerId>) {}
 			fn set_authorized_only(&self, _reserved_only: bool) {}
@@ -1107,58 +1378,122 @@ mod tests {
 			fn disconnect_peer(&self, _who: PeerId, _protocol: ProtocolName) {}
 			fn accept_unreserved_peers(&self) {}
 			fn deny_unreserved_peers(&self) {}
-			fn add_reserved_peer(&self, _peer: MultiaddrWithPeerId) -> Result<(), String> { Ok(()) }
+			fn add_reserved_peer(&self, _peer: MultiaddrWithPeerId) -> Result<(), String> {
+				Ok(())
+			}
 			fn remove_reserved_peer(&self, _peer_id: PeerId) {}
-			fn set_reserved_peers(&self, _protocol: ProtocolName, _peers: std::collections::HashSet<Multiaddr>) -> Result<(), String> { Ok(()) }
-			fn add_peers_to_reserved_set(&self, _protocol: ProtocolName, _peers: std::collections::HashSet<Multiaddr>) -> Result<(), String> { Ok(()) }
-			fn remove_peers_from_reserved_set(&self, _protocol: ProtocolName, _peers: std::collections::HashSet<PeerId>) -> Result<(), String> { Ok(()) }
-			fn sync_num_connected(&self) -> usize { 5 }
-			fn peer_reputation(&self, _peer_id: &PeerId) -> i32 { 0 }
-			fn peer_role(&self, _peer_id: PeerId, _handshake: Vec<u8>) -> Option<ObservedRole> { None }
-			fn reserved_peers(&self) -> Pin<Box<dyn Future<Output = Result<Vec<PeerId>, ()>> + Send + '_>> {
+			fn set_reserved_peers(
+				&self,
+				_protocol: ProtocolName,
+				_peers: std::collections::HashSet<Multiaddr>,
+			) -> Result<(), String> {
+				Ok(())
+			}
+			fn add_peers_to_reserved_set(
+				&self,
+				_protocol: ProtocolName,
+				_peers: std::collections::HashSet<Multiaddr>,
+			) -> Result<(), String> {
+				Ok(())
+			}
+			fn remove_peers_from_reserved_set(
+				&self,
+				_protocol: ProtocolName,
+				_peers: std::collections::HashSet<PeerId>,
+			) -> Result<(), String> {
+				Ok(())
+			}
+			fn sync_num_connected(&self) -> usize {
+				5
+			}
+			fn peer_reputation(&self, _peer_id: &PeerId) -> i32 {
+				0
+			}
+			fn peer_role(&self, _peer_id: PeerId, _handshake: Vec<u8>) -> Option<ObservedRole> {
+				None
+			}
+			fn reserved_peers(
+				&self,
+			) -> Pin<Box<dyn Future<Output = Result<Vec<PeerId>, ()>> + Send + '_>> {
 				Box::pin(async { Ok(Vec::new()) })
 			}
 		}
-		
+
 		impl NetworkStateInfo for MockNetwork {
-			fn external_addresses(&self) -> Vec<Multiaddr> { Vec::new() }
-			fn local_peer_id(&self) -> PeerId { PeerId::random() }
-			fn listen_addresses(&self) -> Vec<Multiaddr> { Vec::new() }
+			fn external_addresses(&self) -> Vec<Multiaddr> {
+				Vec::new()
+			}
+			fn local_peer_id(&self) -> PeerId {
+				PeerId::random()
+			}
+			fn listen_addresses(&self) -> Vec<Multiaddr> {
+				Vec::new()
+			}
 		}
-		
+
 		impl NetworkEventStream for MockNetwork {
-			fn event_stream(&self, _name: &'static str) -> Pin<Box<dyn Stream<Item = NetworkEvent> + Send>> {
+			fn event_stream(
+				&self,
+				_name: &'static str,
+			) -> Pin<Box<dyn Stream<Item = NetworkEvent> + Send>> {
 				Box::pin(futures::stream::empty())
 			}
 		}
-		
+
 		impl NetworkRequest for MockNetwork {
-			fn request(&self, _target: PeerId, _protocol: ProtocolName, _request: Vec<u8>, _fallback_request: Option<(Vec<u8>, ProtocolName)>, _if_disconnected: IfDisconnected) -> Pin<Box<dyn Future<Output = Result<(Vec<u8>, ProtocolName), sc_network::RequestFailure>> + Send>> {
+			fn request(
+				&self,
+				_target: PeerId,
+				_protocol: ProtocolName,
+				_request: Vec<u8>,
+				_fallback_request: Option<(Vec<u8>, ProtocolName)>,
+				_if_disconnected: IfDisconnected,
+			) -> Pin<
+				Box<
+					dyn Future<Output = Result<(Vec<u8>, ProtocolName), sc_network::RequestFailure>>
+						+ Send,
+				>,
+			> {
 				Box::pin(async { Ok((vec![], ProtocolName::from("test"))) })
 			}
-			fn start_request(&self, _target: PeerId, _protocol: ProtocolName, _request: Vec<u8>, _fallback_request: Option<(Vec<u8>, ProtocolName)>, _tx: oneshot::Sender<Result<(Vec<u8>, ProtocolName), sc_network::RequestFailure>>, _if_disconnected: IfDisconnected) {}
+			fn start_request(
+				&self,
+				_target: PeerId,
+				_protocol: ProtocolName,
+				_request: Vec<u8>,
+				_fallback_request: Option<(Vec<u8>, ProtocolName)>,
+				_tx: oneshot::Sender<Result<(Vec<u8>, ProtocolName), sc_network::RequestFailure>>,
+				_if_disconnected: IfDisconnected,
+			) {
+			}
 		}
-		
+
 		impl NetworkStatusProvider for MockNetwork {
 			fn status(&self) -> SyncStatus<NumberFor<TestBlock<TestXt<(), ()>>>> {
 				SyncStatus::Idle
 			}
-			fn network_state(&self) -> Result<serde_json::Value, ()> { Ok(serde_json::Value::Null) }
-			fn best_seen_block(&self) -> Option<NumberFor<TestBlock<TestXt<(), ()>>>> { None }
-			fn num_sync_peers(&self) -> usize { 0 }
-			fn num_connected_peers(&self) -> usize { 5 }
-			fn num_active_peers(&self) -> usize { 5 }
+			fn network_state(&self) -> Result<serde_json::Value, ()> {
+				Ok(serde_json::Value::Null)
+			}
+			fn best_seen_block(&self) -> Option<NumberFor<TestBlock<TestXt<(), ()>>>> {
+				None
+			}
+			fn num_sync_peers(&self) -> usize {
+				0
+			}
+			fn num_connected_peers(&self) -> usize {
+				5
+			}
+			fn num_active_peers(&self) -> usize {
+				5
+			}
 		}
-		
+
 		impl NetworkService for MockNetwork {}
-		
+
 		let network = Arc::new(MockNetwork) as Arc<dyn NetworkService>;
-		let mut monitor: NetworkSecurityMonitor<TestBlock<TestXt<(), ()>>> = NetworkSecurityMonitor::new(
-			network,
-			3,
-			50,
-			Duration::from_millis(12000),
-		);
+		let mut monitor: NetworkSecurityMonitor<TestBlock<TestXt<(), ()>>> =
+			NetworkSecurityMonitor::new(network, 3, 50, Duration::from_millis(12000));
 
 		// Test peer connection logging
 		monitor.on_peer_connected("peer123".to_string());
@@ -1209,24 +1544,24 @@ mod tests {
 
 	#[test]
 	fn test_audit_event_filtering_by_time() {
-		use std::sync::Arc;
 		use sc_network::service::traits::NetworkService;
 		use sp_runtime::testing::{Block as TestBlock, TestXt};
-		
+		use std::sync::Arc;
+
 		// Create a mock network service
 		struct MockNetwork;
-		
+
 		impl NetworkSigner for MockNetwork {
 			fn sign_with_local_identity(&self, _msg: Vec<u8>) -> Result<Vec<u8>, ()> {
 				Ok(vec![0u8; 64]) // Mock signature
 			}
 		}
-		
+
 		impl NetworkDHTProvider for MockNetwork {
 			fn get_value(&self, _key: &libp2p::kad::record::Key) {}
 			fn put_value(&self, _key: libp2p::kad::record::Key, _value: Vec<u8>) {}
 		}
-		
+
 		impl NetworkPeers for MockNetwork {
 			fn set_authorized_peers(&self, _peers: std::collections::HashSet<PeerId>) {}
 			fn set_authorized_only(&self, _reserved_only: bool) {}
@@ -1235,58 +1570,122 @@ mod tests {
 			fn disconnect_peer(&self, _who: PeerId, _protocol: ProtocolName) {}
 			fn accept_unreserved_peers(&self) {}
 			fn deny_unreserved_peers(&self) {}
-			fn add_reserved_peer(&self, _peer: MultiaddrWithPeerId) -> Result<(), String> { Ok(()) }
+			fn add_reserved_peer(&self, _peer: MultiaddrWithPeerId) -> Result<(), String> {
+				Ok(())
+			}
 			fn remove_reserved_peer(&self, _peer_id: PeerId) {}
-			fn set_reserved_peers(&self, _protocol: ProtocolName, _peers: std::collections::HashSet<Multiaddr>) -> Result<(), String> { Ok(()) }
-			fn add_peers_to_reserved_set(&self, _protocol: ProtocolName, _peers: std::collections::HashSet<Multiaddr>) -> Result<(), String> { Ok(()) }
-			fn remove_peers_from_reserved_set(&self, _protocol: ProtocolName, _peers: std::collections::HashSet<PeerId>) -> Result<(), String> { Ok(()) }
-			fn sync_num_connected(&self) -> usize { 5 }
-			fn peer_reputation(&self, _peer_id: &PeerId) -> i32 { 0 }
-			fn peer_role(&self, _peer_id: PeerId, _handshake: Vec<u8>) -> Option<ObservedRole> { None }
-			fn reserved_peers(&self) -> Pin<Box<dyn Future<Output = Result<Vec<PeerId>, ()>> + Send + '_>> {
+			fn set_reserved_peers(
+				&self,
+				_protocol: ProtocolName,
+				_peers: std::collections::HashSet<Multiaddr>,
+			) -> Result<(), String> {
+				Ok(())
+			}
+			fn add_peers_to_reserved_set(
+				&self,
+				_protocol: ProtocolName,
+				_peers: std::collections::HashSet<Multiaddr>,
+			) -> Result<(), String> {
+				Ok(())
+			}
+			fn remove_peers_from_reserved_set(
+				&self,
+				_protocol: ProtocolName,
+				_peers: std::collections::HashSet<PeerId>,
+			) -> Result<(), String> {
+				Ok(())
+			}
+			fn sync_num_connected(&self) -> usize {
+				5
+			}
+			fn peer_reputation(&self, _peer_id: &PeerId) -> i32 {
+				0
+			}
+			fn peer_role(&self, _peer_id: PeerId, _handshake: Vec<u8>) -> Option<ObservedRole> {
+				None
+			}
+			fn reserved_peers(
+				&self,
+			) -> Pin<Box<dyn Future<Output = Result<Vec<PeerId>, ()>> + Send + '_>> {
 				Box::pin(async { Ok(Vec::new()) })
 			}
 		}
-		
+
 		impl NetworkStateInfo for MockNetwork {
-			fn external_addresses(&self) -> Vec<Multiaddr> { Vec::new() }
-			fn local_peer_id(&self) -> PeerId { PeerId::random() }
-			fn listen_addresses(&self) -> Vec<Multiaddr> { Vec::new() }
+			fn external_addresses(&self) -> Vec<Multiaddr> {
+				Vec::new()
+			}
+			fn local_peer_id(&self) -> PeerId {
+				PeerId::random()
+			}
+			fn listen_addresses(&self) -> Vec<Multiaddr> {
+				Vec::new()
+			}
 		}
-		
+
 		impl NetworkEventStream for MockNetwork {
-			fn event_stream(&self, _name: &'static str) -> Pin<Box<dyn Stream<Item = NetworkEvent> + Send>> {
+			fn event_stream(
+				&self,
+				_name: &'static str,
+			) -> Pin<Box<dyn Stream<Item = NetworkEvent> + Send>> {
 				Box::pin(futures::stream::empty())
 			}
 		}
 
 		impl NetworkRequest for MockNetwork {
-			fn request(&self, _target: PeerId, _protocol: ProtocolName, _request: Vec<u8>, _fallback_request: Option<(Vec<u8>, ProtocolName)>, _if_disconnected: IfDisconnected) -> Pin<Box<dyn Future<Output = Result<(Vec<u8>, ProtocolName), sc_network::RequestFailure>> + Send>> {
+			fn request(
+				&self,
+				_target: PeerId,
+				_protocol: ProtocolName,
+				_request: Vec<u8>,
+				_fallback_request: Option<(Vec<u8>, ProtocolName)>,
+				_if_disconnected: IfDisconnected,
+			) -> Pin<
+				Box<
+					dyn Future<Output = Result<(Vec<u8>, ProtocolName), sc_network::RequestFailure>>
+						+ Send,
+				>,
+			> {
 				Box::pin(async { Ok((vec![], ProtocolName::from("test"))) })
 			}
-			fn start_request(&self, _target: PeerId, _protocol: ProtocolName, _request: Vec<u8>, _fallback_request: Option<(Vec<u8>, ProtocolName)>, _tx: oneshot::Sender<Result<(Vec<u8>, ProtocolName), sc_network::RequestFailure>>, _if_disconnected: IfDisconnected) {}
+			fn start_request(
+				&self,
+				_target: PeerId,
+				_protocol: ProtocolName,
+				_request: Vec<u8>,
+				_fallback_request: Option<(Vec<u8>, ProtocolName)>,
+				_tx: oneshot::Sender<Result<(Vec<u8>, ProtocolName), sc_network::RequestFailure>>,
+				_if_disconnected: IfDisconnected,
+			) {
+			}
 		}
 
 		impl NetworkStatusProvider for MockNetwork {
 			fn status(&self) -> SyncStatus<NumberFor<TestBlock<TestXt<(), ()>>>> {
 				SyncStatus::Idle
 			}
-			fn network_state(&self) -> Result<serde_json::Value, ()> { Ok(serde_json::Value::Null) }
-			fn best_seen_block(&self) -> Option<NumberFor<TestBlock<TestXt<(), ()>>>> { None }
-			fn num_sync_peers(&self) -> usize { 0 }
-			fn num_connected_peers(&self) -> usize { 5 }
-			fn num_active_peers(&self) -> usize { 5 }
+			fn network_state(&self) -> Result<serde_json::Value, ()> {
+				Ok(serde_json::Value::Null)
+			}
+			fn best_seen_block(&self) -> Option<NumberFor<TestBlock<TestXt<(), ()>>>> {
+				None
+			}
+			fn num_sync_peers(&self) -> usize {
+				0
+			}
+			fn num_connected_peers(&self) -> usize {
+				5
+			}
+			fn num_active_peers(&self) -> usize {
+				5
+			}
 		}
-		
+
 		impl NetworkService for MockNetwork {}
-		
+
 		let network = Arc::new(MockNetwork) as Arc<dyn NetworkService>;
-		let mut monitor: NetworkSecurityMonitor<TestBlock<TestXt<(), ()>>> = NetworkSecurityMonitor::new(
-			network,
-			3,
-			50,
-			Duration::from_millis(12000),
-		);
+		let mut monitor: NetworkSecurityMonitor<TestBlock<TestXt<(), ()>>> =
+			NetworkSecurityMonitor::new(network, 3, 50, Duration::from_millis(12000));
 
 		// Get current time
 		let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
