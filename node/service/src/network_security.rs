@@ -126,8 +126,8 @@ impl SecurityMetrics {
 		let consensus_bonus = self.consensus_health * 10.0;
 		let incident_penalty = self.security_incidents as f64 * 5.0;
 
-		(base_score - malicious_penalty + consensus_bonus - incident_penalty)
-			.clamp(0.0, 100.0) as u8
+		(base_score - malicious_penalty + consensus_bonus - incident_penalty).clamp(0.0, 100.0)
+			as u8
 	}
 }
 
