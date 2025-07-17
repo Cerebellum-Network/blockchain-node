@@ -82,6 +82,10 @@ jobs:
           components: rust-src
           targets: wasm32-unknown-unknown
           
+      - name: Install rust-src component
+        run: |
+          rustup component add rust-src --toolchain 1.82.0-x86_64-unknown-linux-gnu
+          
       - name: Install Protocol Buffers Compiler
         run: |
           sudo apt-get update
