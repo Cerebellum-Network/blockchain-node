@@ -9,13 +9,16 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+#[cfg(test)]
+use futures::channel::oneshot;
 use log::{error, info, warn};
 use sc_network::config::ProtocolName;
 use sc_network::service::traits::{NetworkPeers, NetworkService};
 #[cfg(test)]
-use sc_network::{NetworkDHTProvider, NetworkEventStream, NetworkRequest, NetworkSigner, NetworkStateInfo, NetworkStatusProvider};
-#[cfg(test)]
-use futures::channel::oneshot;
+use sc_network::{
+	NetworkDHTProvider, NetworkEventStream, NetworkRequest, NetworkSigner, NetworkStateInfo,
+	NetworkStatusProvider,
+};
 use sc_network_types::PeerId;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -716,10 +719,21 @@ mod tests {
 		struct MockNetwork;
 
 		impl NetworkSigner for MockNetwork {
-			fn sign_with_local_identity(&self, _msg: Vec<u8>) -> Result<sc_network::Signature, sc_network::service::signature::SigningError> {
-				Err(sc_network::service::signature::SigningError::new("Mock signing not implemented"))
+			fn sign_with_local_identity(
+				&self,
+				_msg: Vec<u8>,
+			) -> Result<sc_network::Signature, sc_network::service::signature::SigningError> {
+				Err(sc_network::service::signature::SigningError::new(
+					"Mock signing not implemented",
+				))
 			}
-			fn verify(&self, _peer_id: PeerId, _public_key: &Vec<u8>, _signature: &Vec<u8>, _message: &Vec<u8>) -> Result<bool, String> {
+			fn verify(
+				&self,
+				_peer_id: PeerId,
+				_public_key: &Vec<u8>,
+				_signature: &Vec<u8>,
+				_message: &Vec<u8>,
+			) -> Result<bool, String> {
 				Ok(true)
 			}
 		}
@@ -727,8 +741,21 @@ mod tests {
 		impl NetworkDHTProvider for MockNetwork {
 			fn get_value(&self, _key: &libp2p::kad::record::Key) {}
 			fn put_value(&self, _key: libp2p::kad::record::Key, _value: Vec<u8>) {}
-			fn put_record_to(&self, _record: sc_network_types::kad::Record, _peers: std::collections::HashSet<PeerId>, _update_local_store: bool) {}
-			fn store_record(&self, _key: libp2p::kad::record::Key, _value: Vec<u8>, _publisher: Option<PeerId>, _expires: Option<std::time::Instant>) {}
+			fn put_record_to(
+				&self,
+				_record: sc_network_types::kad::Record,
+				_peers: std::collections::HashSet<PeerId>,
+				_update_local_store: bool,
+			) {
+			}
+			fn store_record(
+				&self,
+				_key: libp2p::kad::record::Key,
+				_value: Vec<u8>,
+				_publisher: Option<PeerId>,
+				_expires: Option<std::time::Instant>,
+			) {
+			}
 			fn start_providing(&self, _key: libp2p::kad::record::Key) {}
 			fn stop_providing(&self, _key: libp2p::kad::record::Key) {}
 			fn get_providers(&self, _key: libp2p::kad::record::Key) {}
@@ -881,19 +908,43 @@ mod tests {
 		struct MockNetwork;
 
 		impl NetworkSigner for MockNetwork {
-			fn sign_with_local_identity(&self, _msg: Vec<u8>) -> Result<sc_network::Signature, sc_network::service::signature::SigningError> {
-			Err(sc_network::service::signature::SigningError::new("Mock signing not implemented"))
-		}
-		fn verify(&self, _peer_id: PeerId, _public_key: &Vec<u8>, _signature: &Vec<u8>, _message: &Vec<u8>) -> Result<bool, String> {
-			Ok(true)
-		}
+			fn sign_with_local_identity(
+				&self,
+				_msg: Vec<u8>,
+			) -> Result<sc_network::Signature, sc_network::service::signature::SigningError> {
+				Err(sc_network::service::signature::SigningError::new(
+					"Mock signing not implemented",
+				))
+			}
+			fn verify(
+				&self,
+				_peer_id: PeerId,
+				_public_key: &Vec<u8>,
+				_signature: &Vec<u8>,
+				_message: &Vec<u8>,
+			) -> Result<bool, String> {
+				Ok(true)
+			}
 		}
 
 		impl NetworkDHTProvider for MockNetwork {
 			fn get_value(&self, _key: &libp2p::kad::record::Key) {}
 			fn put_value(&self, _key: libp2p::kad::record::Key, _value: Vec<u8>) {}
-			fn put_record_to(&self, _record: sc_network_types::kad::Record, _peers: std::collections::HashSet<PeerId>, _update_local_store: bool) {}
-			fn store_record(&self, _key: libp2p::kad::record::Key, _value: Vec<u8>, _publisher: Option<PeerId>, _expires: Option<std::time::Instant>) {}
+			fn put_record_to(
+				&self,
+				_record: sc_network_types::kad::Record,
+				_peers: std::collections::HashSet<PeerId>,
+				_update_local_store: bool,
+			) {
+			}
+			fn store_record(
+				&self,
+				_key: libp2p::kad::record::Key,
+				_value: Vec<u8>,
+				_publisher: Option<PeerId>,
+				_expires: Option<std::time::Instant>,
+			) {
+			}
 			fn start_providing(&self, _key: libp2p::kad::record::Key) {}
 			fn stop_providing(&self, _key: libp2p::kad::record::Key) {}
 			fn get_providers(&self, _key: libp2p::kad::record::Key) {}
@@ -1048,10 +1099,21 @@ mod tests {
 		struct MockNetwork;
 
 		impl NetworkSigner for MockNetwork {
-			fn sign_with_local_identity(&self, _msg: Vec<u8>) -> Result<sc_network::Signature, sc_network::service::signature::SigningError> {
-				Err(sc_network::service::signature::SigningError::new("Mock signing not implemented"))
+			fn sign_with_local_identity(
+				&self,
+				_msg: Vec<u8>,
+			) -> Result<sc_network::Signature, sc_network::service::signature::SigningError> {
+				Err(sc_network::service::signature::SigningError::new(
+					"Mock signing not implemented",
+				))
 			}
-			fn verify(&self, _peer_id: PeerId, _public_key: &Vec<u8>, _signature: &Vec<u8>, _message: &Vec<u8>) -> Result<bool, String> {
+			fn verify(
+				&self,
+				_peer_id: PeerId,
+				_public_key: &Vec<u8>,
+				_signature: &Vec<u8>,
+				_message: &Vec<u8>,
+			) -> Result<bool, String> {
 				Ok(true)
 			}
 		}
@@ -1059,8 +1121,21 @@ mod tests {
 		impl NetworkDHTProvider for MockNetwork {
 			fn get_value(&self, _key: &libp2p::kad::record::Key) {}
 			fn put_value(&self, _key: libp2p::kad::record::Key, _value: Vec<u8>) {}
-			fn put_record_to(&self, _record: sc_network_types::kad::Record, _peers: std::collections::HashSet<PeerId>, _update_local_store: bool) {}
-			fn store_record(&self, _key: libp2p::kad::record::Key, _value: Vec<u8>, _publisher: Option<PeerId>, _expires: Option<std::time::Instant>) {}
+			fn put_record_to(
+				&self,
+				_record: sc_network_types::kad::Record,
+				_peers: std::collections::HashSet<PeerId>,
+				_update_local_store: bool,
+			) {
+			}
+			fn store_record(
+				&self,
+				_key: libp2p::kad::record::Key,
+				_value: Vec<u8>,
+				_publisher: Option<PeerId>,
+				_expires: Option<std::time::Instant>,
+			) {
+			}
 			fn start_providing(&self, _key: libp2p::kad::record::Key) {}
 			fn stop_providing(&self, _key: libp2p::kad::record::Key) {}
 			fn get_providers(&self, _key: libp2p::kad::record::Key) {}
@@ -1220,10 +1295,21 @@ mod tests {
 		struct MockNetwork;
 
 		impl NetworkSigner for MockNetwork {
-			fn sign_with_local_identity(&self, _msg: Vec<u8>) -> Result<sc_network::Signature, sc_network::service::signature::SigningError> {
-				Err(sc_network::service::signature::SigningError::new("Mock signing not implemented"))
+			fn sign_with_local_identity(
+				&self,
+				_msg: Vec<u8>,
+			) -> Result<sc_network::Signature, sc_network::service::signature::SigningError> {
+				Err(sc_network::service::signature::SigningError::new(
+					"Mock signing not implemented",
+				))
 			}
-			fn verify(&self, _peer_id: PeerId, _public_key: &Vec<u8>, _signature: &Vec<u8>, _message: &Vec<u8>) -> Result<bool, String> {
+			fn verify(
+				&self,
+				_peer_id: PeerId,
+				_public_key: &Vec<u8>,
+				_signature: &Vec<u8>,
+				_message: &Vec<u8>,
+			) -> Result<bool, String> {
 				Ok(true)
 			}
 		}
@@ -1231,8 +1317,21 @@ mod tests {
 		impl NetworkDHTProvider for MockNetwork {
 			fn get_value(&self, _key: &libp2p::kad::record::Key) {}
 			fn put_value(&self, _key: libp2p::kad::record::Key, _value: Vec<u8>) {}
-			fn put_record_to(&self, _record: sc_network_types::kad::Record, _peers: std::collections::HashSet<PeerId>, _update_local_store: bool) {}
-			fn store_record(&self, _key: libp2p::kad::record::Key, _value: Vec<u8>, _publisher: Option<PeerId>, _expires: Option<std::time::Instant>) {}
+			fn put_record_to(
+				&self,
+				_record: sc_network_types::kad::Record,
+				_peers: std::collections::HashSet<PeerId>,
+				_update_local_store: bool,
+			) {
+			}
+			fn store_record(
+				&self,
+				_key: libp2p::kad::record::Key,
+				_value: Vec<u8>,
+				_publisher: Option<PeerId>,
+				_expires: Option<std::time::Instant>,
+			) {
+			}
 			fn start_providing(&self, _key: libp2p::kad::record::Key) {}
 			fn stop_providing(&self, _key: libp2p::kad::record::Key) {}
 			fn get_providers(&self, _key: libp2p::kad::record::Key) {}
@@ -1391,10 +1490,21 @@ mod tests {
 		struct MockNetwork;
 
 		impl NetworkSigner for MockNetwork {
-			fn sign_with_local_identity(&self, _msg: Vec<u8>) -> Result<sc_network::Signature, sc_network::service::signature::SigningError> {
-				Err(sc_network::service::signature::SigningError::new("Mock signing not implemented"))
+			fn sign_with_local_identity(
+				&self,
+				_msg: Vec<u8>,
+			) -> Result<sc_network::Signature, sc_network::service::signature::SigningError> {
+				Err(sc_network::service::signature::SigningError::new(
+					"Mock signing not implemented",
+				))
 			}
-			fn verify(&self, _peer_id: PeerId, _public_key: &Vec<u8>, _signature: &Vec<u8>, _message: &Vec<u8>) -> Result<bool, String> {
+			fn verify(
+				&self,
+				_peer_id: PeerId,
+				_public_key: &Vec<u8>,
+				_signature: &Vec<u8>,
+				_message: &Vec<u8>,
+			) -> Result<bool, String> {
 				Ok(true)
 			}
 		}
@@ -1402,8 +1512,21 @@ mod tests {
 		impl NetworkDHTProvider for MockNetwork {
 			fn get_value(&self, _key: &libp2p::kad::record::Key) {}
 			fn put_value(&self, _key: libp2p::kad::record::Key, _value: Vec<u8>) {}
-			fn put_record_to(&self, _record: sc_network_types::kad::Record, _peers: std::collections::HashSet<PeerId>, _update_local_store: bool) {}
-			fn store_record(&self, _key: libp2p::kad::record::Key, _value: Vec<u8>, _publisher: Option<PeerId>, _expires: Option<std::time::Instant>) {}
+			fn put_record_to(
+				&self,
+				_record: sc_network_types::kad::Record,
+				_peers: std::collections::HashSet<PeerId>,
+				_update_local_store: bool,
+			) {
+			}
+			fn store_record(
+				&self,
+				_key: libp2p::kad::record::Key,
+				_value: Vec<u8>,
+				_publisher: Option<PeerId>,
+				_expires: Option<std::time::Instant>,
+			) {
+			}
 			fn start_providing(&self, _key: libp2p::kad::record::Key) {}
 			fn stop_providing(&self, _key: libp2p::kad::record::Key) {}
 			fn get_providers(&self, _key: libp2p::kad::record::Key) {}
@@ -1591,10 +1714,21 @@ mod tests {
 		struct MockNetwork;
 
 		impl NetworkSigner for MockNetwork {
-			fn sign_with_local_identity(&self, _msg: Vec<u8>) -> Result<sc_network::Signature, sc_network::service::signature::SigningError> {
-				Err(sc_network::service::signature::SigningError::new("Mock signing not implemented"))
+			fn sign_with_local_identity(
+				&self,
+				_msg: Vec<u8>,
+			) -> Result<sc_network::Signature, sc_network::service::signature::SigningError> {
+				Err(sc_network::service::signature::SigningError::new(
+					"Mock signing not implemented",
+				))
 			}
-			fn verify(&self, _peer_id: PeerId, _public_key: &Vec<u8>, _signature: &Vec<u8>, _message: &Vec<u8>) -> Result<bool, String> {
+			fn verify(
+				&self,
+				_peer_id: PeerId,
+				_public_key: &Vec<u8>,
+				_signature: &Vec<u8>,
+				_message: &Vec<u8>,
+			) -> Result<bool, String> {
 				Ok(true)
 			}
 		}
@@ -1602,8 +1736,21 @@ mod tests {
 		impl NetworkDHTProvider for MockNetwork {
 			fn get_value(&self, _key: &libp2p::kad::record::Key) {}
 			fn put_value(&self, _key: libp2p::kad::record::Key, _value: Vec<u8>) {}
-			fn put_record_to(&self, _record: sc_network_types::kad::Record, _peers: std::collections::HashSet<PeerId>, _update_local_store: bool) {}
-			fn store_record(&self, _key: libp2p::kad::record::Key, _value: Vec<u8>, _publisher: Option<PeerId>, _expires: Option<std::time::Instant>) {}
+			fn put_record_to(
+				&self,
+				_record: sc_network_types::kad::Record,
+				_peers: std::collections::HashSet<PeerId>,
+				_update_local_store: bool,
+			) {
+			}
+			fn store_record(
+				&self,
+				_key: libp2p::kad::record::Key,
+				_value: Vec<u8>,
+				_publisher: Option<PeerId>,
+				_expires: Option<std::time::Instant>,
+			) {
+			}
 			fn start_providing(&self, _key: libp2p::kad::record::Key) {}
 			fn stop_providing(&self, _key: libp2p::kad::record::Key) {}
 			fn get_providers(&self, _key: libp2p::kad::record::Key) {}
