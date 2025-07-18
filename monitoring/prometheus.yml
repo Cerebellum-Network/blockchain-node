@@ -1,0 +1,97 @@
+# Phase 4: Monitoring & Compliance - Prometheus Configuration
+# Comprehensive metrics collection for Cere blockchain node security monitoring
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'cere-blockchain'
+    environment: 'production'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# Load alerting rules
+rule_files:
+  - "rules/*.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # Cere blockchain node metrics
+  - job_name: 'cere-node'
+    static_configs:
+      - targets: ['host.docker.internal:9615']  # Default Substrate metrics port
+    scrape_interval: 15s
+    metrics_path: /metrics
+    scrape_timeout: 10s
+    honor_labels: true
+    params:
+      format: ['prometheus']
+
+  # System metrics via Node Exporter
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # AlertManager metrics
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # Grafana metrics
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # Loki metrics
+  - job_name: 'loki'
+    static_configs:
+      - targets: ['loki:3100']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # Custom security metrics endpoint (if implemented)
+  - job_name: 'cere-security'
+    static_configs:
+      - targets: ['host.docker.internal:9616']  # Custom security metrics port
+    scrape_interval: 10s
+    metrics_path: /security-metrics
+    scrape_timeout: 5s
+
+  # Docker container metrics (if cAdvisor is running)
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['host.docker.internal:8080']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+# Remote write configuration for long-term storage (optional)
+# remote_write:
+#   - url: "https://prometheus-remote-write-endpoint.example.com/api/v1/write"
+#     basic_auth:
+#       username: "username"
+#       password: "password"
+
+# Remote read configuration (optional)
+# remote_read:
+#   - url: "https://prometheus-remote-read-endpoint.example.com/api/v1/read"
+#     basic_auth:
+#       username: "username"
+#       password: "password"

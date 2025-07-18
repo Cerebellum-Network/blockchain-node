@@ -1,0 +1,195 @@
+# Phase 4: Security Monitoring Alerts
+# Critical security and operational alerts for Cere blockchain node
+
+groups:
+  - name: blockchain_security
+    rules:
+      # Critical Security Alerts
+      - alert: LowPeerCount
+        expr: substrate_sub_libp2p_peers_count < 3
+        for: 2m
+        labels:
+          severity: critical
+          category: security
+        annotations:
+          summary: "Blockchain node has critically low peer count"
+          description: "Node {{ $labels.instance }} has only {{ $value }} peers connected. Minimum required: 3"
+
+      - alert: HighPeerCount
+        expr: substrate_sub_libp2p_peers_count > 50
+        for: 5m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "Blockchain node has unusually high peer count"
+          description: "Node {{ $labels.instance }} has {{ $value }} peers connected. This may indicate a potential attack."
+
+      - alert: ConsensusFailure
+        expr: increase(substrate_finality_grandpa_round_state_total{state="stalled"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          category: consensus
+        annotations:
+          summary: "Consensus mechanism is stalled"
+          description: "GRANDPA consensus is stalled on {{ $labels.instance }}"
+
+      - alert: BlockProductionSlow
+        expr: increase(substrate_block_height[1m]) < 8
+        for: 3m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "Block production is slower than expected"
+          description: "Block production rate is {{ $value }} blocks/minute, expected ~10 blocks/minute"
+
+      - alert: NetworkSecurityScoreLow
+        expr: cere_network_security_score < 70
+        for: 2m
+        labels:
+          severity: critical
+          category: security
+        annotations:
+          summary: "Network security score is critically low"
+          description: "Security score is {{ $value }}/100. Immediate investigation required."
+
+      - alert: MaliciousPeerActivity
+        expr: increase(cere_malicious_peer_attempts_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: high
+          category: security
+        annotations:
+          summary: "Malicious peer activity detected"
+          description: "{{ $value }} malicious peer attempts detected in the last 5 minutes"
+
+      - alert: UnauthorizedAccessAttempt
+        expr: increase(cere_unauthorized_access_attempts_total[1m]) > 0
+        for: 0m
+        labels:
+          severity: high
+          category: security
+        annotations:
+          summary: "Unauthorized access attempt detected"
+          description: "{{ $value }} unauthorized access attempts in the last minute"
+
+  - name: system_health
+    rules:
+      # System Health Alerts
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          category: system
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is {{ $value }}% on {{ $labels.instance }}"
+
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          category: system
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is {{ $value }}% on {{ $labels.instance }}"
+
+      - alert: DiskSpaceLow
+        expr: (1 - (node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes{fstype!="tmpfs"})) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          category: system
+        annotations:
+          summary: "Low disk space"
+          description: "Disk usage is {{ $value }}% on {{ $labels.instance }} {{ $labels.mountpoint }}"
+
+      - alert: NodeDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: "Node is down"
+          description: "{{ $labels.instance }} has been down for more than 1 minute"
+
+  - name: compliance_monitoring
+    rules:
+      # SOC2 Compliance Monitoring
+      - alert: AuditLogFailure
+        expr: increase(cere_audit_log_failures_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: high
+          category: compliance
+        annotations:
+          summary: "Audit logging failure detected"
+          description: "{{ $value }} audit log failures in the last 5 minutes. Compliance may be affected."
+
+      - alert: SecurityPolicyViolation
+        expr: increase(cere_security_policy_violations_total[1m]) > 0
+        for: 0m
+        labels:
+          severity: high
+          category: compliance
+        annotations:
+          summary: "Security policy violation detected"
+          description: "{{ $value }} security policy violations detected"
+
+      - alert: ConfigurationDrift
+        expr: cere_configuration_drift_detected > 0
+        for: 1m
+        labels:
+          severity: warning
+          category: compliance
+        annotations:
+          summary: "Configuration drift detected"
+          description: "Configuration has drifted from approved baseline"
+
+      - alert: CertificateExpiringSoon
+        expr: (cere_certificate_expiry_timestamp - time()) / 86400 < 30
+        for: 1h
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "Certificate expiring soon"
+          description: "Certificate {{ $labels.certificate }} expires in {{ $value }} days"
+
+  - name: performance_monitoring
+    rules:
+      # Performance and Capacity Alerts
+      - alert: TransactionPoolFull
+        expr: substrate_sub_txpool_validations_scheduled > 8192
+        for: 2m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "Transaction pool is nearly full"
+          description: "Transaction pool has {{ $value }} pending transactions"
+
+      - alert: DatabaseSizeLarge
+        expr: substrate_database_cache_bytes > 1073741824  # 1GB
+        for: 10m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "Database cache size is large"
+          description: "Database cache is {{ $value | humanize1024 }}B"
+
+      - alert: NetworkLatencyHigh
+        expr: substrate_sub_libp2p_pending_connections > 10
+        for: 3m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "High network latency detected"
+          description: "{{ $value }} pending network connections"
