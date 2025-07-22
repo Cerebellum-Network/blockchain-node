@@ -1717,7 +1717,6 @@ pub mod migrations {
 			Runtime,
 			MaxPoolsToMigrate,
 		>,
-
 	);
 
 	pub type UnreleasedMultiblock =
