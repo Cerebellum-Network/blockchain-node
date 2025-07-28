@@ -52,7 +52,7 @@ mod customer_deposit {
 	#[derive(Debug, Clone, PartialEq, Eq)]
 	#[ink::scale_derive(Encode, Decode, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]
-	pub struct Ledger {
+	pub struct CustomerLedger {
 		/// The owner account whose balance is actually locked and can be used to pay for DDC
 		/// network usage.
 		pub owner: AccountId,
@@ -69,7 +69,7 @@ mod customer_deposit {
 		pub unlocking: Vec<UnlockChunk>,
 	}
 
-	impl Ledger {
+	impl CustomerLedger {
 		/// Remove unlocked chunks and update total balance (like pallet).
 		fn consolidate_unlocked(mut self, current_block: BlockNumber) -> Self {
 			let mut total = self.total;
@@ -95,13 +95,11 @@ mod customer_deposit {
 		block: BlockNumber,
 	}
 
-	/// Defines the storage of our contract.
-	///
-	/// Here we store the random seed fetched from the chain.
+	/// Defines the storage of the contract.
 	#[ink(storage)]
 	pub struct CustomerDepositContract {
 		cluster_id: ClusterId,
-		balances: Mapping<AccountId, Ledger>,
+		balances: Mapping<AccountId, CustomerLedger>,
 	}
 
 	impl CustomerDepositContract {
@@ -109,12 +107,6 @@ mod customer_deposit {
 		pub fn new(cluster_id: ClusterId) -> Self {
 			let balances = Mapping::default();
 			Self { balances, cluster_id }
-		}
-
-		/// Get the deposit balance for specific owner
-		#[ink(message)]
-		pub fn get_balance(&self, owner: AccountId) -> Option<Ledger> {
-			self.balances.get(&owner)
 		}
 
 		/// Top up deposit balance on behalf its owner
@@ -143,7 +135,7 @@ mod customer_deposit {
 			} else {
 				// New ledger
 				let ledger =
-					Ledger { owner, total: value, active: value, unlocking: Default::default() };
+					CustomerLedger { owner, total: value, active: value, unlocking: Default::default() };
 				self.balances.insert(owner, &ledger);
 			}
 
@@ -171,7 +163,7 @@ mod customer_deposit {
 				// New ledger - no need for existential deposit check since contract holds all
 				// tokens
 				let ledger =
-					Ledger { owner, total: value, active: value, unlocking: Default::default() };
+					CustomerLedger { owner, total: value, active: value, unlocking: Default::default() };
 
 				self.balances.insert(owner, &ledger);
 			} else {
@@ -294,6 +286,14 @@ mod customer_deposit {
 		}
 	}
 
+	impl ddc_primitives::contracts::customer_deposit::DdcBalancesFetcher for CustomerDepositContract {
+		#[ink(message)]
+		fn get_balance(&self, owner: ddc_primitives::contracts::types::AccountId) -> Option<ddc_primitives::contracts::customer_deposit::Ledger> {
+			let ledger = self.balances.get(&from_account_32(&owner))?;
+			Some(ledger.into())
+		}
+	}
+
 	impl ddc_primitives::contracts::customer_deposit::DdcPayoutsPayer for CustomerDepositContract {
 		#[ink(message)]
 		fn charge(
@@ -363,6 +363,47 @@ mod customer_deposit {
 			Err(())
 		}
 	}
+
+	impl From<ddc_primitives::contracts::customer_deposit::Ledger> for CustomerLedger {
+		fn from(other: ddc_primitives::contracts::customer_deposit::Ledger) -> Self {
+			CustomerLedger {
+				owner: from_account_32(&other.owner),
+				total: other.total,
+				active: other.active,
+				unlocking: other.unlocking.into_iter().map(|chunk| chunk.into()).collect(),
+			}
+		}
+	}
+
+	impl Into<ddc_primitives::contracts::customer_deposit::Ledger> for CustomerLedger {
+		fn into(self) -> ddc_primitives::contracts::customer_deposit::Ledger {
+			ddc_primitives::contracts::customer_deposit::Ledger {
+				owner: to_account_32(&self.owner).unwrap(),
+				total: self.total,
+				active: self.active,
+				unlocking: self.unlocking.into_iter().map(|chunk| chunk.into()).collect(),
+			}
+		}
+	}
+
+	impl From<ddc_primitives::contracts::customer_deposit::UnlockChunk> for UnlockChunk {
+		fn from(other: ddc_primitives::contracts::customer_deposit::UnlockChunk) -> Self {
+			UnlockChunk {
+				value: other.value,
+				block: other.block,
+			}
+		}
+	}
+
+	impl Into<ddc_primitives::contracts::customer_deposit::UnlockChunk> for UnlockChunk {
+		fn into(self) -> ddc_primitives::contracts::customer_deposit::UnlockChunk {
+			ddc_primitives::contracts::customer_deposit::UnlockChunk {
+				value: self.value,
+				block: self.block,
+			}
+		}
+	}
+
 }
 
 #[cfg(test)]
