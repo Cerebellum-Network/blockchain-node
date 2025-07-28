@@ -1,10 +1,10 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use ddc_primitives::{
-	Balance as ChainBalance, BlockNumber as ChainBlockNumber, Timestamp as ChainTimestamp, traits::contract::{DdcBalanceDeposited, DdcBalanceUnlocked, DdcBalanceWithdrawn, DdcBalanceCharged, ClusterId},
+	contracts::types::{ClusterId},
+	contracts::customer_deposit::{DdcBalanceDeposited, DdcBalanceUnlocked, DdcBalanceWithdrawn, DdcBalanceCharged},
 };
 use ink::env::Environment;
-use sp_runtime::AccountId32;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[ink::scale_derive(TypeInfo)]
@@ -14,9 +14,9 @@ impl Environment for CereEnvironment {
 	const MAX_EVENT_TOPICS: usize = <ink::env::DefaultEnvironment as Environment>::MAX_EVENT_TOPICS;
 	type AccountId = <ink::env::DefaultEnvironment as Environment>::AccountId;
 	type Hash = <ink::env::DefaultEnvironment as Environment>::Hash;
-	type Balance = ChainBalance;
-	type BlockNumber = ChainBlockNumber;
-	type Timestamp = ChainTimestamp;
+	type Balance = <ink::env::DefaultEnvironment as Environment>::Balance;
+	type BlockNumber = <ink::env::DefaultEnvironment as Environment>::BlockNumber;
+	type Timestamp = <ink::env::DefaultEnvironment as Environment>::Timestamp;
 	type ChainExtension = ();
 }
 
@@ -36,7 +36,8 @@ pub enum Error {
 mod customer_deposit {
 	use ink::{prelude::vec::Vec, storage::Mapping};
 
-	use super::{AccountId32, Error, ClusterId, DdcBalanceDeposited, DdcBalanceUnlocked, DdcBalanceWithdrawn, DdcBalanceCharged};
+	use ddc_primitives::contracts::types::AccountId as AccountId32;
+	use super::{Error, ClusterId, DdcBalanceDeposited, DdcBalanceUnlocked, DdcBalanceWithdrawn, DdcBalanceCharged};
 
 	pub const UNLOCK_DELAY_BLOCKS: u32 = 10;
 	pub const MIN_EXISTENTIAL_DEPOSIT: Balance = 10000000000;
@@ -293,13 +294,13 @@ mod customer_deposit {
 		}
 	}
 
-	impl ddc_primitives::traits::DdcPayoutsPayer for CustomerDepositContract {
+	impl ddc_primitives::contracts::customer_deposit::DdcPayoutsPayer for CustomerDepositContract {
 		#[ink(message)]
 		fn charge(
 			&mut self,
-			payout_vault: crate::AccountId32,
-			batch: Vec<(crate::AccountId32, u128)>,
-		) -> Vec<(crate::AccountId32, u128)> {
+			payout_vault: ddc_primitives::contracts::types::AccountId,
+			batch: Vec<(ddc_primitives::contracts::types::AccountId, ddc_primitives::contracts::types::Balance)>,
+		) -> Vec<(ddc_primitives::contracts::types::AccountId, ddc_primitives::contracts::types::Balance)> {
 			let caller = self.env().caller();
 
 			assert!(caller == from_account_32(&PAYOUTS_PALLET));
@@ -349,7 +350,7 @@ mod customer_deposit {
 		}
 	}
 
-	pub fn from_account_32(account_id: &crate::AccountId32) -> AccountId {
+	pub fn from_account_32(account_id: &AccountId32) -> AccountId {
 		AccountId::from(<[u8; 32]>::from(account_id.clone()))
 	}
 
@@ -366,11 +367,11 @@ mod customer_deposit {
 
 #[cfg(test)]
 mod tests {
-	use ddc_primitives::traits::{DdcPayoutsPayer, contract::{ClusterId}};
+	use ddc_primitives::contracts::{customer_deposit::DdcPayoutsPayer, types::ClusterId};
 	use ink::env::test;
-	use sp_runtime::AccountId32;
 
 	use super::*;
+	use ddc_primitives::contracts::types::AccountId as AccountId32;
 	use crate::customer_deposit::{
 		from_account_32,  CustomerDepositContract, MIN_EXISTENTIAL_DEPOSIT,
 		PAYOUTS_PALLET, UNLOCK_DELAY_BLOCKS,
