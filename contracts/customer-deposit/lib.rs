@@ -108,16 +108,26 @@ mod customer_deposit {
 			let balances = Mapping::default();
 			Self { balances, cluster_id }
 		}
+	}
 
+	impl ddc_primitives::contracts::customer_deposit::traits::DdcBalancesFetcher for CustomerDepositContract {
+		#[ink(message)]
+		fn get_balance(&self, owner: ddc_primitives::contracts::types::AccountId) -> Option<ddc_primitives::contracts::customer_deposit::types::Ledger> {
+			let ledger = self.balances.get(&from_account_32(&owner))?;
+			Some(ledger.into())
+		}
+	}
+
+	impl ddc_primitives::contracts::customer_deposit::traits::DdcBalancesDepositor for CustomerDepositContract {
 		/// Top up deposit balance on behalf its owner
 		#[ink(message, payable)]
-		pub fn deposit(&mut self) -> Result<(), Error> {
+		fn deposit(&mut self) -> Result<(), ddc_primitives::contracts::customer_deposit::errors::Error> {
 			let owner = self.env().caller();
 			let value = self.env().transferred_value();
 
 			// Reject dust deposits
 			if value < MIN_EXISTENTIAL_DEPOSIT {
-				return Err(Error::InsufficientDeposit);
+				return Err(Error::InsufficientDeposit.into());
 			}
 
 			if let Some(mut ledger) = self.balances.get(&owner) {
@@ -128,7 +138,7 @@ mod customer_deposit {
 
 				// Defensive check against dust
 				if ledger.active < MIN_EXISTENTIAL_DEPOSIT {
-					return Err(Error::InsufficientDeposit);
+					return Err(Error::InsufficientDeposit.into());
 				}
 
 				self.balances.insert(owner, &ledger);
@@ -147,16 +157,17 @@ mod customer_deposit {
 
 			Ok(())
 		}
-
+	
 		/// Top up deposit balance for specific owner on behalf faucet
 		#[ink(message, payable)]
-		pub fn deposit_for(&mut self, owner: AccountId) -> Result<(), Error> {
+		fn deposit_for(&mut self, owner: ddc_primitives::contracts::types::AccountId) -> Result<(), ddc_primitives::contracts::customer_deposit::errors::Error> {
+			let owner = from_account_32(&owner);
 			let _funder = self.env().caller();
 			let value = self.env().transferred_value();
 
 			// Reject dust deposits
 			if value < MIN_EXISTENTIAL_DEPOSIT {
-				return Err(Error::InsufficientDeposit);
+				return Err(Error::InsufficientDeposit.into());
 			}
 
 			if !self.balances.contains(&owner) {
@@ -175,7 +186,7 @@ mod customer_deposit {
 
 				// Ensure active balance doesn't become dust (defensive programming)
 				if ledger.active < MIN_EXISTENTIAL_DEPOSIT {
-					return Err(Error::InsufficientDeposit);
+					return Err(Error::InsufficientDeposit.into());
 				}
 
 				self.balances.insert(owner, &ledger);
@@ -189,21 +200,21 @@ mod customer_deposit {
 
 			Ok(())
 		}
-
+	
 		/// Initiate unlocking of deposit balance on behalf its owner
 		#[ink(message)]
-		pub fn unlock_deposit(&mut self, value: Balance) -> Result<(), Error> {
+		fn unlock_deposit(&mut self, value: Balance) -> Result<(), ddc_primitives::contracts::customer_deposit::errors::Error> {
 			let owner = self.env().caller();
 			let mut ledger = self.balances.get(&owner).ok_or(Error::NotOwner)?;
 
 			// Ensure sufficient active balance
 			if value > ledger.active {
-				return Err(Error::InsufficientDeposit);
+				return Err(Error::InsufficientDeposit.into());
 			}
 
 			// Prevent unlocking dust amounts
 			if value < MIN_EXISTENTIAL_DEPOSIT {
-				return Err(Error::InsufficientDeposit);
+				return Err(Error::InsufficientDeposit.into());
 			}
 
 			// Update balances (pallet-like dust handling)
@@ -245,10 +256,10 @@ mod customer_deposit {
 
 			Ok(())
 		}
-
+	
 		/// Withdraw unlocked deposit balance on behalf its owner
 		#[ink(message)]
-		pub fn withdraw_unlocked(&mut self) -> Result<(), Error> {
+		fn withdraw_unlocked(&mut self) -> Result<(), ddc_primitives::contracts::customer_deposit::errors::Error> {
 			let owner = self.env().caller();
 			let current_block = self.env().block_number();
 
@@ -263,7 +274,7 @@ mod customer_deposit {
 			let withdrawn =
 				old_total.checked_sub(ledger.total).ok_or(Error::ArithmeticUnderflow)?;
 			if withdrawn == 0 {
-				return Err(Error::NothingToWithdraw);
+				return Err(Error::NothingToWithdraw.into());
 			}
 
 			self.env().transfer(owner, withdrawn).map_err(|_| Error::TransferFailed)?;
@@ -283,14 +294,6 @@ mod customer_deposit {
 			});
 
 			Ok(())
-		}
-	}
-
-	impl ddc_primitives::contracts::customer_deposit::traits::DdcBalancesFetcher for CustomerDepositContract {
-		#[ink(message)]
-		fn get_balance(&self, owner: ddc_primitives::contracts::types::AccountId) -> Option<ddc_primitives::contracts::customer_deposit::types::Ledger> {
-			let ledger = self.balances.get(&from_account_32(&owner))?;
-			Some(ledger.into())
 		}
 	}
 
@@ -354,7 +357,7 @@ mod customer_deposit {
 		AccountId::from(<[u8; 32]>::from(account_id.clone()))
 	}
 
-	fn to_account_32(
+	pub fn to_account_32(
 		account_id: &<ink::env::DefaultEnvironment as ink::env::Environment>::AccountId,
 	) -> Result<AccountId32, ()> {
 		if let Ok(bytes) = <[u8; 32]>::try_from(account_id.as_ref()) {
@@ -404,11 +407,26 @@ mod customer_deposit {
 		}
 	}
 
+	impl From<Error> for ddc_primitives::contracts::customer_deposit::errors::Error {
+		fn from(err: Error) -> Self {
+			use ddc_primitives::contracts::customer_deposit::errors::Error as Err;
+			match err {
+				Error::InsufficientDeposit => Err::Code(1),
+				Error::ArithmeticOverflow => Err::Code(2),
+				Error::ArithmeticUnderflow => Err::Code(3),
+				Error::TransferFailed => Err::Code(4),
+				Error::NotOwner => Err::Code(5),
+				Error::NoLedger => Err::Code(6),
+				Error::NothingToWithdraw => Err::Code(7),
+			}
+		}
+	}
+	
 }
 
 #[cfg(test)]
 mod tests {
-	use ddc_primitives::contracts::{customer_deposit::traits::{DdcPayoutsPayer, DdcBalancesFetcher}, types::ClusterId};
+	use ddc_primitives::contracts::{customer_deposit::traits::{DdcPayoutsPayer, DdcBalancesFetcher, DdcBalancesDepositor}, types::ClusterId};
 	use ink::env::test;
 
 	use super::*;
@@ -418,13 +436,13 @@ mod tests {
 		PAYOUTS_PALLET, UNLOCK_DELAY_BLOCKS,
 	};
 
-	const TEST_CLUSTER_ID: ClusterId = [0; 20];
+	const CLUSTER_ID: ClusterId = [0; 20];
 	const ENDOWMENT: Balance = MIN_EXISTENTIAL_DEPOSIT * 1_000_000;
 
 	type Balance = <ink::env::DefaultEnvironment as Environment>::Balance;
 
 	fn setup() -> (CustomerDepositContract, test::DefaultAccounts<ink::env::DefaultEnvironment>) {
-		let contract = CustomerDepositContract::new(TEST_CLUSTER_ID);
+		let contract = CustomerDepositContract::new(CLUSTER_ID);
 		let accounts = test::default_accounts::<ink::env::DefaultEnvironment>();
 		ink::env::test::set_account_balance::<ink::env::DefaultEnvironment>(
 			accounts.alice,
@@ -485,7 +503,7 @@ mod tests {
 		test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT - 1);
 
 		// Deposit fails
-		assert_eq!(contract.deposit().unwrap_err(), Error::InsufficientDeposit);
+		assert_eq!(contract.deposit().unwrap_err(), Error::InsufficientDeposit.into());
 	}
 
 	#[ink::test]
@@ -495,7 +513,7 @@ mod tests {
 		test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT * 2);
 
 		// Deposit for Bob (new account)
-		assert!(contract.deposit_for(accounts.bob).is_ok());
+		assert!(contract.deposit_for(to_account_32(&accounts.bob).unwrap()).is_ok());
 
 		// Verify Bob's ledger
 		let ledger = contract.get_balance(to_account_32(&accounts.bob).unwrap()).unwrap();
@@ -510,11 +528,11 @@ mod tests {
 
 		// First deposit for Bob
 		test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT);
-		assert!(contract.deposit_for(accounts.bob).is_ok());
+		assert!(contract.deposit_for(to_account_32(&accounts.bob).unwrap()).is_ok());
 
 		// Second deposit for Bob
 		test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT * 2);
-		assert!(contract.deposit_for(accounts.bob).is_ok());
+		assert!(contract.deposit_for(to_account_32(&accounts.bob).unwrap()).is_ok());
 
 		// Verify Bob's ledger
 		let ledger = contract.get_balance(to_account_32(&accounts.bob).unwrap()).unwrap();
@@ -529,7 +547,7 @@ mod tests {
 		test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT - 1);
 
 		// Deposit fails (dust)
-		assert_eq!(contract.deposit_for(accounts.bob).unwrap_err(), Error::InsufficientDeposit);
+		assert_eq!(contract.deposit_for(to_account_32(&accounts.bob).unwrap()).unwrap_err(), Error::InsufficientDeposit.into());
 	}
 
 	#[ink::test]
@@ -558,7 +576,7 @@ mod tests {
 		// Attempt to unlock more than active balance
 		assert_eq!(
 			contract.unlock_deposit(MIN_EXISTENTIAL_DEPOSIT * 2).unwrap_err(),
-			Error::InsufficientDeposit
+			Error::InsufficientDeposit.into()
 		);
 	}
 
@@ -572,7 +590,7 @@ mod tests {
 		// Attempt to unlock dust
 		assert_eq!(
 			contract.unlock_deposit(MIN_EXISTENTIAL_DEPOSIT - 1).unwrap_err(),
-			Error::InsufficientDeposit
+			Error::InsufficientDeposit.into()
 		);
 	}
 
@@ -611,7 +629,7 @@ mod tests {
 		assert!(contract.unlock_deposit(MIN_EXISTENTIAL_DEPOSIT * 5).is_ok());
 
 		// Attempt early withdraw
-		assert_eq!(contract.withdraw_unlocked().unwrap_err(), Error::NothingToWithdraw);
+		assert_eq!(contract.withdraw_unlocked().unwrap_err(), Error::NothingToWithdraw.into());
 	}
 
 	#[ink::test]
