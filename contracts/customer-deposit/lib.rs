@@ -1,10 +1,10 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
+use ink::env::Environment;
 use ddc_primitives::{
 	contracts::types::{ClusterId},
-	contracts::customer_deposit::{DdcBalanceDeposited, DdcBalanceUnlocked, DdcBalanceWithdrawn, DdcBalanceCharged},
+	contracts::customer_deposit::events::{DdcBalanceDeposited, DdcBalanceUnlocked, DdcBalanceWithdrawn, DdcBalanceCharged},
 };
-use ink::env::Environment;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[ink::scale_derive(TypeInfo)]
@@ -66,7 +66,7 @@ mod customer_deposit {
 		/// (assuming that the content owner has to pay for network usage). It is assumed that this
 		/// will be treated as a first in, first out queue where the new (higher value) eras get
 		/// pushed on the back.
-		pub unlocking: Vec<UnlockChunk>,
+		pub unlocking: Vec<LinearUnlockChunk>,
 	}
 
 	impl CustomerLedger {
@@ -88,7 +88,7 @@ mod customer_deposit {
 	#[derive(Debug, Clone, PartialEq, Eq)]
 	#[ink::scale_derive(Encode, Decode, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]
-	pub struct UnlockChunk {
+	pub struct LinearUnlockChunk {
 		/// Amount of funds to be unlocked.
 		value: Balance,
 		/// Block number at which point it'll be unlocked.
@@ -231,7 +231,7 @@ mod customer_deposit {
 				// be the last one.
 				chunk.value = chunk.value.saturating_add(value);
 			} else {
-				ledger.unlocking.push(UnlockChunk { value, block: unlock_block });
+				ledger.unlocking.push(LinearUnlockChunk { value, block: unlock_block });
 			}
 
 			self.balances.insert(&owner, &ledger);
@@ -286,15 +286,15 @@ mod customer_deposit {
 		}
 	}
 
-	impl ddc_primitives::contracts::customer_deposit::DdcBalancesFetcher for CustomerDepositContract {
+	impl ddc_primitives::contracts::customer_deposit::traits::DdcBalancesFetcher for CustomerDepositContract {
 		#[ink(message)]
-		fn get_balance(&self, owner: ddc_primitives::contracts::types::AccountId) -> Option<ddc_primitives::contracts::customer_deposit::Ledger> {
+		fn get_balance(&self, owner: ddc_primitives::contracts::types::AccountId) -> Option<ddc_primitives::contracts::customer_deposit::types::Ledger> {
 			let ledger = self.balances.get(&from_account_32(&owner))?;
 			Some(ledger.into())
 		}
 	}
 
-	impl ddc_primitives::contracts::customer_deposit::DdcPayoutsPayer for CustomerDepositContract {
+	impl ddc_primitives::contracts::customer_deposit::traits::DdcPayoutsPayer for CustomerDepositContract {
 		#[ink(message)]
 		fn charge(
 			&mut self,
@@ -364,8 +364,8 @@ mod customer_deposit {
 		}
 	}
 
-	impl From<ddc_primitives::contracts::customer_deposit::Ledger> for CustomerLedger {
-		fn from(other: ddc_primitives::contracts::customer_deposit::Ledger) -> Self {
+	impl From<ddc_primitives::contracts::customer_deposit::types::Ledger> for CustomerLedger {
+		fn from(other: ddc_primitives::contracts::customer_deposit::types::Ledger) -> Self {
 			CustomerLedger {
 				owner: from_account_32(&other.owner),
 				total: other.total,
@@ -375,9 +375,9 @@ mod customer_deposit {
 		}
 	}
 
-	impl Into<ddc_primitives::contracts::customer_deposit::Ledger> for CustomerLedger {
-		fn into(self) -> ddc_primitives::contracts::customer_deposit::Ledger {
-			ddc_primitives::contracts::customer_deposit::Ledger {
+	impl Into<ddc_primitives::contracts::customer_deposit::types::Ledger> for CustomerLedger {
+		fn into(self) -> ddc_primitives::contracts::customer_deposit::types::Ledger {
+			ddc_primitives::contracts::customer_deposit::types::Ledger {
 				owner: to_account_32(&self.owner).unwrap(),
 				total: self.total,
 				active: self.active,
@@ -386,18 +386,18 @@ mod customer_deposit {
 		}
 	}
 
-	impl From<ddc_primitives::contracts::customer_deposit::UnlockChunk> for UnlockChunk {
-		fn from(other: ddc_primitives::contracts::customer_deposit::UnlockChunk) -> Self {
-			UnlockChunk {
+	impl From<ddc_primitives::contracts::customer_deposit::types::UnlockChunk> for LinearUnlockChunk {
+		fn from(other: ddc_primitives::contracts::customer_deposit::types::UnlockChunk) -> Self {
+			LinearUnlockChunk {
 				value: other.value,
 				block: other.block,
 			}
 		}
 	}
 
-	impl Into<ddc_primitives::contracts::customer_deposit::UnlockChunk> for UnlockChunk {
-		fn into(self) -> ddc_primitives::contracts::customer_deposit::UnlockChunk {
-			ddc_primitives::contracts::customer_deposit::UnlockChunk {
+	impl Into<ddc_primitives::contracts::customer_deposit::types::UnlockChunk> for LinearUnlockChunk {
+		fn into(self) -> ddc_primitives::contracts::customer_deposit::types::UnlockChunk {
+			ddc_primitives::contracts::customer_deposit::types::UnlockChunk {
 				value: self.value,
 				block: self.block,
 			}
@@ -408,7 +408,7 @@ mod customer_deposit {
 
 #[cfg(test)]
 mod tests {
-	use ddc_primitives::contracts::{customer_deposit::DdcPayoutsPayer, types::ClusterId};
+	use ddc_primitives::contracts::{customer_deposit::traits::{DdcPayoutsPayer, DdcBalancesFetcher}, types::ClusterId};
 	use ink::env::test;
 
 	use super::*;
@@ -454,7 +454,7 @@ mod tests {
 		assert!(contract.deposit().is_ok());
 
 		// Verify ledger
-		let ledger = contract.get_balance(accounts.alice).unwrap();
+		let ledger = contract.get_balance(to_account_32(&accounts.alice).unwrap()).unwrap();
 		assert_eq!(ledger.total, MIN_EXISTENTIAL_DEPOSIT);
 		assert_eq!(ledger.active, MIN_EXISTENTIAL_DEPOSIT);
 	}
@@ -473,7 +473,7 @@ mod tests {
 		assert!(contract.deposit().is_ok());
 
 		// Verify ledger
-		let ledger = contract.get_balance(accounts.alice).unwrap();
+		let ledger = contract.get_balance(to_account_32(&accounts.alice).unwrap()).unwrap();
 		assert_eq!(ledger.total, MIN_EXISTENTIAL_DEPOSIT * 3);
 		assert_eq!(ledger.active, MIN_EXISTENTIAL_DEPOSIT * 3);
 	}
@@ -498,7 +498,7 @@ mod tests {
 		assert!(contract.deposit_for(accounts.bob).is_ok());
 
 		// Verify Bob's ledger
-		let ledger = contract.get_balance(accounts.bob).unwrap();
+		let ledger = contract.get_balance(to_account_32(&accounts.bob).unwrap()).unwrap();
 		assert_eq!(ledger.total, MIN_EXISTENTIAL_DEPOSIT * 2);
 		assert_eq!(ledger.active, MIN_EXISTENTIAL_DEPOSIT * 2);
 	}
@@ -517,7 +517,7 @@ mod tests {
 		assert!(contract.deposit_for(accounts.bob).is_ok());
 
 		// Verify Bob's ledger
-		let ledger = contract.get_balance(accounts.bob).unwrap();
+		let ledger = contract.get_balance(to_account_32(&accounts.bob).unwrap()).unwrap();
 		assert_eq!(ledger.total, MIN_EXISTENTIAL_DEPOSIT * 3);
 		assert_eq!(ledger.active, MIN_EXISTENTIAL_DEPOSIT * 3);
 	}
@@ -543,7 +543,7 @@ mod tests {
 		assert!(contract.unlock_deposit(MIN_EXISTENTIAL_DEPOSIT * 5).is_ok());
 
 		// Verify ledger
-		let ledger = contract.get_balance(accounts.alice).unwrap();
+		let ledger = contract.get_balance(to_account_32(&accounts.alice).unwrap()).unwrap();
 		assert_eq!(ledger.active, MIN_EXISTENTIAL_DEPOSIT * 5);
 		assert_eq!(ledger.unlocking.len(), 1);
 	}
@@ -594,7 +594,7 @@ mod tests {
 		assert!(contract.withdraw_unlocked().is_ok());
 
 		// Verify ledger
-		let ledger = contract.get_balance(accounts.alice).unwrap();
+		let ledger = contract.get_balance(to_account_32(&accounts.alice).unwrap()).unwrap();
 		assert_eq!(ledger.total, MIN_EXISTENTIAL_DEPOSIT * 5); // Withdrawn 5, remaining 5
 		assert_eq!(ledger.active, MIN_EXISTENTIAL_DEPOSIT * 5); // Active balance unchanged
 		assert!(ledger.unlocking.is_empty());
@@ -631,7 +631,7 @@ mod tests {
 		assert!(contract.withdraw_unlocked().is_ok());
 
 		// Verify ledger is NOT cleaned up (balance is still above dust)
-		assert!(contract.get_balance(accounts.alice).is_some());
+		assert!(contract.get_balance(to_account_32(&accounts.alice).unwrap()).is_some());
 
 		// Unlock and withdraw remaining balance
 		assert!(contract.unlock_deposit(MIN_EXISTENTIAL_DEPOSIT).is_ok());
@@ -641,7 +641,7 @@ mod tests {
 		assert!(contract.withdraw_unlocked().is_ok());
 
 		// Now ledger should be cleaned up
-		assert!(contract.get_balance(accounts.alice).is_none());
+		assert!(contract.get_balance(to_account_32(&accounts.alice).unwrap()).is_none());
 	}
 
 	#[ink::test]
