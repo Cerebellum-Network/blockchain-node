@@ -2,8 +2,12 @@
 
 use ink::env::Environment;
 use ddc_primitives::{
-	contracts::types::{ClusterId},
-	contracts::customer_deposit::events::{DdcBalanceDeposited, DdcBalanceUnlocked, DdcBalanceWithdrawn, DdcBalanceCharged},
+	contracts::types::{ClusterId, AccountId as AccountId32},
+	contracts::customer_deposit::{
+		types::{Ledger, UnlockChunk},
+		traits::{DdcBalancesFetcher, DdcBalancesDepositor, DdcPayoutsPayer},
+		events::{DdcBalanceDeposited, DdcBalanceUnlocked, DdcBalanceWithdrawn, DdcBalanceCharged}
+	},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -36,8 +40,12 @@ pub enum Error {
 mod customer_deposit {
 	use ink::{prelude::vec::Vec, storage::Mapping};
 
-	use ddc_primitives::contracts::types::AccountId as AccountId32;
-	use super::{Error, ClusterId, DdcBalanceDeposited, DdcBalanceUnlocked, DdcBalanceWithdrawn, DdcBalanceCharged};
+	use super::{
+		Error, AccountId32, ClusterId, 
+		DdcBalanceDeposited, DdcBalanceUnlocked, DdcBalanceWithdrawn, DdcBalanceCharged, 
+		DdcBalancesFetcher, DdcBalancesDepositor, DdcPayoutsPayer, 
+		Ledger, UnlockChunk
+	};
 
 	pub const UNLOCK_DELAY_BLOCKS: u32 = 10;
 	pub const MIN_EXISTENTIAL_DEPOSIT: Balance = 10000000000;
@@ -110,15 +118,15 @@ mod customer_deposit {
 		}
 	}
 
-	impl ddc_primitives::contracts::customer_deposit::traits::DdcBalancesFetcher for CustomerDepositContract {
+	impl DdcBalancesFetcher for CustomerDepositContract {
 		#[ink(message)]
-		fn get_balance(&self, owner: ddc_primitives::contracts::types::AccountId) -> Option<ddc_primitives::contracts::customer_deposit::types::Ledger> {
+		fn get_balance(&self, owner: AccountId32) -> Option<Ledger> {
 			let ledger = self.balances.get(&from_account_32(&owner))?;
 			Some(ledger.into())
 		}
 	}
 
-	impl ddc_primitives::contracts::customer_deposit::traits::DdcBalancesDepositor for CustomerDepositContract {
+	impl DdcBalancesDepositor for CustomerDepositContract {
 		/// Top up deposit balance on behalf its owner
 		#[ink(message, payable)]
 		fn deposit(&mut self) -> Result<(), ddc_primitives::contracts::customer_deposit::errors::Error> {
@@ -160,7 +168,7 @@ mod customer_deposit {
 	
 		/// Top up deposit balance for specific owner on behalf faucet
 		#[ink(message, payable)]
-		fn deposit_for(&mut self, owner: ddc_primitives::contracts::types::AccountId) -> Result<(), ddc_primitives::contracts::customer_deposit::errors::Error> {
+		fn deposit_for(&mut self, owner: AccountId32) -> Result<(), ddc_primitives::contracts::customer_deposit::errors::Error> {
 			let owner = from_account_32(&owner);
 			let _funder = self.env().caller();
 			let value = self.env().transferred_value();
@@ -297,13 +305,13 @@ mod customer_deposit {
 		}
 	}
 
-	impl ddc_primitives::contracts::customer_deposit::traits::DdcPayoutsPayer for CustomerDepositContract {
+	impl DdcPayoutsPayer for CustomerDepositContract {
 		#[ink(message)]
 		fn charge(
 			&mut self,
-			payout_vault: ddc_primitives::contracts::types::AccountId,
-			batch: Vec<(ddc_primitives::contracts::types::AccountId, ddc_primitives::contracts::types::Balance)>,
-		) -> Vec<(ddc_primitives::contracts::types::AccountId, ddc_primitives::contracts::types::Balance)> {
+			payout_vault: AccountId32,
+			batch: Vec<(AccountId32, ddc_primitives::contracts::types::Balance)>,
+		) -> Vec<(AccountId32, ddc_primitives::contracts::types::Balance)> {
 			let caller = self.env().caller();
 
 			assert!(caller == from_account_32(&PAYOUTS_PALLET));
@@ -367,8 +375,8 @@ mod customer_deposit {
 		}
 	}
 
-	impl From<ddc_primitives::contracts::customer_deposit::types::Ledger> for CustomerLedger {
-		fn from(other: ddc_primitives::contracts::customer_deposit::types::Ledger) -> Self {
+	impl From<Ledger> for CustomerLedger {
+		fn from(other: Ledger) -> Self {
 			CustomerLedger {
 				owner: from_account_32(&other.owner),
 				total: other.total,
@@ -378,9 +386,9 @@ mod customer_deposit {
 		}
 	}
 
-	impl Into<ddc_primitives::contracts::customer_deposit::types::Ledger> for CustomerLedger {
-		fn into(self) -> ddc_primitives::contracts::customer_deposit::types::Ledger {
-			ddc_primitives::contracts::customer_deposit::types::Ledger {
+	impl Into<Ledger> for CustomerLedger {
+		fn into(self) -> Ledger {
+			Ledger {
 				owner: to_account_32(&self.owner).unwrap(),
 				total: self.total,
 				active: self.active,
@@ -389,8 +397,8 @@ mod customer_deposit {
 		}
 	}
 
-	impl From<ddc_primitives::contracts::customer_deposit::types::UnlockChunk> for LinearUnlockChunk {
-		fn from(other: ddc_primitives::contracts::customer_deposit::types::UnlockChunk) -> Self {
+	impl From<UnlockChunk> for LinearUnlockChunk {
+		fn from(other: UnlockChunk) -> Self {
 			LinearUnlockChunk {
 				value: other.value,
 				block: other.block,
@@ -398,9 +406,9 @@ mod customer_deposit {
 		}
 	}
 
-	impl Into<ddc_primitives::contracts::customer_deposit::types::UnlockChunk> for LinearUnlockChunk {
-		fn into(self) -> ddc_primitives::contracts::customer_deposit::types::UnlockChunk {
-			ddc_primitives::contracts::customer_deposit::types::UnlockChunk {
+	impl Into<UnlockChunk> for LinearUnlockChunk {
+		fn into(self) -> UnlockChunk {
+			UnlockChunk {
 				value: self.value,
 				block: self.block,
 			}
@@ -426,14 +434,16 @@ mod customer_deposit {
 
 #[cfg(test)]
 mod tests {
-	use ddc_primitives::contracts::{customer_deposit::traits::{DdcPayoutsPayer, DdcBalancesFetcher, DdcBalancesDepositor}, types::ClusterId};
+	use ddc_primitives::contracts::{
+		customer_deposit::traits::{DdcPayoutsPayer, DdcBalancesFetcher, DdcBalancesDepositor}, 
+		types::ClusterId
+	};
 	use ink::env::test;
 
 	use super::*;
-	use ddc_primitives::contracts::types::AccountId as AccountId32;
 	use crate::customer_deposit::{
-		from_account_32,  CustomerDepositContract, MIN_EXISTENTIAL_DEPOSIT,
-		PAYOUTS_PALLET, UNLOCK_DELAY_BLOCKS,
+		from_account_32, to_account_32, CustomerDepositContract, 
+		MIN_EXISTENTIAL_DEPOSIT, PAYOUTS_PALLET, UNLOCK_DELAY_BLOCKS,
 	};
 
 	const CLUSTER_ID: ClusterId = [0; 20];
@@ -450,16 +460,6 @@ mod tests {
 		);
 
 		(contract, accounts)
-	}
-
-	fn to_account_32(
-		account_id: &<ink::env::DefaultEnvironment as Environment>::AccountId,
-	) -> Result<AccountId32, ()> {
-		if let Ok(bytes) = <[u8; 32]>::try_from(account_id.as_ref()) {
-			Ok(AccountId32::from(bytes))
-		} else {
-			Err(())
-		}
 	}
 
 	#[ink::test]
