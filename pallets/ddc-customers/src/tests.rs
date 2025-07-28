@@ -365,7 +365,7 @@ fn charge_bucket_owner_works() {
 
 		// Checking that event was emitted
 		System::assert_last_event(
-			Event::Charged { cluster_id, owner_id: account3, charged, expected_to_charge: charged }
+			Event::Charged { cluster_id, owner_id: account3, charged, expected: charged }
 				.into(),
 		);
 
@@ -389,7 +389,7 @@ fn charge_bucket_owner_works() {
 				cluster_id,
 				owner_id: account3,
 				charged: deposit - charge1,
-				expected_to_charge: charge2,
+				expected: charge2,
 			}
 			.into(),
 		);

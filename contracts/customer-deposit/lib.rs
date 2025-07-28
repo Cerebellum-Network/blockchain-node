@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use ddc_primitives::{
-	Balance as ChainBalance, BlockNumber as ChainBlockNumber, Timestamp as ChainTimestamp,
+	Balance as ChainBalance, BlockNumber as ChainBlockNumber, Timestamp as ChainTimestamp, traits::contract::{DdcBalanceDeposited, DdcBalanceUnlocked, DdcBalanceWithdrawn, DdcBalanceCharged, ClusterId},
 };
 use ink::env::Environment;
 use sp_runtime::AccountId32;
@@ -36,9 +36,8 @@ pub enum Error {
 mod customer_deposit {
 	use ink::{prelude::vec::Vec, storage::Mapping};
 
-	use super::{AccountId32, Error};
+	use super::{AccountId32, Error, ClusterId, DdcBalanceDeposited, DdcBalanceUnlocked, DdcBalanceWithdrawn, DdcBalanceCharged};
 
-	pub type ClusterId = [u8; 20];
 	pub const UNLOCK_DELAY_BLOCKS: u32 = 10;
 	pub const MIN_EXISTENTIAL_DEPOSIT: Balance = 10000000000;
 
@@ -95,43 +94,6 @@ mod customer_deposit {
 		block: BlockNumber,
 	}
 
-	#[ink(event)]
-	pub struct Deposited {
-		#[ink(topic)]
-		cluster_id: ClusterId,
-		#[ink(topic)]
-		owner_id: AccountId,
-		amount: Balance,
-	}
-
-	#[ink(event)]
-	pub struct InitialDepositUnlock {
-		#[ink(topic)]
-		cluster_id: ClusterId,
-		#[ink(topic)]
-		owner_id: AccountId,
-		amount: Balance,
-	}
-
-	#[ink(event)]
-	pub struct Withdrawn {
-		#[ink(topic)]
-		cluster_id: ClusterId,
-		#[ink(topic)]
-		owner_id: AccountId,
-		amount: Balance,
-	}
-
-	#[ink(event)]
-	pub struct Charged {
-		#[ink(topic)]
-		cluster_id: ClusterId,
-		#[ink(topic)]
-		owner_id: AccountId,
-		charged: Balance,
-		expected_to_charge: Balance,
-	}
-
 	/// Defines the storage of our contract.
 	///
 	/// Here we store the random seed fetched from the chain.
@@ -150,7 +112,7 @@ mod customer_deposit {
 
 		/// Get the deposit balance for specific owner
 		#[ink(message)]
-		pub fn balance(&self, owner: AccountId) -> Option<Ledger> {
+		pub fn get_balance(&self, owner: AccountId) -> Option<Ledger> {
 			self.balances.get(&owner)
 		}
 
@@ -184,9 +146,9 @@ mod customer_deposit {
 				self.balances.insert(owner, &ledger);
 			}
 
-			self.env().emit_event(Deposited {
+			self.env().emit_event(DdcBalanceDeposited {
 				cluster_id: self.cluster_id,
-				owner_id: owner,
+				owner_id: to_account_32(&owner).unwrap(),
 				amount: value,
 			});
 
@@ -226,9 +188,9 @@ mod customer_deposit {
 				self.balances.insert(owner, &ledger);
 			}
 
-			self.env().emit_event(Deposited {
+			self.env().emit_event(DdcBalanceDeposited {
 				cluster_id: self.cluster_id,
-				owner_id: owner,
+				owner_id: to_account_32(&owner).unwrap(),
 				amount: value,
 			});
 
@@ -282,9 +244,9 @@ mod customer_deposit {
 			self.balances.insert(&owner, &ledger);
 
 			// Emit event (like pallet)
-			self.env().emit_event(InitialDepositUnlock {
+			self.env().emit_event(DdcBalanceUnlocked {
 				cluster_id: self.cluster_id,
-				owner_id: owner,
+				owner_id: to_account_32(&owner).unwrap(),
 				amount: value,
 			});
 
@@ -321,9 +283,9 @@ mod customer_deposit {
 			}
 
 			// Emit event
-			self.env().emit_event(Withdrawn {
+			self.env().emit_event(DdcBalanceWithdrawn {
 				cluster_id: self.cluster_id,
-				owner_id: owner,
+				owner_id: to_account_32(&owner).unwrap(),
 				amount: withdrawn,
 			});
 
@@ -370,11 +332,11 @@ mod customer_deposit {
 						}
 
 						// Emit `Charged` event (partial or full)
-						self.env().emit_event(Charged {
+						self.env().emit_event(DdcBalanceCharged {
 							cluster_id: self.cluster_id,
-							owner_id: customer_id,
+							owner_id: to_account_32(&customer_id).unwrap(),
 							charged: actually_charged,
-							expected_to_charge: amount_to_deduct,
+							expected: amount_to_deduct,
 						});
 
 						// Record the successfully charged amount
@@ -390,17 +352,27 @@ mod customer_deposit {
 	pub fn from_account_32(account_id: &crate::AccountId32) -> AccountId {
 		AccountId::from(<[u8; 32]>::from(account_id.clone()))
 	}
+
+	fn to_account_32(
+		account_id: &<ink::env::DefaultEnvironment as ink::env::Environment>::AccountId,
+	) -> Result<AccountId32, ()> {
+		if let Ok(bytes) = <[u8; 32]>::try_from(account_id.as_ref()) {
+			Ok(AccountId32::from(bytes))
+		} else {
+			Err(())
+		}
+	}
 }
 
 #[cfg(test)]
 mod tests {
-	use ddc_primitives::traits::DdcPayoutsPayer;
+	use ddc_primitives::traits::{DdcPayoutsPayer, contract::{ClusterId}};
 	use ink::env::test;
 	use sp_runtime::AccountId32;
 
 	use super::*;
 	use crate::customer_deposit::{
-		from_account_32, ClusterId, CustomerDepositContract, MIN_EXISTENTIAL_DEPOSIT,
+		from_account_32,  CustomerDepositContract, MIN_EXISTENTIAL_DEPOSIT,
 		PAYOUTS_PALLET, UNLOCK_DELAY_BLOCKS,
 	};
 
@@ -440,7 +412,7 @@ mod tests {
 		assert!(contract.deposit().is_ok());
 
 		// Verify ledger
-		let ledger = contract.balance(accounts.alice).unwrap();
+		let ledger = contract.get_balance(accounts.alice).unwrap();
 		assert_eq!(ledger.total, MIN_EXISTENTIAL_DEPOSIT);
 		assert_eq!(ledger.active, MIN_EXISTENTIAL_DEPOSIT);
 	}
@@ -459,7 +431,7 @@ mod tests {
 		assert!(contract.deposit().is_ok());
 
 		// Verify ledger
-		let ledger = contract.balance(accounts.alice).unwrap();
+		let ledger = contract.get_balance(accounts.alice).unwrap();
 		assert_eq!(ledger.total, MIN_EXISTENTIAL_DEPOSIT * 3);
 		assert_eq!(ledger.active, MIN_EXISTENTIAL_DEPOSIT * 3);
 	}
@@ -484,7 +456,7 @@ mod tests {
 		assert!(contract.deposit_for(accounts.bob).is_ok());
 
 		// Verify Bob's ledger
-		let ledger = contract.balance(accounts.bob).unwrap();
+		let ledger = contract.get_balance(accounts.bob).unwrap();
 		assert_eq!(ledger.total, MIN_EXISTENTIAL_DEPOSIT * 2);
 		assert_eq!(ledger.active, MIN_EXISTENTIAL_DEPOSIT * 2);
 	}
@@ -503,7 +475,7 @@ mod tests {
 		assert!(contract.deposit_for(accounts.bob).is_ok());
 
 		// Verify Bob's ledger
-		let ledger = contract.balance(accounts.bob).unwrap();
+		let ledger = contract.get_balance(accounts.bob).unwrap();
 		assert_eq!(ledger.total, MIN_EXISTENTIAL_DEPOSIT * 3);
 		assert_eq!(ledger.active, MIN_EXISTENTIAL_DEPOSIT * 3);
 	}
@@ -529,7 +501,7 @@ mod tests {
 		assert!(contract.unlock_deposit(MIN_EXISTENTIAL_DEPOSIT * 5).is_ok());
 
 		// Verify ledger
-		let ledger = contract.balance(accounts.alice).unwrap();
+		let ledger = contract.get_balance(accounts.alice).unwrap();
 		assert_eq!(ledger.active, MIN_EXISTENTIAL_DEPOSIT * 5);
 		assert_eq!(ledger.unlocking.len(), 1);
 	}
@@ -580,7 +552,7 @@ mod tests {
 		assert!(contract.withdraw_unlocked().is_ok());
 
 		// Verify ledger
-		let ledger = contract.balance(accounts.alice).unwrap();
+		let ledger = contract.get_balance(accounts.alice).unwrap();
 		assert_eq!(ledger.total, MIN_EXISTENTIAL_DEPOSIT * 5); // Withdrawn 5, remaining 5
 		assert_eq!(ledger.active, MIN_EXISTENTIAL_DEPOSIT * 5); // Active balance unchanged
 		assert!(ledger.unlocking.is_empty());
@@ -617,7 +589,7 @@ mod tests {
 		assert!(contract.withdraw_unlocked().is_ok());
 
 		// Verify ledger is NOT cleaned up (balance is still above dust)
-		assert!(contract.balance(accounts.alice).is_some());
+		assert!(contract.get_balance(accounts.alice).is_some());
 
 		// Unlock and withdraw remaining balance
 		assert!(contract.unlock_deposit(MIN_EXISTENTIAL_DEPOSIT).is_ok());
@@ -627,7 +599,7 @@ mod tests {
 		assert!(contract.withdraw_unlocked().is_ok());
 
 		// Now ledger should be cleaned up
-		assert!(contract.balance(accounts.alice).is_none());
+		assert!(contract.get_balance(accounts.alice).is_none());
 	}
 
 	#[ink::test]
