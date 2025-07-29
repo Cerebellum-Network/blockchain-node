@@ -59,7 +59,7 @@ jobs:
         with:
           context: .
           build-args: |
-            "GH_READ_TOKEN=${{ secrets.GH_READ_TOKEN }}"
+            "PROFILE=release"
           cache-from: |
             type=registry,ref=ghcr.io/cerebellum-network/blockchain-node-cache:latest
             type=gha
@@ -98,7 +98,7 @@ cache-build:
         cache-all-crates: true
 
     - name: Configure Git
-      run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+      run: echo "Git configuration skipped - using public repositories only"
 
     # Pre-build dependencies for caching
     - name: Cache Dependencies
