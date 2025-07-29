@@ -50,6 +50,9 @@ RUN scripts/init.sh && \
 # ===== RUNTIME STAGE =====
 FROM debian:bookworm-slim AS runtime
 
+# Set build arguments for runtime stage
+ARG PROFILE=release
+
 # Install only essential runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
