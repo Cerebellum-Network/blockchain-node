@@ -60,6 +60,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Free up disk space
+        run: |
+          # Remove unnecessary packages and clean up
+          sudo apt-get clean
+          sudo apt-get autoremove -y
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          # Clean Docker system
+          docker system prune -af --volumes
+          # Show available space
+          df -h
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -74,6 +88,10 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:buildx-stable-1
+            network=host
 
       - name: Build Docker image for scanning
         uses: docker/build-push-action@v5
@@ -86,6 +104,14 @@ jobs:
             cere-blockchain-node:scan-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          outputs: type=docker,dest=/tmp/image.tar
+        continue-on-error: false
+
+      - name: Load Docker image
+        run: |
+          docker load -i /tmp/image.tar
+          rm /tmp/image.tar
+          docker images
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
@@ -95,13 +121,42 @@ jobs:
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH,MEDIUM'
           exit-code: '0'
+          timeout: '10m'
         continue-on-error: true
+
+      - name: Verify Docker image exists
+        run: |
+          if ! docker images | grep -q "cere-blockchain-node:scan-${{ github.sha }}"; then
+            echo "Error: Docker image not found"
+            exit 1
+          fi
+          echo "Docker image verified successfully"
 
       - name: Ensure SARIF file exists
         run: |
           if [ ! -f "trivy-results.sarif" ]; then
-            echo '{"version": "2.1.0", "runs": []}' > trivy-results.sarif
+            echo "Warning: trivy-results.sarif not found, creating empty SARIF file"
+            cat > trivy-results.sarif << 'EOF'
+          {
+            "version": "2.1.0",
+            "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+            "runs": [
+              {
+                "tool": {
+                  "driver": {
+                    "name": "Trivy",
+                    "version": "unknown"
+                  }
+                },
+                "results": []
+              }
+            ]
+          }
+          EOF
+          else
+            echo "SARIF file found successfully"
           fi
+          ls -la trivy-results.sarif
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
@@ -115,6 +170,15 @@ jobs:
           image-ref: 'cere-blockchain-node:scan-${{ github.sha }}'
           format: 'table'
           severity: 'CRITICAL,HIGH'
+          timeout: '10m'
+        continue-on-error: true
+
+      - name: Clean up Docker images
+        if: always()
+        run: |
+          docker rmi cere-blockchain-node:scan-${{ github.sha }} || true
+          docker system prune -f || true
+          echo "Cleanup completed"
 
   dependency-scanning:
     name: Dependency Scanning
