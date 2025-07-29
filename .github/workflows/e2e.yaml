@@ -60,6 +60,9 @@ jobs:
           push: true
           build-args: |
             PROFILE=${{ env.PROFILE }}
+            BUILDKIT_INLINE_CACHE=1
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           tags: |
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ env.GITHUB_SHA }}
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:dev-latest
