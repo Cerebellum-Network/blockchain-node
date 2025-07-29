@@ -35,7 +35,7 @@ jobs:
         run: |
           # Verify core project files exist
           test -f Cargo.toml
-          test -f Dockerfile.secure
+          test -f Dockerfile
           test -d pallets/
           test -d runtime/
           echo "✅ Project structure verified"
@@ -43,10 +43,10 @@ jobs:
       - name: Validate secure Dockerfile
         run: |
           # Check that secure Dockerfile has security best practices
-          grep -q "FROM.*AS builder" Dockerfile.secure
-          grep -q "RUN useradd -m -u 1001" Dockerfile.secure
-          grep -q "USER cere" Dockerfile.secure
-          grep -q "HEALTHCHECK" Dockerfile.secure
+          grep -q "FROM.*AS builder" Dockerfile
+          grep -q "RUN useradd -m -u 1001" Dockerfile
+          grep -q "USER cere" Dockerfile
+          grep -q "HEALTHCHECK" Dockerfile
           echo "✅ Secure Dockerfile validation passed"
 
       - name: Check GitHub Actions security
@@ -61,7 +61,7 @@ jobs:
       - name: Verify Phase 2 security implementations
         run: |
           # Verify core Phase 2 deliverables exist
-          test -f "Dockerfile.secure"
+          test -f "Dockerfile"
           test -f ".github/workflows/integration-tests.yaml"
           echo "✅ Phase 2 security implementations verified"
 
@@ -85,20 +85,20 @@ jobs:
       - name: Validate Dockerfile exists
         run: |
           # Check that secure Dockerfile exists and is readable
-          if [ ! -f "Dockerfile.secure" ]; then
-            echo "❌ Dockerfile.secure not found"
+          if [ ! -f "Dockerfile" ]; then
+            echo "❌ Dockerfile not found"
             exit 1
           fi
-          echo "✅ Dockerfile.secure exists and is readable"
+          echo "✅ Dockerfile exists and is readable"
 
       - name: Verify security configurations
         run: |
           # Check Dockerfile contains security patterns
-          if ! grep -q "USER cere" Dockerfile.secure; then
+          if ! grep -q "USER cere" Dockerfile; then
             echo "❌ Dockerfile does not switch to non-root user"
             exit 1
           fi
-          if ! grep -q "RUN useradd" Dockerfile.secure; then
+          if ! grep -q "RUN useradd" Dockerfile; then
             echo "❌ Dockerfile does not create non-root user"
             exit 1
           fi
