@@ -2065,7 +2065,7 @@ dependencies = [
 
 [[package]]
 name = "cere-cli"
-version = "7.3.3"
+version = "7.3.4"
 dependencies = [
  "cere-client",
  "cere-service",
@@ -2083,7 +2083,7 @@ dependencies = [
 
 [[package]]
 name = "cere-client"
-version = "7.3.3"
+version = "7.3.4"
 dependencies = [
  "cere-dev-runtime",
  "cere-runtime",
@@ -2119,7 +2119,7 @@ dependencies = [
 
 [[package]]
 name = "cere-dev-runtime"
-version = "7.3.3"
+version = "7.3.4"
 dependencies = [
  "anyhow",
  "cere-runtime-common",
@@ -2226,7 +2226,7 @@ dependencies = [
 
 [[package]]
 name = "cere-rpc"
-version = "7.3.3"
+version = "7.3.4"
 dependencies = [
  "ddc-primitives",
  "jsonrpsee",
@@ -2258,7 +2258,7 @@ dependencies = [
 
 [[package]]
 name = "cere-runtime"
-version = "7.3.3"
+version = "7.3.4"
 dependencies = [
  "anyhow",
  "cere-runtime-common",
@@ -2365,7 +2365,7 @@ dependencies = [
 
 [[package]]
 name = "cere-runtime-common"
-version = "7.3.3"
+version = "7.3.4"
 dependencies = [
  "ddc-primitives",
  "frame-support",
@@ -2386,7 +2386,7 @@ dependencies = [
 
 [[package]]
 name = "cere-service"
-version = "7.3.3"
+version = "7.3.4"
 dependencies = [
  "cere-client",
  "cere-dev-runtime",
@@ -8660,7 +8660,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-chainbridge"
-version = "7.3.3"
+version = "7.3.4"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -8870,7 +8870,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-clusters"
-version = "7.3.3"
+version = "7.3.4"
 dependencies = [
  "ddc-primitives",
  "frame-benchmarking",
@@ -8896,7 +8896,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-clusters-gov"
-version = "7.3.3"
+version = "7.3.4"
 dependencies = [
  "ddc-primitives",
  "frame-benchmarking",
@@ -8931,7 +8931,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-customers"
-version = "7.3.3"
+version = "7.3.4"
 dependencies = [
  "ddc-primitives",
  "frame-benchmarking",
@@ -8955,7 +8955,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-nodes"
-version = "7.3.3"
+version = "7.3.4"
 dependencies = [
  "ddc-primitives",
  "frame-benchmarking",
@@ -9007,7 +9007,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-staking"
-version = "7.3.3"
+version = "7.3.4"
 dependencies = [
  "ddc-primitives",
  "frame-benchmarking",
@@ -9176,7 +9176,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-erc20"
-version = "7.3.3"
+version = "7.3.4"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -9195,7 +9195,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-erc721"
-version = "7.3.3"
+version = "7.3.4"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -9231,7 +9231,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-fee-handler"
-version = "7.3.3"
+version = "7.3.4"
 dependencies = [
  "ddc-primitives",
  "frame-benchmarking",
@@ -9712,7 +9712,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-origins"
-version = "7.3.3"
+version = "7.3.4"
 dependencies = [
  "cere-runtime-common",
  "frame-benchmarking",

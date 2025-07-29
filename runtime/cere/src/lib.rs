@@ -2363,7 +2363,7 @@ impl_runtime_apis! {
 			add_benchmarks!(params, batches);
 
 			Ok(batches)
-		}x
+		}
 	}
 }
 

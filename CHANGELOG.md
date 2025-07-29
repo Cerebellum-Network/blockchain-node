@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C] Changes is `Cere` Runtime
 - [D] Changes is `Cere Dev` Runtime
 
+## [7.3.4]
+
+- [C,D] Added missing migration for Nomination Pallet
+
 ## [7.3.3]
 
 - [C,D] Update to Polkadot-Stable2503 crate version
