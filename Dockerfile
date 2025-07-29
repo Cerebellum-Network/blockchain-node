@@ -27,6 +27,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     unzip \
     ca-certificates \
+    make \
+    autoconf \
+    automake \
+    libtool \
     && rm -rf /var/lib/apt/lists/*
 
 # sccache disabled - using standard Rust compilation

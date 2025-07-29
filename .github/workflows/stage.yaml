@@ -71,7 +71,7 @@ jobs:
           file: Dockerfile
           push: true
           build-args: |
-            "PROFILE=${{ env.PROFILE }}"
+            PROFILE=${{ env.PROFILE }}
           tags: |
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ github.sha }}
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ env.GITHUB_SHA }}
