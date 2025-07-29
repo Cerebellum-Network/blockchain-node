@@ -120,6 +120,7 @@ mod customer_deposit {
 	}
 
 	impl DdcBalancesFetcher for CustomerDepositContract {
+		/// Fetches customer balance in DDC cluster.
 		#[ink(message)]
 		fn get_balance(&self, owner: AccountId32) -> Option<Ledger> {
 			let ledger = self.balances.get(&from_account_32(&owner))?;
@@ -128,7 +129,7 @@ mod customer_deposit {
 	}
 
 	impl DdcBalancesDepositor for CustomerDepositContract {
-		/// Top up deposit balance on behalf its owner
+		/// Top up deposit balance on behalf its owner.
 		#[ink(message, payable)]
 		fn deposit(&mut self) -> Result<(), CustomerDepositError> {
 			let owner = self.env().caller();
@@ -167,7 +168,7 @@ mod customer_deposit {
 			Ok(())
 		}
 	
-		/// Top up deposit balance for specific owner on behalf faucet
+		/// Top up deposit balance for specific owner on behalf faucet.
 		#[ink(message, payable)]
 		fn deposit_for(&mut self, owner: AccountId32) -> Result<(), CustomerDepositError> {
 			let owner = from_account_32(&owner);
@@ -210,9 +211,9 @@ mod customer_deposit {
 			Ok(())
 		}
 	
-		/// Initiate unlocking of deposit balance on behalf its owner
+		/// Initiate unlocking of deposit balance on behalf its owner.
 		#[ink(message)]
-		fn unlock_deposit(&mut self, value: Balance) -> Result<(), CustomerDepositError> {
+		fn unlock_deposit(&mut self, value: BalanceU128) -> Result<(), CustomerDepositError> {
 			let owner = self.env().caller();
 			let mut ledger = self.balances.get(&owner).ok_or(Error::NotOwner)?;
 
@@ -266,7 +267,7 @@ mod customer_deposit {
 			Ok(())
 		}
 	
-		/// Withdraw unlocked deposit balance on behalf its owner
+		/// Withdraw unlocked deposit balance on behalf its owner.
 		#[ink(message)]
 		fn withdraw_unlocked(&mut self) -> Result<(), CustomerDepositError> {
 			let owner = self.env().caller();
@@ -307,6 +308,7 @@ mod customer_deposit {
 	}
 
 	impl DdcPayoutsPayer for CustomerDepositContract {
+		/// Charges customers for DDC service usage while DAC-based payouts are in progress.
 		#[ink(message)]
 		fn charge(
 			&mut self,
