@@ -2,7 +2,7 @@
 
 use ink::env::Environment;
 use ddc_primitives::{
-	contracts::types::{ClusterId, AccountId as AccountId32},
+	contracts::types::{ClusterId, AccountId as AccountId32, Balance as BalanceU128},
 	contracts::customer_deposit::{
 		types::{Ledger, UnlockChunk},
 		traits::{DdcBalancesFetcher, DdcBalancesDepositor, DdcPayoutsPayer},
@@ -42,7 +42,7 @@ mod customer_deposit {
 	use ink::{prelude::vec::Vec, storage::Mapping};
 
 	use super::{
-		Error, AccountId32, ClusterId, 
+		Error, AccountId32, ClusterId, BalanceU128,
 		DdcBalanceDeposited, DdcBalanceUnlocked, DdcBalanceWithdrawn, DdcBalanceCharged, 
 		DdcBalancesFetcher, DdcBalancesDepositor, DdcPayoutsPayer, CustomerDepositError,
 		Ledger, UnlockChunk
@@ -311,8 +311,8 @@ mod customer_deposit {
 		fn charge(
 			&mut self,
 			payout_vault: AccountId32,
-			batch: Vec<(AccountId32, ddc_primitives::contracts::types::Balance)>,
-		) -> Vec<(AccountId32, ddc_primitives::contracts::types::Balance)> {
+			batch: Vec<(AccountId32, BalanceU128)>,
+		) -> Vec<(AccountId32, BalanceU128)> {
 			let caller = self.env().caller();
 
 			assert!(caller == from_account_32(&PAYOUTS_PALLET));
