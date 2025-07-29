@@ -59,7 +59,7 @@ jobs:
           context: .
           push: true
           build-args: |
-            "PROFILE=${{ env.PROFILE }}"
+            PROFILE=${{ env.PROFILE }}
           tags: |
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ env.GITHUB_SHA }}
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:dev-latest
