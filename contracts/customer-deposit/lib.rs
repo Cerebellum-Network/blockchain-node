@@ -48,9 +48,7 @@ mod customer_deposit {
 		Ledger, UnlockChunk
 	};
 
-	pub const UNLOCK_DELAY_BLOCKS: u32 = 10;
 	pub const MIN_EXISTENTIAL_DEPOSIT: Balance = 10000000000;
-
 	// todo(yahortsaryk): request from the chain via extension
 	pub const PAYOUTS_PALLET: AccountId32 = AccountId32::new([
 		0x6d, 0x6f, 0x64, 0x6c, 0x70, 0x61, 0x79, 0x6f, 0x75, 0x74, 0x73, 0x5f, 0x00, 0x00, 0x00,
@@ -108,14 +106,15 @@ mod customer_deposit {
 	#[ink(storage)]
 	pub struct CustomerDepositContract {
 		cluster_id: ClusterId,
+		unlock_delay_blocks: u32,
 		balances: Mapping<AccountId, CustomerLedger>,
 	}
 
 	impl CustomerDepositContract {
 		#[ink(constructor)]
-		pub fn new(cluster_id: ClusterId) -> Self {
+		pub fn new(cluster_id: ClusterId, unlock_delay_blocks: u32) -> Self {
 			let balances = Mapping::default();
-			Self { balances, cluster_id }
+			Self { cluster_id, unlock_delay_blocks, balances }
 		}
 	}
 
@@ -240,7 +239,7 @@ mod customer_deposit {
 			// Schedule unlock
 			let current_block = self.env().block_number();
 			let unlock_block = current_block
-				.checked_add(UNLOCK_DELAY_BLOCKS)
+				.checked_add(self.unlock_delay_blocks)
 				.ok_or(Error::ArithmeticOverflow)?;
 
 			// Merge chunks unlocking at the same block (like pallet)
@@ -445,16 +444,17 @@ mod tests {
 	use super::*;
 	use crate::customer_deposit::{
 		from_account_32, to_account_32, CustomerDepositContract, 
-		MIN_EXISTENTIAL_DEPOSIT, PAYOUTS_PALLET, UNLOCK_DELAY_BLOCKS,
+		MIN_EXISTENTIAL_DEPOSIT, PAYOUTS_PALLET,
 	};
 
 	const CLUSTER_ID: ClusterId = [0; 20];
 	const ENDOWMENT: Balance = MIN_EXISTENTIAL_DEPOSIT * 1_000_000;
+	const UNLOCK_DELAY_BLOCKS: u32 = 10;
 
 	type Balance = <ink::env::DefaultEnvironment as Environment>::Balance;
 
 	fn setup() -> (CustomerDepositContract, test::DefaultAccounts<ink::env::DefaultEnvironment>) {
-		let contract = CustomerDepositContract::new(CLUSTER_ID);
+		let contract = CustomerDepositContract::new(CLUSTER_ID, UNLOCK_DELAY_BLOCKS);
 		let accounts = test::default_accounts::<ink::env::DefaultEnvironment>();
 		ink::env::test::set_account_balance::<ink::env::DefaultEnvironment>(
 			accounts.alice,
