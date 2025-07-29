@@ -6,7 +6,8 @@ use ddc_primitives::{
 	contracts::customer_deposit::{
 		types::{Ledger, UnlockChunk},
 		traits::{DdcBalancesFetcher, DdcBalancesDepositor, DdcPayoutsPayer},
-		events::{DdcBalanceDeposited, DdcBalanceUnlocked, DdcBalanceWithdrawn, DdcBalanceCharged}
+		events::{DdcBalanceDeposited, DdcBalanceUnlocked, DdcBalanceWithdrawn, DdcBalanceCharged},
+		errors::Error as CustomerDepositError,
 	},
 };
 
@@ -43,7 +44,7 @@ mod customer_deposit {
 	use super::{
 		Error, AccountId32, ClusterId, 
 		DdcBalanceDeposited, DdcBalanceUnlocked, DdcBalanceWithdrawn, DdcBalanceCharged, 
-		DdcBalancesFetcher, DdcBalancesDepositor, DdcPayoutsPayer, 
+		DdcBalancesFetcher, DdcBalancesDepositor, DdcPayoutsPayer, CustomerDepositError,
 		Ledger, UnlockChunk
 	};
 
@@ -129,7 +130,7 @@ mod customer_deposit {
 	impl DdcBalancesDepositor for CustomerDepositContract {
 		/// Top up deposit balance on behalf its owner
 		#[ink(message, payable)]
-		fn deposit(&mut self) -> Result<(), ddc_primitives::contracts::customer_deposit::errors::Error> {
+		fn deposit(&mut self) -> Result<(), CustomerDepositError> {
 			let owner = self.env().caller();
 			let value = self.env().transferred_value();
 
@@ -168,7 +169,7 @@ mod customer_deposit {
 	
 		/// Top up deposit balance for specific owner on behalf faucet
 		#[ink(message, payable)]
-		fn deposit_for(&mut self, owner: AccountId32) -> Result<(), ddc_primitives::contracts::customer_deposit::errors::Error> {
+		fn deposit_for(&mut self, owner: AccountId32) -> Result<(), CustomerDepositError> {
 			let owner = from_account_32(&owner);
 			let _funder = self.env().caller();
 			let value = self.env().transferred_value();
@@ -211,7 +212,7 @@ mod customer_deposit {
 	
 		/// Initiate unlocking of deposit balance on behalf its owner
 		#[ink(message)]
-		fn unlock_deposit(&mut self, value: Balance) -> Result<(), ddc_primitives::contracts::customer_deposit::errors::Error> {
+		fn unlock_deposit(&mut self, value: Balance) -> Result<(), CustomerDepositError> {
 			let owner = self.env().caller();
 			let mut ledger = self.balances.get(&owner).ok_or(Error::NotOwner)?;
 
@@ -267,7 +268,7 @@ mod customer_deposit {
 	
 		/// Withdraw unlocked deposit balance on behalf its owner
 		#[ink(message)]
-		fn withdraw_unlocked(&mut self) -> Result<(), ddc_primitives::contracts::customer_deposit::errors::Error> {
+		fn withdraw_unlocked(&mut self) -> Result<(), CustomerDepositError> {
 			let owner = self.env().caller();
 			let current_block = self.env().block_number();
 
@@ -415,17 +416,16 @@ mod customer_deposit {
 		}
 	}
 
-	impl From<Error> for ddc_primitives::contracts::customer_deposit::errors::Error {
+	impl From<Error> for CustomerDepositError {
 		fn from(err: Error) -> Self {
-			use ddc_primitives::contracts::customer_deposit::errors::Error as Err;
 			match err {
-				Error::InsufficientDeposit => Err::Code(1),
-				Error::ArithmeticOverflow => Err::Code(2),
-				Error::ArithmeticUnderflow => Err::Code(3),
-				Error::TransferFailed => Err::Code(4),
-				Error::NotOwner => Err::Code(5),
-				Error::NoLedger => Err::Code(6),
-				Error::NothingToWithdraw => Err::Code(7),
+				Error::InsufficientDeposit => CustomerDepositError::Code(1),
+				Error::ArithmeticOverflow => CustomerDepositError::Code(2),
+				Error::ArithmeticUnderflow => CustomerDepositError::Code(3),
+				Error::TransferFailed => CustomerDepositError::Code(4),
+				Error::NotOwner => CustomerDepositError::Code(5),
+				Error::NoLedger => CustomerDepositError::Code(6),
+				Error::NothingToWithdraw => CustomerDepositError::Code(7),
 			}
 		}
 	}
