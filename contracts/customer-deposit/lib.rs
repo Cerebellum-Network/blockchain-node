@@ -108,13 +108,16 @@ mod customer_deposit {
 		cluster_id: ClusterId,
 		unlock_delay_blocks: u32,
 		balances: Mapping<AccountId, CustomerLedger>,
+		accounts: Mapping<u64, AccountId>,
+		count: u64,
 	}
 
 	impl CustomerDepositContract {
 		#[ink(constructor)]
 		pub fn new(cluster_id: ClusterId, unlock_delay_blocks: u32) -> Self {
 			let balances = Mapping::default();
-			Self { cluster_id, unlock_delay_blocks, balances }
+			let accounts = Mapping::default();
+			Self { cluster_id, unlock_delay_blocks, balances, accounts, count: 0 }
 		}
 	}
 
@@ -124,6 +127,25 @@ mod customer_deposit {
 		fn get_balance(&self, owner: AccountId32) -> Option<Ledger> {
 			let ledger = self.balances.get(&from_account_32(&owner))?;
 			Some(ledger.into())
+		}
+
+		/// Fetches customers balances in DDC cluster in a paginated manner.
+		#[ink(message)]
+		fn get_balances(&self, last_index: u64, limit: u64) -> Vec<(AccountId32, Ledger)> {
+			let mut results: Vec<(AccountId32, Ledger)> = Vec::new();
+			let mut index = last_index;
+			let end_index = (last_index.saturating_add(limit)).min(self.count);
+
+			while index < end_index {
+				if let Some(account) = self.accounts.get(&index) {
+					if let Some(ledger) = self.balances.get(&account) {
+						results.push((to_account_32(&account).unwrap(), ledger.into()));
+					}
+				}
+				index = index.saturating_add(1);
+			}
+
+			results
 		}
 	}
 
@@ -137,6 +159,11 @@ mod customer_deposit {
 			// Reject dust deposits
 			if value < MIN_EXISTENTIAL_DEPOSIT {
 				return Err(Error::InsufficientDeposit.into());
+			}
+
+			if self.balances.get(&owner).is_none() {
+				self.accounts.insert(self.count, &owner);
+				self.count = self.count.checked_add(1).ok_or(Error::ArithmeticOverflow)?;
 			}
 
 			if let Some(mut ledger) = self.balances.get(&owner) {
@@ -177,6 +204,11 @@ mod customer_deposit {
 			// Reject dust deposits
 			if value < MIN_EXISTENTIAL_DEPOSIT {
 				return Err(Error::InsufficientDeposit.into());
+			}
+
+			if self.balances.get(&owner).is_none() {
+				self.accounts.insert(self.count, &owner);
+				self.count = self.count.checked_add(1).ok_or(Error::ArithmeticOverflow)?;
 			}
 
 			if !self.balances.contains(&owner) {
@@ -256,7 +288,6 @@ mod customer_deposit {
 
 			self.balances.insert(&owner, &ledger);
 
-			// Emit event (like pallet)
 			self.env().emit_event(DdcBalanceUnlocked {
 				cluster_id: self.cluster_id,
 				owner_id: to_account_32(&owner).unwrap(),
@@ -290,12 +321,12 @@ mod customer_deposit {
 
 			// Clean up ledger if balance is dust and no unlocking chunks
 			if ledger.total < MIN_EXISTENTIAL_DEPOSIT && ledger.unlocking.is_empty() {
-				self.balances.remove(&owner);
-			} else {
-				self.balances.insert(&owner, &ledger);
+				ledger.total = 0;
+				ledger.active = 0;
 			}
 
-			// Emit event
+			self.balances.insert(&owner, &ledger);
+
 			self.env().emit_event(DdcBalanceWithdrawn {
 				cluster_id: self.cluster_id,
 				owner_id: to_account_32(&owner).unwrap(),
@@ -453,12 +484,12 @@ mod tests {
 
 	type Balance = <ink::env::DefaultEnvironment as Environment>::Balance;
 
-	fn setup() -> (CustomerDepositContract, test::DefaultAccounts<ink::env::DefaultEnvironment>) {
+	fn setup(endowment: u128) -> (CustomerDepositContract, test::DefaultAccounts<ink::env::DefaultEnvironment>) {
 		let contract = CustomerDepositContract::new(CLUSTER_ID, UNLOCK_DELAY_BLOCKS);
 		let accounts = test::default_accounts::<ink::env::DefaultEnvironment>();
 		ink::env::test::set_account_balance::<ink::env::DefaultEnvironment>(
 			accounts.alice,
-			ENDOWMENT,
+			endowment,
 		);
 
 		(contract, accounts)
@@ -466,7 +497,7 @@ mod tests {
 
 	#[ink::test]
 	fn test_deposit_new_account() {
-		let (mut contract, accounts) = setup();
+		let (mut contract, accounts) = setup(ENDOWMENT);
 		test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
 		test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT);
 
@@ -481,7 +512,7 @@ mod tests {
 
 	#[ink::test]
 	fn test_deposit_existing_account() {
-		let (mut contract, accounts) = setup();
+		let (mut contract, accounts) = setup(ENDOWMENT);
 		test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
 
 		// First deposit
@@ -500,7 +531,7 @@ mod tests {
 
 	#[ink::test]
 	fn test_deposit_dust_fails() {
-		let (mut contract, accounts) = setup();
+		let (mut contract, accounts) = setup(ENDOWMENT);
 		test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
 		test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT - 1);
 
@@ -510,7 +541,7 @@ mod tests {
 
 	#[ink::test]
 	fn test_deposit_for_new_account() {
-		let (mut contract, accounts) = setup();
+		let (mut contract, accounts) = setup(ENDOWMENT);
 		test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
 		test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT * 2);
 
@@ -525,7 +556,7 @@ mod tests {
 
 	#[ink::test]
 	fn test_deposit_for_existing_account() {
-		let (mut contract, accounts) = setup();
+		let (mut contract, accounts) = setup(ENDOWMENT);
 		test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
 
 		// First deposit for Bob
@@ -544,7 +575,7 @@ mod tests {
 
 	#[ink::test]
 	fn test_deposit_for_dust_fails() {
-		let (mut contract, accounts) = setup();
+		let (mut contract, accounts) = setup(ENDOWMENT);
 		test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
 		test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT - 1);
 
@@ -554,7 +585,7 @@ mod tests {
 
 	#[ink::test]
 	fn test_unlock_deposit_valid() {
-		let (mut contract, accounts) = setup();
+		let (mut contract, accounts) = setup(ENDOWMENT);
 		test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
 		test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT * 10);
 		assert!(contract.deposit().is_ok());
@@ -570,7 +601,7 @@ mod tests {
 
 	#[ink::test]
 	fn test_unlock_deposit_insufficient_balance() {
-		let (mut contract, accounts) = setup();
+		let (mut contract, accounts) = setup(ENDOWMENT);
 		test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
 		test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT);
 		assert!(contract.deposit().is_ok());
@@ -584,7 +615,7 @@ mod tests {
 
 	#[ink::test]
 	fn test_unlock_deposit_dust_fails() {
-		let (mut contract, accounts) = setup();
+		let (mut contract, accounts) = setup(ENDOWMENT);
 		test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
 		test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT * 10);
 		assert!(contract.deposit().is_ok());
@@ -598,7 +629,7 @@ mod tests {
 
 	#[ink::test]
 	fn test_withdraw_unlocked() {
-		let (mut contract, accounts) = setup();
+		let (mut contract, accounts) = setup(ENDOWMENT);
 		test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
 
 		test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT * 10);
@@ -622,7 +653,7 @@ mod tests {
 
 	#[ink::test]
 	fn test_withdraw_unlocked_early_fails() {
-		let (mut contract, accounts) = setup();
+		let (mut contract, accounts) = setup(ENDOWMENT);
 		test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
 		test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT * 10);
 		assert!(contract.deposit().is_ok());
@@ -636,7 +667,7 @@ mod tests {
 
 	#[ink::test]
 	fn test_withdraw_unlocked_cleans_up_ledger() {
-		let (mut contract, accounts) = setup();
+		let (mut contract, accounts) = setup(ENDOWMENT);
 		test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
 		test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT * 2); // Deposit more than MIN
 		assert!(contract.deposit().is_ok());
@@ -660,13 +691,18 @@ mod tests {
 		}
 		assert!(contract.withdraw_unlocked().is_ok());
 
-		// Now ledger should be cleaned up
-		assert!(contract.get_balance(to_account_32(&accounts.alice).unwrap()).is_none());
+		// Now ledger should reset
+		assert_eq!(contract.get_balance(to_account_32(&accounts.alice).unwrap()), Some(Ledger {
+			owner: to_account_32(&accounts.alice).unwrap(),
+			total: 0,
+			active: 0,
+			unlocking: vec![],
+		}));
 	}
 
 	#[ink::test]
 	fn test_charge_return_value() {
-		let (mut contract, accounts) = setup();
+		let (mut contract, accounts) = setup(ENDOWMENT);
 		let alice = accounts.alice;
 		let bob = accounts.bob;
 		let payout_vault = to_account_32(&accounts.charlie).expect("Invalid contract account id");
@@ -712,5 +748,80 @@ mod tests {
 			to_account_32(&bob).expect("Invalid contract account id"),
 			MIN_EXISTENTIAL_DEPOSIT * 5
 		)));
+	}
+
+	#[ink::test]
+	fn test_get_balances_full_page() {
+		let (mut contract, accounts) = setup(ENDOWMENT * 5);
+
+		test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
+
+		test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT);
+		contract.deposit_for(to_account_32(&accounts.alice).unwrap()).unwrap();
+
+		test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT);
+		contract.deposit_for(to_account_32(&accounts.bob).unwrap()).unwrap();
+
+		test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT);
+		contract.deposit_for(to_account_32(&accounts.charlie).unwrap()).unwrap();
+
+		// Retrieve balances with a full page
+		let balances = contract.get_balances(0, 3);
+		assert_eq!(balances.len(), 3);
+	}
+
+	#[ink::test]
+	fn test_get_balances_partial_page() {
+		let (mut contract, accounts) = setup(ENDOWMENT * 5);
+
+		test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
+
+		test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT);
+		contract.deposit_for(to_account_32(&accounts.alice).unwrap()).unwrap();
+
+		test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT);
+		contract.deposit_for(to_account_32(&accounts.bob).unwrap()).unwrap();
+
+		// Retrieve balances with a partial page
+		let balances = contract.get_balances(0, 3);
+		assert_eq!(balances.len(), 2);
+	}
+
+	#[ink::test]
+	fn test_get_balances_starting_from_index() {
+		let (mut contract, accounts) = setup(ENDOWMENT * 5);
+
+		test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
+
+		test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT);
+		contract.deposit_for(to_account_32(&accounts.alice).unwrap()).unwrap();
+
+		test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT);
+		contract.deposit_for(to_account_32(&accounts.bob).unwrap()).unwrap();
+
+		test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT);
+		contract.deposit_for(to_account_32(&accounts.charlie).unwrap()).unwrap();
+
+		// Retrieve balances starting from index 1
+		let balances = contract.get_balances(1, 2);
+		assert_eq!(balances.len(), 2);
+	}
+
+	#[ink::test]
+	fn test_get_balances_beyond_range() {
+		
+		let (mut contract, accounts) = setup(ENDOWMENT * 5);
+
+		test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
+
+		test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT);
+		contract.deposit_for(to_account_32(&accounts.alice).unwrap()).unwrap();
+
+		test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT);
+		contract.deposit_for(to_account_32(&accounts.bob).unwrap()).unwrap();
+
+		// Attempt to retrieve balances beyond the available range
+		let balances = contract.get_balances(2, 3);
+		assert_eq!(balances.len(), 0);
 	}
 }
