@@ -143,8 +143,8 @@ jobs:
         with:
           owner: Cerebellum-Network
           repo: ddc-api-e2e-simulations
-          github_token: ${{ secrets.GH_E2E_TOKEN }}
-          comment_github_token: ${{ secrets.GH_E2E_TOKEN }}
+          github_token: ${{ secrets.GF_E2E_TOKEN }}
+          comment_github_token: ${{ secrets.GF_E2E_TOKEN }}
           github_user: devops-cere
           workflow_file_name: run-simulations-env-local-triggered.yml
           client_payload: |-
