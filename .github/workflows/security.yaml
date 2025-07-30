@@ -51,7 +51,7 @@ jobs:
     name: Container Security Scan
     runs-on: ubuntu-latest
     timeout-minutes: 180
-    if: github.event_name == 'push' || github.event_name == 'schedule'
+    if: (github.event_name == 'push' || github.event_name == 'schedule')
     permissions:
       contents: read
       id-token: write
@@ -62,17 +62,59 @@ jobs:
 
       - name: Free up disk space
         run: |
+          # Show initial disk usage
+          echo "=== Initial disk usage ==="
+          df -h
+          du -sh /usr/share/* 2>/dev/null | sort -hr | head -10 || true
+          
           # Remove unnecessary packages and clean up
           sudo apt-get clean
-          sudo apt-get autoremove -y
+          sudo apt-get autoremove -y --purge
+          sudo apt-get autoclean
+          
+          # Remove large unnecessary directories
           sudo rm -rf /usr/share/dotnet
           sudo rm -rf /opt/ghc
           sudo rm -rf /usr/local/share/boost
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-          # Clean Docker system
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/local/share/powershell
+          sudo rm -rf /usr/share/swift
+          sudo rm -rf /opt/az
+          sudo rm -rf /usr/local/lib/node_modules
+          sudo rm -rf /opt/hostedtoolcache
+          
+          # Clean package caches
+          sudo rm -rf /var/cache/apt/archives/*
+          sudo rm -rf /var/lib/apt/lists/*
+          sudo rm -rf /tmp/*
+          sudo rm -rf /var/tmp/*
+          
+          # Clean Docker system aggressively
           docker system prune -af --volumes
-          # Show available space
+          docker builder prune -af
+          
+          # Show final disk usage
+          echo "=== Final disk usage ==="
           df -h
+          echo "=== Available space on root ==="
+           df -h / | tail -1 | awk '{print "Available: " $4}'
+
+      - name: Check available disk space
+        run: |
+          # Check if we have at least 10GB available
+          AVAILABLE_GB=$(df / | tail -1 | awk '{print $4}' | sed 's/G//')
+          AVAILABLE_KB=$(df / | tail -1 | awk '{print $4}')
+          echo "Available space: ${AVAILABLE_KB}"
+          
+          # Convert to GB for comparison (KB to GB)
+          if [ "$AVAILABLE_KB" -lt 10485760 ]; then
+            echo "ERROR: Insufficient disk space. Available: ${AVAILABLE_KB}KB (less than 10GB)"
+            echo "This may cause 'No space left on device' errors during Docker build."
+            exit 1
+          else
+            echo "SUCCESS: Sufficient disk space available: ${AVAILABLE_KB}KB"
+          fi
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -93,6 +135,16 @@ jobs:
             image=moby/buildkit:buildx-stable-1
             network=host
 
+      - name: Pre-build disk space check
+        run: |
+          echo "=== Pre-build disk space check ==="
+          df -h
+          AVAILABLE_KB=$(df / | tail -1 | awk '{print $4}')
+          echo "Available space before build: ${AVAILABLE_KB}KB"
+          if [ "$AVAILABLE_KB" -lt 8388608 ]; then
+            echo "WARNING: Low disk space before build: ${AVAILABLE_KB}KB (less than 8GB)"
+          fi
+
       - name: Build Docker image for scanning
         uses: docker/build-push-action@v5
         with:
@@ -109,9 +161,17 @@ jobs:
 
       - name: Load Docker image
         run: |
+          echo "=== Post-build disk space check ==="
+          df -h
+          AVAILABLE_KB=$(df / | tail -1 | awk '{print $4}')
+          echo "Available space after build: ${AVAILABLE_KB}KB"
+          
           docker load -i /tmp/image.tar
           rm /tmp/image.tar
           docker images
+          
+          # Clean up any dangling images to free space
+          docker image prune -f
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master

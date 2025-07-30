@@ -21,6 +21,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Free up disk space
+        run: |
+          echo "=== Initial disk space ==="
+          df -h
+          echo "=== Cleaning up unnecessary packages ==="
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc || true
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          sudo rm -rf /usr/share/swift || true
+          sudo rm -rf /usr/local/lib/android || true
+          sudo rm -rf /usr/local/share/powershell || true
+          sudo rm -rf /usr/share/az_* || true
+          sudo rm -rf /opt/az || true
+          sudo rm -rf /usr/local/lib/node_modules || true
+          echo "=== Docker cleanup ==="
+          docker system prune -af --volumes || true
+          docker builder prune -af || true
+          echo "=== Final disk space ==="
+          df -h
+          echo "=== Available space on root ==="
+          df -h / | tail -1 | awk '{print "Available: " $4}'
+
       - name: Configure Git
         run: echo "Git configuration skipped - using public repositories only"
 
@@ -98,6 +121,17 @@ jobs:
         with:
           name: "cere_dev_runtime.compact.compressed.${{ env.GITHUB_SHA }}.wasm"
           path: "./${{ env.CERE_DEV_RUNTIME }}"
+
+      - name: Post-build cleanup
+        run: |
+          echo "=== Post-build disk cleanup ==="
+          df -h
+          echo "=== Cleaning up Docker artifacts ==="
+          docker image prune -f || true
+          docker system prune -f || true
+          echo "=== Final disk space ==="
+          df -h
+          echo "Cleanup completed"
 
   trigger-e2e-tests:
     runs-on: ubuntu-latest
