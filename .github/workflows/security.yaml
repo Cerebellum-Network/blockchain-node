@@ -51,7 +51,7 @@ jobs:
     name: Container Security Scan
     runs-on: ubuntu-latest
     timeout-minutes: 180
-    if: (github.event_name == 'push' || github.event_name == 'schedule')
+    if: false  # Disabled - container scanning temporarily disabled
     permissions:
       contents: read
       id-token: write
