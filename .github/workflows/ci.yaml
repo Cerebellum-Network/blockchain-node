@@ -56,7 +56,6 @@ jobs:
     name: Security Audit
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - name: Install toolchain
@@ -145,7 +144,6 @@ jobs:
     name: Try-Runtime Check
     needs: format
     runs-on: ubuntu-24.04
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - name: Install linux dependencies
@@ -204,7 +202,7 @@ jobs:
 
   tests:
     name: Run tests
-    needs: format
+    needs: [format, clippy]
     # The type of runner that the job will run on
     runs-on: ["self-hosted", "cere-network-memory-large"]
     steps:
