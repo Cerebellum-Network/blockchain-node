@@ -31,7 +31,7 @@ pub trait DdcPayoutsExtension {
     type ErrorCode = DdcPayoutsErr;
 
     #[ink(function = 1)]
-    fn get_authorized_origin_id(input: u32) -> u32;
+    fn get_payouts_origin_id(cluster_id: ClusterId) -> AccountId32;
 }
 
 
@@ -63,29 +63,18 @@ pub enum Error {
 	NothingToWithdraw,
 }
 
-#[ink::event]
-pub struct DdcPayoutsAuthorizedOriginId {
-	pub authorized_origin_id: u32,
-}
-
 #[ink::contract(env = crate::CereEnvironment)]
 mod customer_deposit {
 	use ink::{prelude::vec::Vec, storage::Mapping};
 
 	use super::{
 		Error, AccountId32, ClusterId, BalanceU128,
-		DdcBalanceDeposited, DdcBalanceUnlocked, DdcBalanceWithdrawn, DdcBalanceCharged, DdcPayoutsAuthorizedOriginId,
+		DdcBalanceDeposited, DdcBalanceUnlocked, DdcBalanceWithdrawn, DdcBalanceCharged,
 		DdcBalancesFetcher, DdcBalancesDepositor, DdcPayoutsPayer, CustomerDepositError,
 		Ledger, UnlockChunk
 	};
 
 	pub const MIN_EXISTENTIAL_DEPOSIT: Balance = 10000000000;
-	// todo(yahortsaryk): request from the chain via extension
-	pub const PAYOUTS_PALLET: AccountId32 = AccountId32::new([
-		0x6d, 0x6f, 0x64, 0x6c, 0x70, 0x61, 0x79, 0x6f, 0x75, 0x74, 0x73, 0x5f, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00,
-	]);
 
 	#[derive(Debug, Clone, PartialEq, Eq)]
 	#[ink::scale_derive(Encode, Decode, TypeInfo)]
@@ -193,11 +182,6 @@ mod customer_deposit {
 		fn deposit(&mut self) -> Result<(), CustomerDepositError> {
 			let owner = self.env().caller();
 			let value = self.env().transferred_value();
-
-			let authorized_origin_id = self.env().extension().get_authorized_origin_id(5555);
-			self.env().emit_event(DdcPayoutsAuthorizedOriginId {
-				authorized_origin_id: authorized_origin_id.unwrap(),
-			});
 
 			// Reject dust deposits
 			if value < MIN_EXISTENTIAL_DEPOSIT {
@@ -389,8 +373,9 @@ mod customer_deposit {
 			batch: Vec<(AccountId32, BalanceU128)>,
 		) -> Vec<(AccountId32, BalanceU128)> {
 			let caller = self.env().caller();
+			let payouts_origin = self.env().extension().get_payouts_origin_id(self.cluster_id);
 
-			assert!(caller == from_account_32(&PAYOUTS_PALLET));
+			assert!(caller == from_account_32(&payouts_origin.unwrap()));
 
 			let mut charged_amounts = Vec::new();
 			let payout_vault = from_account_32(&payout_vault);
@@ -496,8 +481,14 @@ mod tests {
 	use super::*;
 	use crate::customer_deposit::{
 		from_account_32, to_account_32, CustomerDepositContract, 
-		MIN_EXISTENTIAL_DEPOSIT, PAYOUTS_PALLET,
+		MIN_EXISTENTIAL_DEPOSIT,
 	};
+
+	const PAYOUTS_PALLET: AccountId32 = AccountId32::new([
+		0x6d, 0x6f, 0x64, 0x6c, 0x70, 0x61, 0x79, 0x6f, 0x75, 0x74, 0x73, 0x5f, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00,
+	]);
 
 	const CLUSTER_ID: ClusterId = [0; 20];
 	const ENDOWMENT: Balance = MIN_EXISTENTIAL_DEPOSIT * 1_000_000;

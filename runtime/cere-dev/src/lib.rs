@@ -984,6 +984,7 @@ impl pallet_contracts::Config for Runtime {
 }
 
 use pallet_contracts::chain_extension::{ChainExtension, Environment, Ext, InitState, RetVal};
+use ddc_primitives::contracts::types::ClusterId as ClusterId20;
 
 #[derive(Default)]
 pub struct CereChainExtension;
@@ -995,14 +996,11 @@ impl ChainExtension<Runtime> for CereChainExtension {
 		match func_id {
 			1 => {
 				let mut env = env.buf_in_buf_out();
-				let _input: u32 = env.read_as_unbounded(env.in_len())?;
+				let _cluster_id: ClusterId20 = env.read_as_unbounded(env.in_len())?;
 				let payouts_pallet_id = DdcPayouts::pallet_account_id();
 
-				// env.write(&payouts_pallet_id.encode(), false, None)
-				// 	.map_err(|_| DispatchError::Other(format!("ChainExtension failed to call func_id={}", func_id)))?;
-
-				env.write(&u32::MAX.encode(), false, None)
-					.map_err(|_| DispatchError::Other("ChainExtension failed to call `get_authorized_origin_id` function"))?;
+				env.write(&payouts_pallet_id.encode(), false, None)
+					.map_err(|_| DispatchError::Other("ChainExtension failed to call `get_payouts_origin_id` function"))?;
 
 				Ok(RetVal::Converging(0))
 			},
