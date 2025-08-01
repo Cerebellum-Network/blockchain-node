@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - 'dev'
-      - 'fix_ci'
   workflow_dispatch:
 
 env:

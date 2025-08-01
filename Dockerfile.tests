@@ -1,6 +1,7 @@
 # ===== FIRST STAGE ======
 ARG DDC_SMART_CONTRACT_VERSION=2.2.3
 ARG ECR_REGISTRY
+ARG GH_READ_TOKEN
 FROM phusion/baseimage:0.11 as builder
 LABEL maintainer="team@cere.network"
 LABEL description="This is the build stage to create the binary."
@@ -20,6 +21,31 @@ RUN PB_REL="https://github.com/protocolbuffers/protobuf/releases" && \
     unzip protoc-${PROTOC_VERSION}-linux-x86_64.zip -d /usr/local/protoc && \
     chmod +x /usr/local/protoc/bin/protoc && \
     ln -s /usr/local/protoc/bin/protoc /usr/local/bin
+
+# Create non-privileged user for building
+RUN useradd -m -u 1001 builder
+
+# Change ownership of the workspace to builder user
+RUN chown -R builder:builder /cerenetwork
+
+# Ensure protoc is accessible to all users
+RUN chmod +x /usr/local/protoc/bin/protoc && \
+    chmod +x /usr/local/bin/protoc
+
+# Configure Git at system level for all users
+RUN if [ -n "${GH_READ_TOKEN}" ]; then \
+        echo "Configuring Git at system level with token (first 10 chars: ${GH_READ_TOKEN:0:10}...)"; \
+        git config --system url."https://${GH_READ_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"; \
+        echo "Git config applied:"; \
+        git config --system --list | grep url; \
+    else \
+        echo "Warning: GH_READ_TOKEN is not set or empty, private repositories may fail to clone"; \
+        echo "Available environment variables:"; \
+        env | grep -i token || echo "No token-related env vars found"; \
+    fi
+
+# Switch to builder user
+USER builder
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
     export PATH=$PATH:$HOME/.cargo/bin && \

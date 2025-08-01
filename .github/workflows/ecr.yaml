@@ -24,6 +24,9 @@ jobs:
     runs-on: ubuntu-latest
     concurrency: dev
     timeout-minutes: 60
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
@@ -63,3 +66,4 @@ jobs:
           push: false
           build-args: |
             "ECR_REGISTRY=${{ steps.login-ecr-org.outputs.registry }}"
+            "GH_READ_TOKEN=${{ secrets.GH_READ_TOKEN }}"
