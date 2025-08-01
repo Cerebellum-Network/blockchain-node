@@ -60,9 +60,6 @@ mod customer_deposit {
 	#[ink::scale_derive(Encode, Decode, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]
 	pub struct CustomerLedger {
-		/// The owner account whose balance is actually locked and can be used to pay for DDC
-		/// network usage.
-		pub owner: AccountId,
 		/// The total amount of the owner's balance that we are currently accounting for.
 		/// It's just `active` plus all the `unlocking` balances.
 		pub total: Balance,
@@ -89,6 +86,15 @@ mod customer_deposit {
 				}
 			});
 			Self { total, ..self }
+		}
+
+		fn into_ledger(self, owner: AccountId) -> Ledger {
+			Ledger {
+				owner: to_account_32(&owner).unwrap(),
+				total: self.total,
+				active: self.active,
+				unlocking: self.unlocking.into_iter().map(|chunk| chunk.into()).collect(),
+			}
 		}
 	}
 
@@ -125,8 +131,9 @@ mod customer_deposit {
 		/// Fetches customer balance in DDC cluster.
 		#[ink(message)]
 		fn get_balance(&self, owner: AccountId32) -> Option<Ledger> {
-			let ledger = self.balances.get(&from_account_32(&owner))?;
-			Some(ledger.into())
+			let owner = from_account_32(&owner);
+			let ledger = self.balances.get(&owner)?;
+			Some(ledger.into_ledger(owner))
 		}
 
 		/// Fetches customers balances in DDC cluster in a paginated manner.
@@ -137,9 +144,9 @@ mod customer_deposit {
 			let end_index = (from_index.saturating_add(limit)).min(self.count);
 
 			while index < end_index {
-				if let Some(account) = self.accounts.get(&index) {
-					if let Some(ledger) = self.balances.get(&account) {
-						results.push(ledger.into());
+				if let Some(owner) = self.accounts.get(&index) {
+					if let Some(ledger) = self.balances.get(&owner) {
+						results.push(ledger.into_ledger(owner));
 					}
 				}
 				index = index.saturating_add(1);
@@ -181,7 +188,7 @@ mod customer_deposit {
 			} else {
 				// New ledger
 				let ledger =
-					CustomerLedger { owner, total: value, active: value, unlocking: Default::default() };
+					CustomerLedger { total: value, active: value, unlocking: Default::default() };
 				self.balances.insert(owner, &ledger);
 			}
 
@@ -215,7 +222,7 @@ mod customer_deposit {
 				// New ledger - no need for existential deposit check since contract holds all
 				// tokens
 				let ledger =
-					CustomerLedger { owner, total: value, active: value, unlocking: Default::default() };
+					CustomerLedger { total: value, active: value, unlocking: Default::default() };
 
 				self.balances.insert(owner, &ledger);
 			} else {
@@ -405,28 +412,6 @@ mod customer_deposit {
 			Ok(AccountId32::from(bytes))
 		} else {
 			Err(())
-		}
-	}
-
-	impl From<Ledger> for CustomerLedger {
-		fn from(other: Ledger) -> Self {
-			CustomerLedger {
-				owner: from_account_32(&other.owner),
-				total: other.total,
-				active: other.active,
-				unlocking: other.unlocking.into_iter().map(|chunk| chunk.into()).collect(),
-			}
-		}
-	}
-
-	impl Into<Ledger> for CustomerLedger {
-		fn into(self) -> Ledger {
-			Ledger {
-				owner: to_account_32(&self.owner).unwrap(),
-				total: self.total,
-				active: self.active,
-				unlocking: self.unlocking.into_iter().map(|chunk| chunk.into()).collect(),
-			}
 		}
 	}
 
