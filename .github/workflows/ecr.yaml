@@ -66,5 +66,4 @@ jobs:
           push: false
           build-args: |
             "ECR_REGISTRY=${{ steps.login-ecr-org.outputs.registry }}"
-          secrets: |
-            "gh_token=${{ secrets.GH_READ_TOKEN }}"
+            "GH_READ_TOKEN=${{ secrets.GH_READ_TOKEN }}"
