@@ -1,105 +1,85 @@
-# ============================================================================
-# SECURE BLOCKCHAIN NODE DOCKERFILE
-# ============================================================================
-# This Dockerfile implements security best practices:
-# - Multi-stage build to minimize attack surface
-# - Non-root user execution
-# - No credentials in build args or environment variables
-# - Minimal base image
-# - Security scanning compatible
-# - Build cache optimization with sccache (using IAM roles, not credentials)
-# ============================================================================
-
-# ===== BUILDER STAGE =====
-FROM rust:1.82-slim-bookworm AS builder
-
-# Set build arguments (NO CREDENTIALS)
+FROM phusion/baseimage:jammy-1.0.1 as builder
+LABEL maintainer="team@cere.network"
+LABEL description="This is the build stage to create the binary."
 ARG PROFILE=release
+WORKDIR /cerenetwork
+COPY . /cerenetwork
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    clang \
-    cmake \
-    git \
-    libssl-dev \
-    pkg-config \
-    protobuf-compiler \
-    curl \
-    unzip \
-    ca-certificates \
-    make \
-    autoconf \
-    automake \
-    libtool \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get -qq update && \
+    apt-get -qq install -y \
+      clang \
+      cmake \
+      git \
+      libpq-dev \
+      libssl-dev \
+      pkg-config \
+      unzip \
+      wget
 
-# sccache disabled - using standard Rust compilation
+# Configure sccache
+ENV SCCACHE_VERSION=0.5.4
+RUN wget -q https://github.com/mozilla/sccache/releases/download/v${SCCACHE_VERSION}/sccache-v${SCCACHE_VERSION}-x86_64-unknown-linux-musl.tar.gz \
+      -O - | tar -xz \
+    && mv sccache-v${SCCACHE_VERSION}-x86_64-unknown-linux-musl/sccache /usr/local/bin/sccache \
+    && chmod +x /usr/local/bin/sccache \
+    && rm -rf sccache-v${SCCACHE_VERSION}-x86_64-unknown-linux-musl
+ENV RUSTC_WRAPPER=/usr/local/bin/sccache
 
-# Create non-root user for building
-RUN useradd -m -u 1001 -U -s /bin/sh builder
+# Create non-privileged user for building
+RUN useradd -m -u 1001 builder
+
+# Change ownership of the workspace to builder user
+RUN chown -R builder:builder /cerenetwork
+
+# Installation script is taken from https://grpc.io/docs/protoc-installation/
+ENV PROTOC_VERSION=3.15.8
+RUN PB_REL="https://github.com/protocolbuffers/protobuf/releases" && \
+    curl -sLO $PB_REL/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip && \
+    mkdir -p /usr/local/protoc && \
+    unzip protoc-${PROTOC_VERSION}-linux-x86_64.zip -d /usr/local/protoc && \
+    chmod +x /usr/local/protoc/bin/protoc && \
+    ln -s /usr/local/protoc/bin/protoc /usr/local/bin/protoc && \
+    chmod +x /usr/local/bin/protoc && \
+    chown -R builder:builder /usr/local/protoc
+
+# GitHub token for private repository access (temporary during build)
+ARG GH_READ_TOKEN
+
+# Switch to builder user and configure Git
 USER builder
-WORKDIR /app
+RUN git config --global url."https://${GH_READ_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
 
-# Copy source code with proper ownership
-COPY --chown=builder:builder . .
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
+    export PATH=$PATH:$HOME/.cargo/bin && \
+    scripts/init.sh && \
+    cargo build --locked --$PROFILE --features on-chain-release-build
 
-# Initialize Rust environment and build
-RUN scripts/init.sh && \
-    cargo build --locked --${PROFILE} --features on-chain-release-build
-
-# ===== RUNTIME STAGE =====
-FROM debian:bookworm-slim AS runtime
-
-# Set build arguments for runtime stage
+# ===== SECOND STAGE ======
+FROM phusion/baseimage:jammy-1.0.1
+LABEL maintainer="team@cere.network"
+LABEL description="This is the optimization to create a small image."
 ARG PROFILE=release
 
-# Install only essential runtime dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+# Copy binaries from builder stage
+COPY --from=builder /cerenetwork/target/$PROFILE/cere /usr/local/bin
+COPY --from=builder /cerenetwork/target/$PROFILE/wbuild/cere-runtime /home/cere/cere-runtime-artifacts
+COPY --from=builder /cerenetwork/target/$PROFILE/wbuild/cere-dev-runtime /home/cere/cere-dev-runtime-artifacts
 
-# Create non-root user for runtime
-RUN useradd -m -u 1001 -U -s /bin/sh -d /data cere \
-    && mkdir -p /data/.local/share/cere \
-    && chown -R cere:cere /data
+# Optimize image size and create non-privileged user
+RUN mv /usr/share/ca* /tmp && \
+    rm -rf /usr/share/*  && \
+    mv /tmp/ca-certificates /usr/share/ && \
+    rm -rf /usr/lib/python* && \
+    useradd -m -u 1000 -U -s /bin/sh -d /cerenetwork cerenetwork && \
+    mkdir -p /cerenetwork/.local/share/cerenetwork && \
+    mkdir -p /cerenetwork/.local/share/cere && \
+    chown -R cerenetwork:cerenetwork /cerenetwork/.local && \
+    ln -s /cerenetwork/.local/share/cere /data && \
+    mv -t /usr/local/bin /usr/bin/bash /usr/bin/sh && \
+    rm -rf /usr/bin /usr/sbin
 
-# Copy built binary and runtime artifacts from builder stage
-COPY --from=builder --chown=cere:cere /app/target/${PROFILE}/cere /usr/local/bin/cere
-COPY --from=builder --chown=cere:cere /app/target/${PROFILE}/wbuild/cere-runtime /data/cere-runtime-artifacts
-COPY --from=builder --chown=cere:cere /app/target/${PROFILE}/wbuild/cere-dev-runtime /data/cere-dev-runtime-artifacts
-
-# Ensure binary is executable
-RUN chmod +x /usr/local/bin/cere
-
-# Set security-focused permissions
-RUN chmod 755 /usr/local/bin/cere \
-    && find /data -type d -exec chmod 755 {} \; \
-    && find /data -type f -exec chmod 644 {} \;
-
-# Switch to non-root user
-USER cere
-WORKDIR /data
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD /usr/local/bin/cere --version || exit 1
-
-# Security labels
-LABEL maintainer="team@cere.network" \
-      description="Secure Cere Network blockchain node" \
-      version="7.3.3" \
-      security.scan="enabled" \
-      org.opencontainers.image.title="Cere Network Node" \
-      org.opencontainers.image.description="Production-ready secure blockchain node" \
-      org.opencontainers.image.vendor="Cere Network" \
-      org.opencontainers.image.licenses="GPL-3.0-or-later WITH Classpath-exception-2.0"
-
-# Expose ports (documentation only - no security risk)
+USER cerenetwork
 EXPOSE 30333 9933 9944 9615
+VOLUME ["/data"]
 
-# Use VOLUME for data directory
-VOLUME ["/data/.local/share/cere"]
-
-# Set default command
 CMD ["/usr/local/bin/cere"]
