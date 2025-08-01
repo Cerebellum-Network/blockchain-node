@@ -1,7 +1,6 @@
 # ===== FIRST STAGE ======
 ARG DDC_SMART_CONTRACT_VERSION=2.2.3
 ARG ECR_REGISTRY
-ARG GH_READ_TOKEN
 FROM phusion/baseimage:0.11 as builder
 LABEL maintainer="team@cere.network"
 LABEL description="This is the build stage to create the binary."
@@ -33,15 +32,15 @@ RUN chmod +x /usr/local/protoc/bin/protoc && \
     chmod +x /usr/local/bin/protoc
 
 # Configure Git at system level for all users
-RUN if [ -n "${GH_READ_TOKEN}" ]; then \
-        echo "Configuring Git at system level with token (first 10 chars: ${GH_READ_TOKEN:0:10}...)"; \
-        git config --system url."https://${GH_READ_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"; \
-        echo "Git config applied:"; \
+RUN --mount=type=secret,id=gh_token \
+    if [ -f /run/secrets/gh_token ]; then \
+        GH_READ_TOKEN=$(cat /run/secrets/gh_token) && \
+        echo "Configuring Git at system level with token (first 10 chars: ${GH_READ_TOKEN:0:10}...)" && \
+        git config --system url."https://${GH_READ_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/" && \
+        echo "Git config applied:" && \
         git config --system --list | grep url; \
     else \
-        echo "Warning: GH_READ_TOKEN is not set or empty, private repositories may fail to clone"; \
-        echo "Available environment variables:"; \
-        env | grep -i token || echo "No token-related env vars found"; \
+        echo "Warning: GH_READ_TOKEN secret not found, private repositories may fail to clone"; \
     fi
 
 # Switch to builder user

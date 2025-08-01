@@ -2,7 +2,7 @@ name: Security Scans
 
 on:
   push:
-    branches: [ dev, staging, master, 'fix_ci' ]
+    branches: [ dev, staging, master ]
   pull_request:
     branches: [ dev, staging, master ]
   schedule:
