@@ -36,14 +36,13 @@ jobs:
           echo "GH_READ_TOKEN is set: $([ -n "$GH_READ_TOKEN" ] && echo "YES" || echo "NO")"
           echo "First 10 chars: ${GH_READ_TOKEN:0:10}"
 
-      - name: Configure Git
+      - name: Setup SSH for GitHub
         run: |
-          if [ -n "${{ secrets.GH_READ_TOKEN }}" ]; then
-            git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
-          else
-            echo "Using GITHUB_TOKEN as fallback"
-            git config --global url."https://${{ github.token }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
-          fi
+          mkdir -p ~/.ssh
+          echo "${{ secrets.GITHUB_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          git config --global url."git@github.com:".insteadOf "https://github.com/"
 
       - name: Cache cargo registry
         uses: actions/cache@v4
@@ -78,4 +77,3 @@ jobs:
           push: false
           build-args: |
             "ECR_REGISTRY=${{ steps.login-ecr-org.outputs.registry }}"
-            "GH_READ_TOKEN=${{ secrets.GH_READ_TOKEN || github.token }}"
