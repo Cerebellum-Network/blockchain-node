@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use ink::env::Environment;
+use ink::env::chain_extension::FromStatusCode;
 use ddc_primitives::{
 	contracts::types::{ClusterId, AccountId as AccountId32, Balance as BalanceU128},
 	contracts::customer_deposit::{
@@ -22,7 +23,32 @@ impl Environment for CereEnvironment {
 	type Balance = <ink::env::DefaultEnvironment as Environment>::Balance;
 	type BlockNumber = <ink::env::DefaultEnvironment as Environment>::BlockNumber;
 	type Timestamp = <ink::env::DefaultEnvironment as Environment>::Timestamp;
-	type ChainExtension = ();
+	type ChainExtension = DdcPayoutsExtension;
+}
+
+#[ink::chain_extension(extension = 1)]
+pub trait DdcPayoutsExtension {
+    type ErrorCode = DdcPayoutsErr;
+
+    #[ink(function = 1)]
+    fn get_authorized_origin_id(input: u32) -> u32;
+}
+
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
+pub enum DdcPayoutsErr {
+    FailGetAuthorizedOriginId,
+}
+
+impl FromStatusCode for DdcPayoutsErr {
+    fn from_status_code(status_code: u32) -> Result<(), Self> {
+        match status_code {
+            0 => Ok(()),
+            1 => Err(Self::FailGetAuthorizedOriginId),
+            _ => panic!("encountered unknown status code"),
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -37,13 +63,18 @@ pub enum Error {
 	NothingToWithdraw,
 }
 
+#[ink::event]
+pub struct DdcPayoutsAuthorizedOriginId {
+	pub authorized_origin_id: u32,
+}
+
 #[ink::contract(env = crate::CereEnvironment)]
 mod customer_deposit {
 	use ink::{prelude::vec::Vec, storage::Mapping};
 
 	use super::{
 		Error, AccountId32, ClusterId, BalanceU128,
-		DdcBalanceDeposited, DdcBalanceUnlocked, DdcBalanceWithdrawn, DdcBalanceCharged, 
+		DdcBalanceDeposited, DdcBalanceUnlocked, DdcBalanceWithdrawn, DdcBalanceCharged, DdcPayoutsAuthorizedOriginId,
 		DdcBalancesFetcher, DdcBalancesDepositor, DdcPayoutsPayer, CustomerDepositError,
 		Ledger, UnlockChunk
 	};
@@ -162,6 +193,11 @@ mod customer_deposit {
 		fn deposit(&mut self) -> Result<(), CustomerDepositError> {
 			let owner = self.env().caller();
 			let value = self.env().transferred_value();
+
+			let authorized_origin_id = self.env().extension().get_authorized_origin_id(5555);
+			self.env().emit_event(DdcPayoutsAuthorizedOriginId {
+				authorized_origin_id: authorized_origin_id.unwrap(),
+			});
 
 			// Reject dust deposits
 			if value < MIN_EXISTENTIAL_DEPOSIT {

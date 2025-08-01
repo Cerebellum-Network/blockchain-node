@@ -963,7 +963,7 @@ impl pallet_contracts::Config for Runtime {
 	type CallStack = [pallet_contracts::Frame<Self>; 5];
 	type WeightPrice = pallet_transaction_payment::Pallet<Self>;
 	type WeightInfo = pallet_contracts::weights::SubstrateWeight<Self>;
-	type ChainExtension = ();
+	type ChainExtension = (CereChainExtension);
 	type Schedule = Schedule;
 	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
 	type MaxCodeLen = ConstU32<{ 123 * 1024 }>;
@@ -981,6 +981,34 @@ impl pallet_contracts::Config for Runtime {
 	type Migrations = ();
 	type ApiVersion = ();
 	type Xcm = ();
+}
+
+use pallet_contracts::chain_extension::{ChainExtension, Environment, Ext, InitState, RetVal};
+
+#[derive(Default)]
+pub struct CereChainExtension;
+impl ChainExtension<Runtime> for CereChainExtension {
+	fn call<E: Ext>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError> {
+		let func_id = env.func_id();
+		let ext_id = env.ext_id();
+		log::info!("CereChainExtension called with ext_id: {} func_id: {}", ext_id, func_id);
+		match func_id {
+			1 => {
+				let mut env = env.buf_in_buf_out();
+				let _input: u32 = env.read_as_unbounded(env.in_len())?;
+				let payouts_pallet_id = DdcPayouts::pallet_account_id();
+
+				// env.write(&payouts_pallet_id.encode(), false, None)
+				// 	.map_err(|_| DispatchError::Other(format!("ChainExtension failed to call func_id={}", func_id)))?;
+
+				env.write(&u32::MAX.encode(), false, None)
+					.map_err(|_| DispatchError::Other("ChainExtension failed to call `get_authorized_origin_id` function"))?;
+
+				Ok(RetVal::Converging(0))
+			},
+			_ => Err(DispatchError::Other("Unsupported function in CereChainExtension")),
+		}
+	}
 }
 
 impl pallet_sudo::Config for Runtime {
