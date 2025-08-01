@@ -2,7 +2,7 @@ name: Security Scans
 
 on:
   push:
-    branches: [ dev, staging, master ]
+    branches: [ dev, staging, master, 'fix_ci' ]
   pull_request:
     branches: [ dev, staging, master ]
   schedule:
@@ -18,7 +18,7 @@ jobs:
   secret-scanning:
     name: Secret Scanning
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 15
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -50,8 +50,8 @@ jobs:
   container-scanning:
     name: Container Security Scan
     runs-on: ubuntu-latest
-    timeout-minutes: 180
-    if: false  # Disabled - container scanning temporarily disabled
+    timeout-minutes: 30
+    if: github.event_name == 'push' || github.event_name == 'schedule'
     permissions:
       contents: read
       id-token: write
@@ -59,62 +59,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Free up disk space
-        run: |
-          # Show initial disk usage
-          echo "=== Initial disk usage ==="
-          df -h
-          du -sh /usr/share/* 2>/dev/null | sort -hr | head -10 || true
-          
-          # Remove unnecessary packages and clean up
-          sudo apt-get clean
-          sudo apt-get autoremove -y --purge
-          sudo apt-get autoclean
-          
-          # Remove large unnecessary directories
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /usr/local/share/boost
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-          sudo rm -rf /usr/local/lib/android
-          sudo rm -rf /usr/local/share/powershell
-          sudo rm -rf /usr/share/swift
-          sudo rm -rf /opt/az
-          sudo rm -rf /usr/local/lib/node_modules
-          sudo rm -rf /opt/hostedtoolcache
-          
-          # Clean package caches
-          sudo rm -rf /var/cache/apt/archives/*
-          sudo rm -rf /var/lib/apt/lists/*
-          sudo rm -rf /tmp/*
-          sudo rm -rf /var/tmp/*
-          
-          # Clean Docker system aggressively
-          docker system prune -af --volumes
-          docker builder prune -af
-          
-          # Show final disk usage
-          echo "=== Final disk usage ==="
-          df -h
-          echo "=== Available space on root ==="
-           df -h / | tail -1 | awk '{print "Available: " $4}'
-
-      - name: Check available disk space
-        run: |
-          # Check if we have at least 10GB available
-          AVAILABLE_GB=$(df / | tail -1 | awk '{print $4}' | sed 's/G//')
-          AVAILABLE_KB=$(df / | tail -1 | awk '{print $4}')
-          echo "Available space: ${AVAILABLE_KB}"
-          
-          # Convert to GB for comparison (KB to GB)
-          if [ "$AVAILABLE_KB" -lt 10485760 ]; then
-            echo "ERROR: Insufficient disk space. Available: ${AVAILABLE_KB}KB (less than 10GB)"
-            echo "This may cause 'No space left on device' errors during Docker build."
-            exit 1
-          else
-            echo "SUCCESS: Sufficient disk space available: ${AVAILABLE_KB}KB"
-          fi
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -130,20 +74,6 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-        with:
-          driver-opts: |
-            image=moby/buildkit:buildx-stable-1
-            network=host
-
-      - name: Pre-build disk space check
-        run: |
-          echo "=== Pre-build disk space check ==="
-          df -h
-          AVAILABLE_KB=$(df / | tail -1 | awk '{print $4}')
-          echo "Available space before build: ${AVAILABLE_KB}KB"
-          if [ "$AVAILABLE_KB" -lt 8388608 ]; then
-            echo "WARNING: Low disk space before build: ${AVAILABLE_KB}KB (less than 8GB)"
-          fi
 
       - name: Build Docker image for scanning
         uses: docker/build-push-action@v5
@@ -151,27 +81,11 @@ jobs:
           context: .
           load: true
           build-args: |
-            "PROFILE=release"
+            "GH_READ_TOKEN=${{ secrets.GH_READ_TOKEN }}"
           tags: |
             cere-blockchain-node:scan-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          outputs: type=docker,dest=/tmp/image.tar
-        continue-on-error: false
-
-      - name: Load Docker image
-        run: |
-          echo "=== Post-build disk space check ==="
-          df -h
-          AVAILABLE_KB=$(df / | tail -1 | awk '{print $4}')
-          echo "Available space after build: ${AVAILABLE_KB}KB"
-          
-          docker load -i /tmp/image.tar
-          rm /tmp/image.tar
-          docker images
-          
-          # Clean up any dangling images to free space
-          docker image prune -f
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
@@ -180,43 +94,7 @@ jobs:
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH,MEDIUM'
-          exit-code: '0'
-          timeout: '10m'
-        continue-on-error: true
-
-      - name: Verify Docker image exists
-        run: |
-          if ! docker images | grep -q "cere-blockchain-node:scan-${{ github.sha }}"; then
-            echo "Error: Docker image not found"
-            exit 1
-          fi
-          echo "Docker image verified successfully"
-
-      - name: Ensure SARIF file exists
-        run: |
-          if [ ! -f "trivy-results.sarif" ]; then
-            echo "Warning: trivy-results.sarif not found, creating empty SARIF file"
-            cat > trivy-results.sarif << 'EOF'
-          {
-            "version": "2.1.0",
-            "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
-            "runs": [
-              {
-                "tool": {
-                  "driver": {
-                    "name": "Trivy",
-                    "version": "unknown"
-                  }
-                },
-                "results": []
-              }
-            ]
-          }
-          EOF
-          else
-            echo "SARIF file found successfully"
-          fi
-          ls -la trivy-results.sarif
+          exit-code: '1'
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
@@ -230,20 +108,11 @@ jobs:
           image-ref: 'cere-blockchain-node:scan-${{ github.sha }}'
           format: 'table'
           severity: 'CRITICAL,HIGH'
-          timeout: '10m'
-        continue-on-error: true
-
-      - name: Clean up Docker images
-        if: always()
-        run: |
-          docker rmi cere-blockchain-node:scan-${{ github.sha }} || true
-          docker system prune -f || true
-          echo "Cleanup completed"
 
   dependency-scanning:
     name: Dependency Scanning
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 20
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -251,14 +120,14 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2024-10-01
+          toolchain: 1.82.0
           override: true
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
 
       - name: Configure Git
-        run: echo "Git configuration skipped - using public repositories only"
+        run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
 
       - name: Check dependency tree for duplicates
         run: |
@@ -287,7 +156,7 @@ jobs:
   code-scanning:
     name: CodeQL Analysis
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 30
     permissions:
       actions: read
       contents: read

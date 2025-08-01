@@ -34,7 +34,7 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Configure AWS credentials (for ECR only)
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -59,7 +59,7 @@ jobs:
         with:
           context: .
           build-args: |
-            "PROFILE=release"
+            "GH_READ_TOKEN=${{ secrets.GH_READ_TOKEN }}"
           cache-from: |
             type=registry,ref=ghcr.io/cerebellum-network/blockchain-node-cache:latest
             type=gha
@@ -72,15 +72,15 @@ jobs:
 # Alternative: Dedicated cache-only build
 cache-build:
   name: Cache Build Artifacts
-  runs-on: ubuntu-latest  
+  runs-on: ubuntu-latest
   if: false  # Disabled
   steps:
     - uses: actions/checkout@v4
-    
+
     - name: Install Rust toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly-2024-10-01
+        toolchain: 1.82.0
         override: true
         target: wasm32-unknown-unknown
         components: rust-src
@@ -98,7 +98,7 @@ cache-build:
         cache-all-crates: true
 
     - name: Configure Git
-      run: echo "Git configuration skipped - using public repositories only"
+      run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
 
     # Pre-build dependencies for caching
     - name: Cache Dependencies

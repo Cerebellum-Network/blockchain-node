@@ -19,168 +19,167 @@ jobs:
       HCLOUD_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
-    - name: Configure GitHub token for private deps
-      run: |
-        git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+      - name: Configure GitHub token for private deps
+        run: |
+          git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
 
-    - name: Generate ephemeral SSH key
-      id: sshkey
-      run: |
-        ssh-keygen -t ed25519 -N "" -f id_rsa
-        echo "PRIVATE_SSH=$(base64 -w 0 id_rsa)" >> $GITHUB_ENV
-        echo "PUBLIC_SSH=$(cat id_rsa.pub)" >> $GITHUB_ENV
+      - name: Generate ephemeral SSH key
+        id: sshkey
+        run: |
+          ssh-keygen -t ed25519 -N "" -f id_rsa
+          echo "PRIVATE_SSH=$(base64 -w 0 id_rsa)" >> $GITHUB_ENV
+          echo "PUBLIC_SSH=$(cat id_rsa.pub)" >> $GITHUB_ENV
 
-    - name: Upload SSH key to Hetzner
-      uses: jawher/action-hcloud@v1.50.0
-      env:
-        HCLOUD_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
-      with:
-        args: ssh-key create --name weights-key --public-key "${{ env.PUBLIC_SSH }}"
+      - name: Upload SSH key to Hetzner
+        uses: jawher/action-hcloud@v1.50.0
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
+        with:
+          args: ssh-key create --name weights-key --public-key "${{ env.PUBLIC_SSH }}"
 
-    - name: Create Hetzner Server
-      uses: jawher/action-hcloud@v1.50.0
-      env:
-        HCLOUD_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
-      with:
-        args: server create --name weights-${{ github.run_id }} --type=cpx31 --image=ubuntu-22.04 --ssh-key=weights-key --location=fsn1
+      - name: Create Hetzner Server
+        uses: jawher/action-hcloud@v1.50.0
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
+        with:
+          args: server create --name weights-${{ github.run_id }} --type=cpx31 --image=ubuntu-22.04 --ssh-key=weights-key --location=fsn1
 
-    - name: Fetch server IP
-      uses: jawher/action-hcloud@v1.50.0
-      env:
-        HCLOUD_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
-      with:
-        args: server describe weights-${{ github.run_id }} -o json
+      - name: Fetch server IP
+        uses: jawher/action-hcloud@v1.50.0
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
+        with:
+          args: server describe weights-${{ github.run_id }} -o json
 
-    - name: Extract IP and prepare SSH
-      run: |
-        echo "SERVER_IP=$(cat ${GITHUB_WORKSPACE}/hcloud.output | jq -r '.public_net.ipv4.ip')" >> $GITHUB_ENV
-        echo "$PRIVATE_SSH" | base64 -d > id_rsa
-        chmod 600 id_rsa
+      - name: Extract IP and prepare SSH
+        run: |
+          echo "SERVER_IP=$(cat ${GITHUB_WORKSPACE}/hcloud.output | jq -r '.public_net.ipv4.ip')" >> $GITHUB_ENV
+          echo "$PRIVATE_SSH" | base64 -d > id_rsa
+          chmod 600 id_rsa
 
-    - name: Wait for SSH
-      run: |
-        for i in {1..30}; do
-          ssh -o StrictHostKeyChecking=no -i id_rsa root@$SERVER_IP 'echo ready' && break
-          sleep 5
-        done
+      - name: Wait for SSH
+        run: |
+          for i in {1..30}; do
+            ssh -o StrictHostKeyChecking=no -i id_rsa root@$SERVER_IP 'echo ready' && break
+            sleep 5
+          done
 
-    - name: Run benchmarks and tests remotely
-      run: |
-        ssh -i id_rsa -o StrictHostKeyChecking=no -o ServerAliveInterval=30 root@$SERVER_IP "bash -s" <<EOF
-        set -eux
-        export GH_TOKEN="${{ secrets.GH_READ_TOKEN }}"
-        export BRANCH="${{ github.event.inputs.branch }}"
+      - name: Run benchmarks and tests remotely
+        run: |
+          ssh -i id_rsa -o StrictHostKeyChecking=no -o ServerAliveInterval=30 root@$SERVER_IP "bash -s" <<EOF
+          set -eux
+          export GH_TOKEN="${{ secrets.GH_READ_TOKEN }}"
+          export BRANCH="${{ github.event.inputs.branch }}"
+          
+          apt update && apt install -y \
+            curl git build-essential jq protobuf-compiler \
+            llvm-dev libclang-dev clang pkg-config libssl-dev
+          
+          curl https://sh.rustup.rs -sSf | bash -s -- -y
+          source \$HOME/.cargo/env
+          
+          rustup install 1.82.0
+          rustup default 1.82.0
+          rustup component add clippy rustfmt rust-src
+          rustup target add wasm32-unknown-unknown
+          
+          git config --global url."https://\${GH_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+          git clone --branch "\$BRANCH" --single-branch https://github.com/Cerebellum-Network/blockchain-node.git
+          cd blockchain-node
+          
+          cargo build --release --features=runtime-benchmarks --verbose
+          
+          # Benchmark the external pallet_ddc_clusters
+          ./target/release/cere benchmark pallet \
+            --chain=dev \
+            --pallet="pallet_ddc_clusters" \
+            --extrinsic="*" \
+            --steps=50 \
+            --repeat=20 \
+            --template=./.maintain/frame-weight-template.hbs \
+            --output=./pallet_ddc_clusters_weights.rs
+          
+          # Benchmark the external pallet_ddc_clusters_gov
+          ./target/release/cere benchmark pallet \
+            --chain=dev \
+            --pallet="pallet_ddc_clusters_gov" \
+            --extrinsic="*" \
+            --steps=50 \
+            --repeat=20 \
+            --template=./.maintain/frame-weight-template.hbs \
+            --output=./pallet_ddc_clusters_gov_weights.rs
+          
+          # Benchmark the external pallet_ddc_customers
+          ./target/release/cere benchmark pallet \
+            --chain=dev \
+            --pallet="pallet_ddc_customers" \
+            --extrinsic="*" \
+            --steps=50 \
+            --repeat=20 \
+            --template=./.maintain/frame-weight-template.hbs \
+            --output=./pallet_ddc_customers_weights.rs
+          
+          # Benchmark the external pallet_ddc_nodes
+          ./target/release/cere benchmark pallet \
+            --chain=dev \
+            --pallet="pallet_ddc_nodes" \
+            --extrinsic="*" \
+            --steps=50 \
+            --repeat=20 \
+            --template=./.maintain/frame-weight-template.hbs \
+            --output=./pallet_ddc_nodes_weights.rs
+          
+          # Benchmark the external pallet_ddc_staking
+          ./target/release/cere benchmark pallet \
+            --chain=dev \
+            --pallet="pallet_ddc_staking" \
+            --extrinsic="*" \
+            --steps=50 \
+            --repeat=20 \
+            --template=./.maintain/frame-weight-template.hbs \
+            --output=./pallet_ddc_staking_weights.rs
+          
+          # Benchmark the external pallet_ddc_payouts
+          ./target/release/cere benchmark pallet \
+            --chain=dev \
+            --pallet="pallet_ddc_payouts" \
+            --extrinsic="*" \
+            --steps=50 \
+            --repeat=20 \
+            --template=./.maintain/frame-weight-template.hbs \
+            --output=./pallet_ddc_payouts_weights.rs
+          EOF
 
-        apt update && apt install -y \
-          curl git build-essential jq protobuf-compiler \
-          llvm-dev libclang-dev clang pkg-config libssl-dev \
-          libc6 libc6-dev gcc-multilib
+      - name: Download weights.rs files
+        run: |
+          mkdir -p weights
+          scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_clusters_weights.rs weights/pallet_ddc_clusters_weights.rs
+          scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_clusters_gov_weights.rs weights/pallet_ddc_clusters_gov_weights.rs
+          scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_customers_weights.rs weights/pallet_ddc_customers_weights.rs
+          scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_nodes_weights.rs weights/pallet_ddc_nodes_weights.rs
+          scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_staking_weights.rs weights/pallet_ddc_staking_weights.rs
+          scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_payouts_weights.rs weights/pallet_ddc_payouts_weights.rs
 
-        curl https://sh.rustup.rs -sSf | bash -s -- -y
-        source \$HOME/.cargo/env
+      - name: Upload weights.rs artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: weights-files
+          path: weights/
 
-        rustup install nightly-2024-10-01
-        rustup default nightly-2024-10-01
-        rustup component add clippy rustfmt rust-src
-        rustup target add wasm32-unknown-unknown
+      - name: Delete Hetzner server
+        uses: jawher/action-hcloud@v1.50.0
+        if: always()
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
+        with:
+          args: server delete weights-${{ github.run_id }}
 
-        git config --global url."https://\${GH_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
-        git clone --branch "\$BRANCH" --single-branch https://github.com/Cerebellum-Network/blockchain-node.git
-        cd blockchain-node
-
-        cargo build --release --features=runtime-benchmarks --verbose
-
-        # Benchmark the external pallet_ddc_clusters
-        ./target/release/cere benchmark pallet \
-          --chain=dev \
-          --pallet="pallet_ddc_clusters" \
-          --extrinsic="*" \
-          --steps=50 \
-          --repeat=20 \
-          --template=./.maintain/frame-weight-template.hbs \
-          --output=./pallet_ddc_clusters_weights.rs
-
-        # Benchmark the external pallet_ddc_clusters_gov
-        ./target/release/cere benchmark pallet \
-          --chain=dev \
-          --pallet="pallet_ddc_clusters_gov" \
-          --extrinsic="*" \
-          --steps=50 \
-          --repeat=20 \
-          --template=./.maintain/frame-weight-template.hbs \
-          --output=./pallet_ddc_clusters_gov_weights.rs
-
-        # Benchmark the external pallet_ddc_customers
-        ./target/release/cere benchmark pallet \
-          --chain=dev \
-          --pallet="pallet_ddc_customers" \
-          --extrinsic="*" \
-          --steps=50 \
-          --repeat=20 \
-          --template=./.maintain/frame-weight-template.hbs \
-          --output=./pallet_ddc_customers_weights.rs
-
-        # Benchmark the external pallet_ddc_nodes
-        ./target/release/cere benchmark pallet \
-          --chain=dev \
-          --pallet="pallet_ddc_nodes" \
-          --extrinsic="*" \
-          --steps=50 \
-          --repeat=20 \
-          --template=./.maintain/frame-weight-template.hbs \
-          --output=./pallet_ddc_nodes_weights.rs
-
-        # Benchmark the external pallet_ddc_staking
-        ./target/release/cere benchmark pallet \
-          --chain=dev \
-          --pallet="pallet_ddc_staking" \
-          --extrinsic="*" \
-          --steps=50 \
-          --repeat=20 \
-          --template=./.maintain/frame-weight-template.hbs \
-          --output=./pallet_ddc_staking_weights.rs
-
-        # Benchmark the external pallet_ddc_payouts
-        ./target/release/cere benchmark pallet \
-          --chain=dev \
-          --pallet="pallet_ddc_payouts" \
-          --extrinsic="*" \
-          --steps=50 \
-          --repeat=20 \
-          --template=./.maintain/frame-weight-template.hbs \
-          --output=./pallet_ddc_payouts_weights.rs
-        EOF
-
-    - name: Download weights.rs files
-      run: |
-        mkdir -p weights
-        scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_clusters_weights.rs weights/pallet_ddc_clusters_weights.rs
-        scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_clusters_gov_weights.rs weights/pallet_ddc_clusters_gov_weights.rs
-        scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_customers_weights.rs weights/pallet_ddc_customers_weights.rs
-        scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_nodes_weights.rs weights/pallet_ddc_nodes_weights.rs
-        scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_staking_weights.rs weights/pallet_ddc_staking_weights.rs
-        scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_payouts_weights.rs weights/pallet_ddc_payouts_weights.rs
-
-    - name: Upload weights.rs artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: weights-files
-        path: weights/
-
-    - name: Delete Hetzner server
-      uses: jawher/action-hcloud@v1.50.0
-      if: always()
-      env:
-        HCLOUD_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
-      with:
-        args: server delete weights-${{ github.run_id }}
-
-    - name: Delete Hetzner SSH key
-      uses: jawher/action-hcloud@v1.50.0
-      if: always()
-      env:
-        HCLOUD_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
-      with:
-        args: ssh-key delete weights-key
+      - name: Delete Hetzner SSH key
+        uses: jawher/action-hcloud@v1.50.0
+        if: always()
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
+        with:
+          args: ssh-key delete weights-key

@@ -9,29 +9,17 @@ on:
 jobs:
   try-runtime-local:
     name: Try-Runtime Local Test
-    runs-on: ubuntu-22.04
-    timeout-minutes: 180
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
     continue-on-error: true
     steps:
-      # Free up disk space
-      - name: Free Disk Space
-        run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/ghc || true
-          sudo rm -rf /usr/local/share/boost
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-          df -h
       - uses: actions/checkout@v4
       - name: Install linux dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler
-          # Ensure we have the latest libc6 for GLIBC_2.39 compatibility
-          sudo apt install -y libc6 libc6-dev
+        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler
       - name: Install toolchain and rust-src
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2024-10-01
+          toolchain: 1.82.0
           override: true
           target: wasm32-unknown-unknown
           components: rust-src
@@ -42,20 +30,20 @@ jobs:
           cache-on-failure: true
       - name: Configure Git
         run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
-      
+
       - name: Install try-runtime
         run: cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.8.0 --locked
-        
+
       - name: Build for try-runtime
         run: |
           CARGO_INCREMENTAL=1 cargo build --release --features try-runtime
-          
+
       # Test with local node instead of external network
       - name: Start local test node
         run: |
           ./target/release/cere --dev --tmp &
           sleep 10
-          
+
       - name: Check Try-Runtime (Local)
         run: |
           # Test against local node - much faster and more reliable

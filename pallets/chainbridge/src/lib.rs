@@ -3,7 +3,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::manual_inspect)]
 pub mod weights;
-pub use weights::WeightInfo;
+use crate::weights::WeightInfo;
 
 #[cfg(test)]
 pub(crate) mod mock;
@@ -16,9 +16,9 @@ use frame_support::{
 	ensure,
 	pallet_prelude::*,
 	traits::{EnsureOrigin, Get},
-	Blake2_256, PalletId, Parameter,
+	PalletId, Parameter,
 };
-use frame_system::{self as system, pallet_prelude::*};
+use frame_system::{self as system, ensure_root, ensure_signed, pallet_prelude::*};
 pub use pallet::*;
 use sp_core::U256;
 use sp_runtime::{
@@ -126,9 +126,7 @@ pub mod pallet {
 
 		#[cfg(feature = "runtime-benchmarks")]
 		fn try_successful_origin() -> Result<T::RuntimeOrigin, ()> {
-			let bridge_id =
-				AccountIdConversion::<T::AccountId>::into_account_truncating(&MODULE_ID);
-			Ok(T::RuntimeOrigin::from(system::RawOrigin::Signed(bridge_id)))
+			Ok(T::RuntimeOrigin::from(system::RawOrigin::Signed(<Pallet<T>>::account_id())))
 		}
 	}
 
@@ -139,9 +137,9 @@ pub mod pallet {
 		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 		/// Proposed dispatchable call
 		type Proposal: Parameter
-			+ Dispatchable<RuntimeOrigin = Self::RuntimeOrigin>
-			+ EncodeLike
-			+ GetDispatchInfo;
+		+ Dispatchable<RuntimeOrigin = Self::RuntimeOrigin>
+		+ EncodeLike
+		+ GetDispatchInfo;
 		/// The identifier for this chain.
 		/// This must be unique and must not collide with existing IDs within a set of bridged
 		/// chains.
@@ -159,23 +157,19 @@ pub mod pallet {
 
 	/// All whitelisted chains and their respective transaction counts
 	#[pallet::storage]
-	#[pallet::getter(fn chain_nonces)]
 	pub type ChainNonces<T: Config> = StorageMap<_, Blake2_256, ChainId, DepositNonce>;
 
 	/// Tracks current relayer set
 	#[pallet::storage]
-	#[pallet::getter(fn relayers)]
 	pub type Relayers<T: Config> = StorageMap<_, Blake2_256, T::AccountId, bool>;
 
 	/// Utilized by the bridge software to map resource IDs to actual methods
 	#[pallet::storage]
-	#[pallet::getter(fn resources)]
 	pub type Resources<T: Config> = StorageMap<_, Blake2_256, ResourceId, Vec<u8>>;
 
 	/// All known proposals.
 	/// The key is the hash of the call and the deposit ID, to ensure it's unique
 	#[pallet::storage]
-	#[pallet::getter(fn votes)]
 	pub type Votes<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_256,
@@ -192,9 +186,8 @@ pub mod pallet {
 
 	/// Number of votes required for a proposal to execute
 	#[pallet::storage]
-	#[pallet::getter(fn relayer_threshold)]
 	pub type RelayerThreshold<T: Config> =
-		StorageValue<_, u32, ValueQuery, DefaultRelayerThreshold<T>>;
+	StorageValue<Value = u32, QueryKind = ValueQuery, OnEmpty = DefaultRelayerThreshold<T>>;
 
 	#[pallet::type_value]
 	pub fn DefaultRelayerCount<T: Config>() -> u32 {
@@ -203,8 +196,8 @@ pub mod pallet {
 
 	/// Number of relayers in set
 	#[pallet::storage]
-	#[pallet::getter(fn relayer_count)]
-	pub type RelayerCount<T: Config> = StorageValue<_, u32, ValueQuery, DefaultRelayerCount<T>>;
+	pub type RelayerCount<T: Config> =
+	StorageValue<Value = u32, QueryKind = ValueQuery, OnEmpty = DefaultRelayerCount<T>>;
 
 	#[pallet::error]
 	pub enum Error<T> {

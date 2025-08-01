@@ -7,6 +7,7 @@ on:
       - master
       - 'release/**'
       - 'hotfix/**'
+      - 'fix_ci'
 
 env:
   PROFILE: release
@@ -21,31 +22,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Free up disk space
-        run: |
-          echo "=== Initial disk space ==="
-          df -h
-          echo "=== Cleaning up unnecessary packages ==="
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/ghc || true
-          sudo rm -rf /usr/local/share/boost
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-          sudo rm -rf /usr/share/swift || true
-          sudo rm -rf /usr/local/lib/android || true
-          sudo rm -rf /usr/local/share/powershell || true
-          sudo rm -rf /usr/share/az_* || true
-          sudo rm -rf /opt/az || true
-          sudo rm -rf /usr/local/lib/node_modules || true
-          echo "=== Docker cleanup ==="
-          docker system prune -af --volumes || true
-          docker builder prune -af || true
-          echo "=== Final disk space ==="
-          df -h
-          echo "=== Available space on root ==="
-          df -h / | tail -1 | awk '{print "Available: " $4}'
-
       - name: Configure Git
-        run: echo "Git configuration skipped - using public repositories only"
+        run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
 
       - name: Cache cargo registry
         uses: actions/cache@v4
@@ -82,7 +60,7 @@ jobs:
       - name: Install toolchain and rust-src
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2024-10-01
+          toolchain: 1.82.0
           override: true
           target: wasm32-unknown-unknown
           components: rust-src
@@ -91,13 +69,9 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: Dockerfile
           push: true
           build-args: |
-            PROFILE=${{ env.PROFILE }}
-            BUILDKIT_INLINE_CACHE=1
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            "GH_READ_TOKEN=${{ secrets.GH_READ_TOKEN }}"
           tags: |
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ github.sha }}
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ env.GITHUB_SHA }}
@@ -107,8 +81,8 @@ jobs:
         run: |
           CONTAINER_ID=$(docker create ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ env.GITHUB_SHA }})
 
-          docker cp "${CONTAINER_ID}:/data/cere-runtime-artifacts/cere_runtime.compact.compressed.wasm" "./${{ env.CERE_RUNTIME }}"
-          docker cp "${CONTAINER_ID}:/data/cere-dev-runtime-artifacts/cere_dev_runtime.compact.compressed.wasm" "./${{ env.CERE_DEV_RUNTIME }}"
+          docker cp "${CONTAINER_ID}:/home/cere/cere-runtime-artifacts/cere_runtime.compact.compressed.wasm" "./${{ env.CERE_RUNTIME }}"
+          docker cp "${CONTAINER_ID}:/home/cere/cere-dev-runtime-artifacts/cere_dev_runtime.compact.compressed.wasm" "./${{ env.CERE_DEV_RUNTIME }}"
 
       - name: Upload cere-runtime wasm artifact
         uses: actions/upload-artifact@v4
@@ -121,17 +95,6 @@ jobs:
         with:
           name: "cere_dev_runtime.compact.compressed.${{ env.GITHUB_SHA }}.wasm"
           path: "./${{ env.CERE_DEV_RUNTIME }}"
-
-      - name: Post-build cleanup
-        run: |
-          echo "=== Post-build disk cleanup ==="
-          df -h
-          echo "=== Cleaning up Docker artifacts ==="
-          docker image prune -f || true
-          docker system prune -f || true
-          echo "=== Final disk space ==="
-          df -h
-          echo "Cleanup completed"
 
   trigger-e2e-tests:
     runs-on: ubuntu-latest
