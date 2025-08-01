@@ -44,7 +44,7 @@ use sp_runtime::{
 	traits::{AccountIdConversion, BlockNumberProvider, Dispatchable},
 	DispatchError, DispatchResult, RuntimeDebug, SaturatedConversion,
 };
-use sp_std::{prelude::*};
+use sp_std::prelude::*;
 
 #[cfg(test)]
 pub(crate) mod mock_clusters_gov;

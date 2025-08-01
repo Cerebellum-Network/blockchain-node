@@ -195,10 +195,10 @@ type NegativeImbalance = <Balances as Currency<AccountId>>::NegativeImbalance;
 /// Logic for the author to get a portion of fees.
 pub struct ToAuthor<R>(core::marker::PhantomData<R>);
 impl<R> OnUnbalanced<Credit<R::AccountId, pallet_balances::Pallet<R>>> for ToAuthor<R>
-	where
-		R: pallet_balances::Config + pallet_authorship::Config,
-		<R as frame_system::Config>::AccountId: From<AccountId>,
-		<R as frame_system::Config>::AccountId: Into<AccountId>,
+where
+	R: pallet_balances::Config + pallet_authorship::Config,
+	<R as frame_system::Config>::AccountId: From<AccountId>,
+	<R as frame_system::Config>::AccountId: Into<AccountId>,
 {
 	fn on_nonzero_unbalanced(
 		amount: Credit<<R as frame_system::Config>::AccountId, pallet_balances::Pallet<R>>,
@@ -211,10 +211,10 @@ impl<R> OnUnbalanced<Credit<R::AccountId, pallet_balances::Pallet<R>>> for ToAut
 
 pub struct DealWithFees<R>(core::marker::PhantomData<R>);
 impl<R> OnUnbalanced<Credit<R::AccountId, pallet_balances::Pallet<R>>> for DealWithFees<R>
-	where
-		R: pallet_balances::Config + pallet_authorship::Config + pallet_treasury::Config,
-		<R as frame_system::Config>::AccountId: From<AccountId>,
-		<R as frame_system::Config>::AccountId: Into<AccountId>,
+where
+	R: pallet_balances::Config + pallet_authorship::Config + pallet_treasury::Config,
+	<R as frame_system::Config>::AccountId: From<AccountId>,
+	<R as frame_system::Config>::AccountId: Into<AccountId>,
 {
 	fn on_unbalanceds(
 		mut fees_then_tips: impl Iterator<Item = Credit<R::AccountId, pallet_balances::Pallet<R>>>,
@@ -467,7 +467,7 @@ impl pallet_babe::Config for Runtime {
 	type KeyOwnerProof = sp_session::MembershipProof;
 
 	type EquivocationReportSystem =
-	pallet_babe::EquivocationReportSystem<Self, Offences, Historical, ReportLongevity>;
+		pallet_babe::EquivocationReportSystem<Self, Offences, Historical, ReportLongevity>;
 
 	type WeightInfo = ();
 	type MaxAuthorities = MaxAuthorities;
@@ -621,9 +621,9 @@ impl pallet_staking::BenchmarkingConfig for StakingBenchmarkingConfig {
 }
 
 type PositiveImbalanceOf<T> =
-Debt<<T as frame_system::Config>::AccountId, <T as pallet_staking::Config>::Currency>;
+	Debt<<T as frame_system::Config>::AccountId, <T as pallet_staking::Config>::Currency>;
 pub type NegativeImbalanceOf<T> =
-Credit<<T as frame_system::Config>::AccountId, <T as pallet_staking::Config>::Currency>;
+	Credit<<T as frame_system::Config>::AccountId, <T as pallet_staking::Config>::Currency>;
 
 pub struct BurnSource;
 
@@ -847,7 +847,7 @@ impl pallet_election_provider_multi_phase::Config for Runtime {
 	type SignedMaxRefunds = ConstU32<3>;
 	type SignedDepositWeight = ();
 	type SignedMaxWeight =
-	<Self::MinerConfig as pallet_election_provider_multi_phase::MinerConfig>::MaxWeight;
+		<Self::MinerConfig as pallet_election_provider_multi_phase::MinerConfig>::MaxWeight;
 	type MinerConfig = Self;
 	type SlashHandler = (); // burn slashes
 	type RewardHandler = (); // nothing to do upon rewards
@@ -1025,8 +1025,8 @@ parameter_types! {
 }
 
 impl<LocalCall> frame_system::offchain::CreateTransaction<LocalCall> for Runtime
-	where
-		RuntimeCall: From<LocalCall>,
+where
+	RuntimeCall: From<LocalCall>,
 {
 	type Extension = TxExtension;
 
@@ -1036,8 +1036,8 @@ impl<LocalCall> frame_system::offchain::CreateTransaction<LocalCall> for Runtime
 }
 
 impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
-	where
-		RuntimeCall: From<LocalCall>,
+where
+	RuntimeCall: From<LocalCall>,
 {
 	fn create_signed_transaction<
 		C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>,
@@ -1083,8 +1083,8 @@ impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for R
 }
 
 impl<LocalCall> frame_system::offchain::CreateInherent<LocalCall> for Runtime
-	where
-		RuntimeCall: From<LocalCall>,
+where
+	RuntimeCall: From<LocalCall>,
 {
 	fn create_inherent(call: RuntimeCall) -> UncheckedExtrinsic {
 		UncheckedExtrinsic::new_bare(call)
@@ -1097,8 +1097,8 @@ impl frame_system::offchain::SigningTypes for Runtime {
 }
 
 impl<C> frame_system::offchain::CreateTransactionBase<C> for Runtime
-	where
-		RuntimeCall: From<C>,
+where
+	RuntimeCall: From<C>,
 {
 	type Extrinsic = UncheckedExtrinsic;
 	type RuntimeCall = RuntimeCall;
@@ -1136,7 +1136,7 @@ impl pallet_grandpa::Config for Runtime {
 	type KeyOwnerProof = sp_session::MembershipProof;
 
 	type EquivocationReportSystem =
-	pallet_grandpa::EquivocationReportSystem<Self, Offences, Historical, ReportLongevity>;
+		pallet_grandpa::EquivocationReportSystem<Self, Offences, Historical, ReportLongevity>;
 
 	type WeightInfo = ();
 	type MaxAuthorities = MaxAuthorities;
@@ -1295,7 +1295,7 @@ impl pallet_nomination_pools::Config for Runtime {
 	type WeightInfo = ();
 	type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
 	type StakeAdapter =
-	pallet_nomination_pools::adapter::DelegateStake<Self, Staking, DelegatedStaking>;
+		pallet_nomination_pools::adapter::DelegateStake<Self, Staking, DelegatedStaking>;
 }
 
 parameter_types! {
@@ -1460,7 +1460,7 @@ impl<T: frame_system::Config> PalletVisitor<T> for ClustersGovWrapper {
 
 pub struct DdcOriginAsNative<DdcOrigin, RuntimeOrigin>(PhantomData<(DdcOrigin, RuntimeOrigin)>);
 impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
-for DdcOriginAsNative<DdcOrigin, T>
+	for DdcOriginAsNative<DdcOrigin, T>
 {
 	fn get() -> T::RuntimeOrigin {
 		DdcOrigin::get()
@@ -1488,7 +1488,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	type CustomerVisitor = DdcCustomers;
 	type BucketManager = DdcCustomers;
 	type InspReceiptsInterceptor =
-	pallet_ddc_verification::simulations::v1::SimulationReceiptsInterceptor;
+		pallet_ddc_verification::simulations::v1::SimulationReceiptsInterceptor;
 
 	type InspRedundancyFactor = TenPercentOfValidators;
 	type InspBackupsFactor = TenPercentOfValidators;
@@ -1746,7 +1746,7 @@ pub type TxExtension = (
 
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic =
-generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, TxExtension>;
+	generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, TxExtension>;
 /// The payload being signed in transactions.
 pub type SignedPayload = generic::SignedPayload<RuntimeCall, TxExtension>;
 /// Extrinsic type that has already been checked.
@@ -1756,7 +1756,6 @@ parameter_types! {
 	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
 	pub const MaxPoolsToMigrate: u32 = 250;
 }
-
 
 type Migrations = (
 	pallet_nomination_pools::migration::unversioned::DelegationStakeMigration<
@@ -2311,8 +2310,8 @@ mod tests {
 	#[test]
 	fn validate_transaction_submitter_bounds() {
 		fn is_submit_signed_transaction<T>()
-			where
-				T: CreateSignedTransaction<RuntimeCall>,
+		where
+			T: CreateSignedTransaction<RuntimeCall>,
 		{
 		}
 

@@ -137,9 +137,9 @@ pub mod pallet {
 		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 		/// Proposed dispatchable call
 		type Proposal: Parameter
-		+ Dispatchable<RuntimeOrigin = Self::RuntimeOrigin>
-		+ EncodeLike
-		+ GetDispatchInfo;
+			+ Dispatchable<RuntimeOrigin = Self::RuntimeOrigin>
+			+ EncodeLike
+			+ GetDispatchInfo;
 		/// The identifier for this chain.
 		/// This must be unique and must not collide with existing IDs within a set of bridged
 		/// chains.
@@ -187,7 +187,7 @@ pub mod pallet {
 	/// Number of votes required for a proposal to execute
 	#[pallet::storage]
 	pub type RelayerThreshold<T: Config> =
-	StorageValue<Value = u32, QueryKind = ValueQuery, OnEmpty = DefaultRelayerThreshold<T>>;
+		StorageValue<Value = u32, QueryKind = ValueQuery, OnEmpty = DefaultRelayerThreshold<T>>;
 
 	#[pallet::type_value]
 	pub fn DefaultRelayerCount<T: Config>() -> u32 {
@@ -197,7 +197,7 @@ pub mod pallet {
 	/// Number of relayers in set
 	#[pallet::storage]
 	pub type RelayerCount<T: Config> =
-	StorageValue<Value = u32, QueryKind = ValueQuery, OnEmpty = DefaultRelayerCount<T>>;
+		StorageValue<Value = u32, QueryKind = ValueQuery, OnEmpty = DefaultRelayerCount<T>>;
 
 	#[pallet::error]
 	pub enum Error<T> {

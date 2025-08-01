@@ -48,9 +48,9 @@ type FullGrandpaBlockImport<RuntimeApi> = sc_consensus_grandpa::GrandpaBlockImpo
 >;
 
 struct Basics<RuntimeApi>
-	where
-		RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
-		RuntimeApi::RuntimeApi: RuntimeApiCollection,
+where
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
+	RuntimeApi::RuntimeApi: RuntimeApiCollection,
 {
 	task_manager: TaskManager,
 	client: Arc<FullClient<RuntimeApi>>,
@@ -62,9 +62,9 @@ struct Basics<RuntimeApi>
 fn new_partial_basics<RuntimeApi>(
 	config: &Configuration,
 ) -> Result<Basics<RuntimeApi>, ServiceError>
-	where
-		RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
-		RuntimeApi::RuntimeApi: RuntimeApiCollection,
+where
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
+	RuntimeApi::RuntimeApi: RuntimeApiCollection,
 {
 	let telemetry = config
 		.telemetry_endpoints
@@ -137,9 +137,9 @@ fn new_partial<RuntimeApi>(
 	>,
 	ServiceError,
 >
-	where
-		RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
-		RuntimeApi::RuntimeApi: RuntimeApiCollection,
+where
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
+	RuntimeApi::RuntimeApi: RuntimeApiCollection,
 {
 	let select_chain = sc_consensus::LongestChain::new(backend.clone());
 
@@ -149,9 +149,9 @@ fn new_partial<RuntimeApi>(
 			client.clone(),
 			config.role.is_authority().into(),
 		)
-			.with_options(config.transaction_pool.clone())
-			.with_prometheus(config.prometheus_registry())
-			.build(),
+		.with_options(config.transaction_pool.clone())
+		.with_prometheus(config.prometheus_registry())
+		.build(),
 	);
 	let (grandpa_block_import, grandpa_link) = sc_consensus_grandpa::block_import(
 		client.clone(),
@@ -265,7 +265,7 @@ pub fn build_full<N: NetworkBackend<Block, <Block as BlockT>::Hash>>(
 			disable_hardware_benchmarks,
 			|_, _| (),
 		)
-			.map(|full| full.with_client(Client::CereDev));
+		.map(|full| full.with_client(Client::CereDev));
 	}
 
 	#[cfg(feature = "cere-native")]
@@ -311,9 +311,9 @@ pub fn new_full<RuntimeApi, N: NetworkBackend<Block, <Block as BlockT>::Hash>>(
 		&sc_consensus_babe::BabeLink<Block>,
 	),
 ) -> Result<NewFull<Arc<FullClient<RuntimeApi>>>, ServiceError>
-	where
-		RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
-		RuntimeApi::RuntimeApi: RuntimeApiCollection,
+where
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
+	RuntimeApi::RuntimeApi: RuntimeApiCollection,
 {
 	let hwbench = if !disable_hardware_benchmarks {
 		config.database.path().map(|database_path| {
@@ -585,11 +585,11 @@ impl ExecuteWithClient for RevertConsensus {
 	type Output = sp_blockchain::Result<()>;
 
 	fn execute_with_client<Client, Api, Backend>(self, client: Arc<Client>) -> Self::Output
-		where
-			Backend: sc_client_api::Backend<Block>,
-			Backend::State: sc_client_api::backend::StateBackend<BlakeTwo256>,
-			Api: RuntimeApiCollection,
-			Client: AbstractClient<Block, Backend, Api = Api> + 'static,
+	where
+		Backend: sc_client_api::Backend<Block>,
+		Backend::State: sc_client_api::backend::StateBackend<BlakeTwo256>,
+		Api: RuntimeApiCollection,
+		Client: AbstractClient<Block, Backend, Api = Api> + 'static,
 	{
 		sc_consensus_babe::revert(client.clone(), self.backend, self.blocks)?;
 		sc_consensus_grandpa::revert(client, self.blocks)?;

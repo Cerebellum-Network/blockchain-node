@@ -67,8 +67,8 @@ type AccountPublic = <Signature as Verify>::Signer;
 
 /// Generate an account ID from seed.
 pub fn get_account_id_from_seed<TPublic: Public>(seed: &str) -> AccountId
-	where
-		AccountPublic: From<<TPublic::Pair as Pair>::Public>,
+where
+	AccountPublic: From<<TPublic::Pair as Pair>::Public>,
 {
 	AccountPublic::from(get_from_seed::<TPublic>(seed)).into_account()
 }
@@ -280,9 +280,9 @@ pub fn cere_dev_native_chain_spec_properties() -> serde_json::map::Map<String, s
 		"tokenSymbol": "CERE",
 		"ss58Format": 54,
 	})
-		.as_object()
-		.expect("Map given; qed")
-		.clone()
+	.as_object()
+	.expect("Map given; qed")
+	.clone()
 }
 
 /// Helper function to create Cere `RuntimeGenesisConfig` for testing
@@ -426,9 +426,9 @@ pub fn cere_thirdparty_chain_spec_properties() -> serde_json::map::Map<String, s
 		"tokenSymbol": "CERE",
 		"ss58Format": 54,
 	})
-		.as_object()
-		.expect("Map given; qed")
-		.clone()
+	.as_object()
+	.expect("Map given; qed")
+	.clone()
 }
 
 #[cfg(feature = "cere-native")]
