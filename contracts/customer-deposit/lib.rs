@@ -131,10 +131,10 @@ mod customer_deposit {
 
 		/// Fetches customers balances in DDC cluster in a paginated manner.
 		#[ink(message)]
-		fn get_balances(&self, last_index: u64, limit: u64) -> Vec<Ledger> {
+		fn get_balances(&self, from_index: u64, limit: u64) -> Vec<Ledger> {
 			let mut results: Vec<Ledger> = Vec::new();
-			let mut index = last_index;
-			let end_index = (last_index.saturating_add(limit)).min(self.count);
+			let mut index = from_index;
+			let end_index = (from_index.saturating_add(limit)).min(self.count);
 
 			while index < end_index {
 				if let Some(account) = self.accounts.get(&index) {
