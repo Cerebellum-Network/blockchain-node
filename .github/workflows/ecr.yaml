@@ -6,7 +6,6 @@ on:
       - dev
       - staging
       - master
-      - 'fix_ci'
   pull_request:
     branches:
       - 'release/**'
