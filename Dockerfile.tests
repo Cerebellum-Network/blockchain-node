@@ -32,8 +32,18 @@ RUN chown -R builder:builder /cerenetwork
 RUN chmod +x /usr/local/protoc/bin/protoc && \
     chmod +x /usr/local/bin/protoc
 
+# Debug: Check if GH_READ_TOKEN is available
+RUN echo "GH_READ_TOKEN length: ${#GH_READ_TOKEN}" && \
+    echo "GH_READ_TOKEN is set: $([ -n "${GH_READ_TOKEN}" ] && echo "YES" || echo "NO")"
+
 # Configure Git at system level for all users
-RUN git config --system url."https://${GH_READ_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+RUN if [ -n "${GH_READ_TOKEN}" ]; then \
+        echo "Configuring Git with token"; \
+        git config --system url."https://${GH_READ_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"; \
+    else \
+        echo "Warning: GH_READ_TOKEN is empty, trying to use git credential helper"; \
+        git config --system credential.helper store; \
+    fi
 
 # Switch to builder user
 USER builder

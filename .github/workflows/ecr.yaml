@@ -30,8 +30,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Debug - Check GH_READ_TOKEN
+        run: |
+          echo "GH_READ_TOKEN length: ${#GH_READ_TOKEN}"
+          echo "GH_READ_TOKEN is set: $([ -n "$GH_READ_TOKEN" ] && echo "YES" || echo "NO")"
+          echo "First 10 chars: ${GH_READ_TOKEN:0:10}"
+
       - name: Configure Git
-        run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+        run: |
+          if [ -n "${{ secrets.GH_READ_TOKEN }}" ]; then
+            git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+          else
+            echo "Using GITHUB_TOKEN as fallback"
+            git config --global url."https://${{ github.token }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+          fi
 
       - name: Cache cargo registry
         uses: actions/cache@v4
@@ -66,4 +78,4 @@ jobs:
           push: false
           build-args: |
             "ECR_REGISTRY=${{ steps.login-ecr-org.outputs.registry }}"
-            "GH_READ_TOKEN=${{ secrets.GH_READ_TOKEN }}"
+            "GH_READ_TOKEN=${{ secrets.GH_READ_TOKEN || github.token }}"
