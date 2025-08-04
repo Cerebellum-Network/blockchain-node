@@ -714,6 +714,33 @@ mod tests {
 
 	#[ink::test]
 	fn test_charge_return_value() {
+
+		struct MockedPayoutsExtension;
+		impl ink::env::test::ChainExtension for MockedPayoutsExtension {
+			/// The static function id of the chain extension.
+			fn ext_id(&self) -> u16 {
+				1
+			}
+
+			/// The chain extension is called with the given input.
+			///
+			/// Returns an error code and may fill the `output` buffer with a
+			/// SCALE encoded result. The error code is taken from the
+			/// `ink::env::chain_extension::FromStatusCode` implementation for
+			/// `DdcPayoutsErr`.
+			fn call(
+				&mut self,
+				_func_id: u16,
+				_input: &[u8],
+				output: &mut Vec<u8>,
+			) -> u32 {
+				let ret: AccountId32 = PAYOUTS_PALLET;
+				ink::scale::Encode::encode_to(&ret, output);
+				0
+			}
+		}
+		ink::env::test::register_chain_extension(MockedPayoutsExtension);
+
 		let (mut contract, accounts) = setup(ENDOWMENT);
 		let alice = accounts.alice;
 		let bob = accounts.bob;
