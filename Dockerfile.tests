@@ -21,27 +21,6 @@ RUN PB_REL="https://github.com/protocolbuffers/protobuf/releases" && \
     chmod +x /usr/local/protoc/bin/protoc && \
     ln -s /usr/local/protoc/bin/protoc /usr/local/bin
 
-# Create non-privileged user for building
-RUN useradd -m -u 1001 builder
-
-# Change ownership of the workspace to builder user
-RUN chown -R builder:builder /cerenetwork
-
-# Ensure protoc is accessible to all users
-RUN chmod +x /usr/local/protoc/bin/protoc && \
-    chmod +x /usr/local/bin/protoc
-
-# Configure Git to use SSH for GitHub repositories
-RUN git config --system url."git@github.com:".insteadOf "https://github.com/"
-
-# Switch to builder user
-USER builder
-
-# Create cargo config to use git CLI for fetching
-RUN mkdir -p ~/.cargo && \
-    echo '[net]' > ~/.cargo/config.toml && \
-    echo 'git-fetch-with-cli = true' >> ~/.cargo/config.toml
-
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
     export PATH=$PATH:$HOME/.cargo/bin && \
     scripts/init.sh && \

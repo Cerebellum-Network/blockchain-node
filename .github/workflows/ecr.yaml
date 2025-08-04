@@ -23,25 +23,11 @@ jobs:
     runs-on: ubuntu-latest
     concurrency: dev
     timeout-minutes: 60
-    permissions:
-      contents: read
-      id-token: write
     steps:
       - uses: actions/checkout@v4
 
-      - name: Debug - Check GH_READ_TOKEN
-        run: |
-          echo "GH_READ_TOKEN length: ${#GH_READ_TOKEN}"
-          echo "GH_READ_TOKEN is set: $([ -n "$GH_READ_TOKEN" ] && echo "YES" || echo "NO")"
-          echo "First 10 chars: ${GH_READ_TOKEN:0:10}"
-
-      - name: Setup SSH for GitHub
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.GITHUB_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan github.com >> ~/.ssh/known_hosts
-          git config --global url."git@github.com:".insteadOf "https://github.com/"
+      - name: Configure Git
+        run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
 
       - name: Cache cargo registry
         uses: actions/cache@v4
