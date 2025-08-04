@@ -3,7 +3,7 @@
 use ink::env::Environment;
 use ink::env::chain_extension::FromStatusCode;
 use ddc_primitives::{
-	contracts::types::{ClusterId, AccountId as AccountId32, Balance as BalanceU128},
+	contracts::types::{ClusterId as ClusterId20, AccountId as AccountId32, Balance as BalanceU128},
 	contracts::customer_deposit::{
 		types::{Ledger, UnlockChunk},
 		traits::{DdcBalancesFetcher, DdcBalancesDepositor, DdcPayoutsPayer},
@@ -31,7 +31,7 @@ pub trait DdcPayoutsExtension {
     type ErrorCode = DdcPayoutsErr;
 
     #[ink(function = 1)]
-    fn get_payouts_origin_id(cluster_id: ClusterId) -> AccountId32;
+    fn get_payouts_origin_id(cluster_id: ClusterId20) -> AccountId32;
 }
 
 
@@ -68,7 +68,7 @@ mod customer_deposit {
 	use ink::{prelude::vec::Vec, storage::Mapping};
 
 	use super::{
-		Error, AccountId32, ClusterId, BalanceU128,
+		Error, AccountId32, ClusterId20, BalanceU128,
 		DdcBalanceDeposited, DdcBalanceUnlocked, DdcBalanceWithdrawn, DdcBalanceCharged,
 		DdcBalancesFetcher, DdcBalancesDepositor, DdcPayoutsPayer, CustomerDepositError,
 		Ledger, UnlockChunk
@@ -131,7 +131,7 @@ mod customer_deposit {
 	/// Defines the storage of the contract.
 	#[ink(storage)]
 	pub struct CustomerDepositContract {
-		cluster_id: ClusterId,
+		cluster_id: ClusterId20,
 		unlock_delay_blocks: u32,
 		balances: Mapping<AccountId, CustomerLedger>,
 		accounts: Mapping<u64, AccountId>,
@@ -140,7 +140,7 @@ mod customer_deposit {
 
 	impl CustomerDepositContract {
 		#[ink(constructor)]
-		pub fn new(cluster_id: ClusterId, unlock_delay_blocks: u32) -> Self {
+		pub fn new(cluster_id: ClusterId20, unlock_delay_blocks: u32) -> Self {
 			let balances = Mapping::default();
 			let accounts = Mapping::default();
 			Self { cluster_id, unlock_delay_blocks, balances, accounts, count: 0 }
@@ -474,7 +474,7 @@ mod customer_deposit {
 mod tests {
 	use ddc_primitives::contracts::{
 		customer_deposit::traits::{DdcPayoutsPayer, DdcBalancesFetcher, DdcBalancesDepositor}, 
-		types::ClusterId
+		types::ClusterId as ClusterId20
 	};
 	use ink::env::test;
 
@@ -490,7 +490,7 @@ mod tests {
 		0x00, 0x00,
 	]);
 
-	const CLUSTER_ID: ClusterId = [0; 20];
+	const CLUSTER_ID: ClusterId20 = [0; 20];
 	const ENDOWMENT: Balance = MIN_EXISTENTIAL_DEPOSIT * 1_000_000;
 	const UNLOCK_DELAY_BLOCKS: u32 = 10;
 

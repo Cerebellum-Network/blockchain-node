@@ -70,7 +70,6 @@ use frame_system::{
 #[cfg(any(feature = "std", test))]
 pub use pallet_balances::Call as BalancesCall;
 pub use pallet_chainbridge;
-use pallet_contracts::Determinism;
 pub use pallet_ddc_clusters;
 pub use pallet_ddc_customers;
 pub use pallet_ddc_nodes;
@@ -89,6 +88,7 @@ pub use pallet_sudo::Call as SudoCall;
 #[allow(deprecated)]
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
+use pallet_contracts::{Determinism, chain_extension::{ChainExtension, Environment, Ext, InitState, RetVal}};
 use sp_api::impl_runtime_apis;
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use sp_core::{
@@ -963,7 +963,7 @@ impl pallet_contracts::Config for Runtime {
 	type CallStack = [pallet_contracts::Frame<Self>; 5];
 	type WeightPrice = pallet_transaction_payment::Pallet<Self>;
 	type WeightInfo = pallet_contracts::weights::SubstrateWeight<Self>;
-	type ChainExtension = (CereChainExtension);
+	type ChainExtension = CereChainExtension;
 	type Schedule = Schedule;
 	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
 	type MaxCodeLen = ConstU32<{ 123 * 1024 }>;
@@ -983,18 +983,17 @@ impl pallet_contracts::Config for Runtime {
 	type Xcm = ();
 }
 
-use pallet_contracts::chain_extension::{ChainExtension, Environment, Ext, InitState, RetVal};
-use ddc_primitives::contracts::types::ClusterId as ClusterId20;
-
 #[derive(Default)]
 pub struct CereChainExtension;
 impl ChainExtension<Runtime> for CereChainExtension {
 	fn call<E: Ext>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError> {
 		let func_id = env.func_id();
 		let ext_id = env.ext_id();
-		log::info!("CereChainExtension called with ext_id: {} func_id: {}", ext_id, func_id);
+		log::debug!("CereChainExtension called with ext_id: {} func_id: {}", ext_id, func_id);
 		match func_id {
 			1 => {
+				use ddc_primitives::contracts::types::ClusterId as ClusterId20;
+
 				let mut env = env.buf_in_buf_out();
 				let _cluster_id: ClusterId20 = env.read_as_unbounded(env.in_len())?;
 				let payouts_pallet_id = DdcPayouts::pallet_account_id();
