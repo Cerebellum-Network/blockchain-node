@@ -12,11 +12,8 @@ repository.workspace = true
 # 3rd-party dependencies
 futures = { workspace = true }
 jsonrpsee = { workspace = true }
-jsonschema = { version = "0.17", default-features = false }
-log = { workspace = true }
 rand = { workspace = true, default-features = true }
 serde = { workspace = true, default-features = true }
-serde_json = { workspace = true, default-features = true }
 
 # Substrate dependencies
 frame-benchmarking-cli = { workspace = true }
@@ -32,7 +29,6 @@ sc-consensus-slots = { workspace = true }
 sc-executor = { workspace = true }
 sc-network = { workspace = true }
 sc-network-common = { workspace = true }
-sc-network-types = { workspace = true }
 sc-offchain = { workspace = true }
 sc-rpc = { workspace = true }
 sc-service = { workspace = true }
@@ -62,7 +58,7 @@ ddc-primitives = { workspace = true }
 
 [features]
 default = ["cere-native"]
-cere-native = ["cere-runtime", "cere-runtime-common", "cere-client/cere"]
+cere-native = ["cere-runtime", "cere-client/cere"]
 cere-dev-native = ["cere-dev-runtime", "cere-runtime-common", "cere-client/cere-dev"]
 
 runtime-benchmarks = [

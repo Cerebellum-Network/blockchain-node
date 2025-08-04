@@ -34,7 +34,7 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Configure AWS credentials (for ECR only)
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -59,7 +59,7 @@ jobs:
         with:
           context: .
           build-args: |
-            "PROFILE=release"
+            "GH_READ_TOKEN=${{ secrets.GH_READ_TOKEN }}"
           cache-from: |
             type=registry,ref=ghcr.io/cerebellum-network/blockchain-node-cache:latest
             type=gha
@@ -70,43 +70,6 @@ jobs:
             build-cache-test:${{ github.sha }}
 
 # Alternative: Dedicated cache-only build
-cache-build:
-  name: Cache Build Artifacts
-  runs-on: ubuntu-latest  
-  if: false  # Disabled
-  steps:
-    - uses: actions/checkout@v4
-    
-    - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: nightly-2024-10-01
-        override: true
-        target: wasm32-unknown-unknown
-        components: rust-src
-
-    # Advanced Rust caching strategy
-    - name: Advanced Rust Cache
-      uses: Swatinem/rust-cache@v2
-      with:
-        # Use content-addressed caching
-        key: ${{ hashFiles('Cargo.lock') }}
-        shared-key: "global-build-cache"
-        cache-on-failure: true
-        # Cache target directory and registry
-        cache-targets: true
-        cache-all-crates: true
-
-    - name: Configure Git
-      run: echo "Git configuration skipped - using public repositories only"
-
-    # Pre-build dependencies for caching
-    - name: Cache Dependencies
-      run: |
-        # Build only dependencies for maximum cache efficiency
-        cargo build --release --dependencies-only || true
-        cargo build --release --features try-runtime --dependencies-only || true
-
 # SECURITY NOTES:
 # 1. This uses GitHub Container Registry (free, secure)
 # 2. No AWS credentials in Docker build args

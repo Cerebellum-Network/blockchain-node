@@ -23,8 +23,6 @@ use sc_service::{
 use sc_telemetry::{Telemetry, TelemetryWorker};
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT};
 pub mod chain_spec;
-pub mod config_validation;
-pub mod network_security;
 
 pub use cere_client::{
 	AbstractClient, Client, ClientHandle, ExecuteWithClient, FullBackend, FullClient,

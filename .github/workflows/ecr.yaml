@@ -22,11 +22,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     concurrency: dev
-    timeout-minutes: 180
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
-      # Git configuration removed - no longer needed with secure Dockerfile
+      - name: Configure Git
+        run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
 
       - name: Cache cargo registry
         uses: actions/cache@v4
@@ -57,7 +58,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: Dockerfile
+          file: Dockerfile.tests
           push: false
           build-args: |
             "ECR_REGISTRY=${{ steps.login-ecr-org.outputs.registry }}"

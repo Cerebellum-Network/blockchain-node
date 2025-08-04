@@ -19,7 +19,7 @@ members = [
   "pallets/ddc-staking",
   "pallets/erc20",
   "pallets/erc721",
-  # "pallets/ddc-clusters-gov", # TEMPORARILY DISABLED due to trait compatibility issues
+  "pallets/ddc-clusters-gov",
   "pallets/fee-handler",
   "pallets/origins",
   "runtime/cere",
@@ -131,7 +131,6 @@ sc-consensus-slots = { version = "0.48.0", default-features = false }
 sc-executor = { version = "0.42.0", default-features = false }
 sc-network = { version = "0.49.1", default-features = false }
 sc-network-common = { version = "0.48.0", default-features = false }
-sc-network-types = { version = "0.15.3", default-features = false }
 sc-rpc = { version = "44.0.0", default-features = false }
 sc-rpc-api = { version = "0.48.0", default-features = false }
 sc-service = { version = "0.50.0", default-features = false }
@@ -185,7 +184,7 @@ cere-runtime-common = { path = "runtime/common", default-features = false }
 cere-service = { path = "node/service" }
 pallet-chainbridge = { path = "pallets/chainbridge", default-features = false }
 pallet-ddc-clusters = { path = "pallets/ddc-clusters", default-features = false }
-# pallet-ddc-clusters-gov = { path = "pallets/ddc-clusters-gov", default-features = false } # TEMPORARILY DISABLED due to trait compatibility issues
+pallet-ddc-clusters-gov = { path = "pallets/ddc-clusters-gov", default-features = false }
 pallet-ddc-customers = { path = "pallets/ddc-customers", default-features = false }
 pallet-ddc-nodes = { path = "pallets/ddc-nodes", default-features = false }
 pallet-ddc-staking = { path = "pallets/ddc-staking", default-features = false }
@@ -197,8 +196,8 @@ pallet-fee-handler = { path = "pallets/fee-handler", default-features = false }
 # Cere External Dependencies
 ddc-primitives = { git = "https://github.com/Cerebellum-Network/ddc-primitives.git", branch = "dev", default-features = false }
 ddc-api = { git = "https://github.com/Cerebellum-Network/ddc-api.git", branch = "dev", default-features = false }
-# pallet-ddc-verification = { git = "https://github.com/Cerebellum-Network/ddc-verification.git", branch = "dev", default-features = false }
-# pallet-ddc-payouts = { git = "https://github.com/Cerebellum-Network/ddc-payouts.git", branch = "dev", default-features = false }
+pallet-ddc-verification = { git = "https://github.com/Cerebellum-Network/ddc-verification.git", branch = "dev", default-features = false }
+pallet-ddc-payouts = { git = "https://github.com/Cerebellum-Network/ddc-payouts.git", branch = "dev", default-features = false }
 
 # Hyperbridge
 ismp = { default-features = false, version = "1.1.0" }
@@ -209,44 +208,5 @@ pallet-ismp-rpc = { default-features = false, version = "2503.0.0" }
 pallet-ismp-runtime-api = { default-features = false, version = "2503.0.0" }
 pallet-token-gateway = { default-features = false, version = "2503.0.0" }
 
-# Build profiles for different use cases
 [profile.release]
 panic = "unwind"
-lto = "thin"
-codegen-units = 1
-
-# Optimized profile for CI builds - faster compilation
-[profile.fast-ci]
-inherits = "release"
-debug = false
-lto = "off"
-codegen-units = 16
-incremental = true
-opt-level = 1
-
-# Profile for runtime builds - prioritizes size and performance
-[profile.production]
-inherits = "release"
-lto = "fat"
-codegen-units = 1
-panic = "abort"
-debug = false
-overflow-checks = false
-
-# KNOWN COMPATIBILITY ISSUES
-#
-# There are currently two main compatibility issues causing CI compilation failures:
-#
-# 1. XCM Compatibility Issue:
-#    - The pallet-token-gateway dependency (version 2503.0.0) brings in staging-xcm-builder 20.1.1
-#    - This version is missing newer trait methods: try_successful_origin, ensure_successful, ensure_concluded
-#    - Resolution: Update Hyperbridge dependencies when newer compatible XCM versions are available
-#
-# 2. Pallet-Referenda Compatibility Issue:
-#    - pallet-referenda v40.1.0 is missing newer Polling trait methods: create_ongoing, end_ongoing
-#    - This causes compilation failures in the Polling trait implementation
-#    - Resolution: Update to a newer pallet-referenda version when available or patch the trait compatibility
-#
-# Both issues are dependency version mismatches where external dependencies haven't been updated
-# to support newer Substrate trait interfaces. These will be resolved when upstream dependencies
-# are updated to match the current Substrate version expectations.

@@ -24,7 +24,8 @@
 use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 use ddc_primitives::{
 	traits::pallet::{GetDdcOrigin, PalletVisitor},
-	AccountIndex, Balance, BlockNumber, Hash, Moment, Nonce,
+	AccountIndex, Balance, BlockNumber, Hash, Moment, Nonce, MAX_PAYOUT_BATCH_COUNT,
+	MAX_PAYOUT_BATCH_SIZE,
 };
 pub use ddc_primitives::{AccountId, Signature};
 use frame_election_provider_support::{
@@ -48,7 +49,7 @@ use frame_support::{
 			imbalance::ResolveTo, DepositConsequence, Fortitude, PayFromAccount, Preservation,
 			Provenance, UnityAssetBalanceConversion, WithdrawConsequence,
 		},
-		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
+		ConstBool, ConstU128, ConstU16, ConstU32, ConstU64, Currency, EitherOf, EitherOfDiverse,
 		EqualPrivilegeOnly, Imbalance, InstanceFilter, KeyOwnerProofSystem, LinearStoragePrice,
 		Nothing, OnUnbalanced, VariantCountOf, WithdrawReasons,
 	},
@@ -85,7 +86,10 @@ pub use pallet_transaction_payment::{FungibleAdapter, Multiplier, TargetedFeeAdj
 use pallet_treasury::TreasuryAccountId;
 use sp_api::impl_runtime_apis;
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
-use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
+use sp_core::{
+	crypto::{AccountId32, KeyTypeId},
+	OpaqueMetadata,
+};
 use sp_inherents::{CheckInherentsResult, InherentData};
 use sp_io::hashing::blake2_128;
 #[cfg(any(feature = "std", test))]
@@ -95,7 +99,8 @@ use sp_runtime::{
 	generic, impl_opaque_keys,
 	traits::{
 		self, AccountIdConversion, BlakeTwo256, Block as BlockT, Bounded, Convert, ConvertInto,
-		IdentityLookup, NumberFor, OpaqueKeys, SaturatedConversion, StaticLookup, Verify,
+		Identity as IdentityConvert, IdentityLookup, NumberFor, OpaqueKeys, SaturatedConversion,
+		StaticLookup, Verify,
 	},
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchError, DispatchResult, FixedPointNumber, FixedU128, Perbill,
@@ -120,10 +125,7 @@ use sp_std::marker::PhantomData;
 // Governance configurations.
 pub mod governance;
 use governance::{
-	// ClusterProtocolActivator, ClusterProtocolUpdater, // TEMPORARILY DISABLED with pallet-ddc-clusters-gov
-	GeneralAdmin,
-	StakingAdmin,
-	Treasurer,
+	ClusterProtocolActivator, ClusterProtocolUpdater, GeneralAdmin, StakingAdmin, Treasurer,
 	TreasurySpender,
 };
 /// Generated voter bag information.
@@ -161,7 +163,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73164,
+	spec_version: 73163,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 25,
@@ -546,11 +548,38 @@ impl pallet_authorship::Config for Runtime {
 }
 
 impl_opaque_keys! {
+	pub struct OldSessionKeys {
+		pub grandpa: Grandpa,
+		pub babe: Babe,
+		pub im_online: ImOnline,
+		pub authority_discovery: AuthorityDiscovery,
+	}
+}
+
+impl_opaque_keys! {
 	pub struct SessionKeys {
 		pub grandpa: Grandpa,
 		pub babe: Babe,
 		pub im_online: ImOnline,
 		pub authority_discovery: AuthorityDiscovery,
+		pub ddc_verification: DdcVerification,
+	}
+}
+
+fn transform_session_keys(v: AccountId, old: OldSessionKeys) -> SessionKeys {
+	SessionKeys {
+		grandpa: old.grandpa,
+		babe: old.babe,
+		im_online: old.im_online,
+		authority_discovery: old.authority_discovery,
+		ddc_verification: {
+			let mut id: ddc_primitives::sr25519::AuthorityId =
+				sp_core::sr25519::Public::from_raw([0u8; 32]).into();
+			let id_raw: &mut [u8] = id.as_mut();
+			id_raw[0..32].copy_from_slice(v.as_ref());
+			id_raw[0..4].copy_from_slice(b"cer!");
+			id
+		},
 	}
 }
 
@@ -733,10 +762,8 @@ frame_election_provider_support::generate_solution_type!(
 );
 
 /// The numbers configured here could always be more than the the maximum limits of staking pallet
-/// to ensure election snapshot will not run out of memory.
-///
-/// For now, we set them to smaller values since the staking is bounded and the weight pipeline
-/// takes hours for this single pallet.
+/// to ensure election snapshot will not run out of memory. For now, we set them to smaller values
+/// since the staking is bounded and the weight pipeline takes hours for this single pallet.
 pub struct ElectionProviderBenchmarkConfig;
 impl pallet_election_provider_multi_phase::BenchmarkingConfig for ElectionProviderBenchmarkConfig {
 	const VOTERS: [u32; 2] = [1000, 2000];
@@ -1335,6 +1362,43 @@ impl<T: frame_system::Config> PalletVisitor<T> for TreasuryWrapper {
 	}
 }
 
+impl pallet_ddc_payouts::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
+	type PalletId = PayoutsPalletId;
+	type Currency = Balances;
+	type CustomerCharger = DdcCustomers;
+	type BucketManager = DdcCustomers;
+	type ClusterProtocol = DdcClusters;
+	type TreasuryVisitor = TreasuryWrapper;
+	type NominatorsAndValidatorsList = pallet_staking::UseNominatorsAndValidatorsMap<Self>;
+	type VoteScoreToU64 = IdentityConvert;
+	type InspectorAuthority = DdcVerification;
+	type NodeManager = DdcNodes;
+	type AccountIdConverter = AccountId32;
+	type Hasher = BlakeTwo256;
+	type ClusterValidator = DdcClusters;
+	type ValidatorsQuorum = MajorityOfValidators;
+	type ClusterManager = DdcClusters;
+	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
+	type UnsignedPriority = ConstU64<500_000_000>;
+	type FeeHandler = FeeHandler;
+
+	#[cfg(feature = "runtime-benchmarks")]
+	type CustomerDepositor = DdcCustomers;
+	#[cfg(feature = "runtime-benchmarks")]
+	type ClusterCreator = DdcClusters;
+	#[cfg(feature = "runtime-benchmarks")]
+	type WPublic = <Signature as Verify>::Signer;
+	#[cfg(feature = "runtime-benchmarks")]
+	type WSignature = Signature;
+
+	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
+	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
+	const DISABLE_PAYOUTS_CUTOFF: bool = false;
+	const OCW_INTERVAL: u16 = 5; // every 5th block
+}
+
 parameter_types! {
 	pub const ClusterBondingAmount: Balance = 100 * GRAND;
 	pub const ClusterUnboningDelay: BlockNumber = 28 * DAYS;
@@ -1384,10 +1448,6 @@ parameter_types! {
 	pub const ReferendumEnactmentDuration: BlockNumber = 1;
 }
 
-// TEMPORARILY DISABLED: pallet-ddc-clusters-gov configuration due to pallet-referenda trait compatibility issues
-// Issue: pallet-referenda 40.1.0 missing create_ongoing and end_ongoing methods in Polling trait
-// TODO: Re-enable when upstream compatibility is resolved
-/*
 impl pallet_ddc_clusters_gov::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type PalletId = ClustersGovPalletId;
@@ -1410,7 +1470,6 @@ impl pallet_ddc_clusters_gov::Config for Runtime {
 	#[cfg(feature = "runtime-benchmarks")]
 	type StakerCreator = pallet_ddc_staking::Pallet<Runtime>;
 }
-*/
 
 pub struct ClustersGovWrapper;
 impl<T: frame_system::Config> PalletVisitor<T> for ClustersGovWrapper {
@@ -1426,6 +1485,38 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
 	fn get() -> T::RuntimeOrigin {
 		DdcOrigin::get()
 	}
+}
+
+parameter_types! {
+	pub const VerificationPalletId: PalletId = PalletId(*b"verifypa");
+	pub const TenPercentOfValidators: Percent = Percent::from_percent(10);
+}
+
+impl pallet_ddc_verification::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type PalletId = VerificationPalletId;
+	type WeightInfo = pallet_ddc_verification::weights::SubstrateWeight<Runtime>;
+	type ClusterProtocol = DdcClusters;
+	type ClusterManager = DdcClusters;
+	type ClusterValidator = DdcClusters;
+	type NodeManager = DdcNodes;
+	type AuthorityId = ddc_primitives::sr25519::AuthorityId;
+	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
+	type Hasher = BlakeTwo256;
+	type ValidatorStaking = pallet_staking::Pallet<Runtime>;
+	type Currency = Balances;
+	type CustomerVisitor = DdcCustomers;
+	type BucketManager = DdcCustomers;
+	type InspReceiptsInterceptor = pallet_ddc_verification::NoReceiptsInterceptor;
+
+	type InspRedundancyFactor = TenPercentOfValidators;
+	type InspBackupsFactor = TenPercentOfValidators;
+
+	const OCW_INTERVAL: u16 = 10; // every 10th block
+	const TCA_INSPECTION_STEP: u64 = 0;
+	const MIN_INSP_REDUNDANCY_FACTOR: u8 = 3;
+	const MIN_INSP_BACKUPS_FACTOR: u8 = 1;
+	const INSP_BACKUP_BLOCK_DELAY: u32 = 25;
 }
 
 parameter_types! {
@@ -1595,6 +1686,12 @@ mod runtime {
 	#[runtime::pallet_index(38)]
 	pub type DdcClusters = pallet_ddc_clusters::Pallet<Runtime>;
 
+	#[runtime::pallet_index(39)]
+	pub type DdcPayouts = pallet_ddc_payouts::Pallet<Runtime>;
+
+	#[runtime::pallet_index(40)]
+	pub type DdcVerification = pallet_ddc_verification::Pallet<Runtime>;
+
 	// Start OpenGov.
 	#[runtime::pallet_index(41)]
 	pub type ConvictionVoting = pallet_conviction_voting::Pallet<Runtime>;
@@ -1612,11 +1709,8 @@ mod runtime {
 	#[runtime::pallet_index(45)]
 	pub type TechComm = pallet_collective::Pallet<Runtime, Instance3>;
 
-	// TEMPORARILY DISABLED: pallet-ddc-clusters-gov due to pallet-referenda trait compatibility issues
-	// Issue: pallet-referenda 40.1.0 missing create_ongoing and end_ongoing methods in Polling trait
-	// TODO: Re-enable when upstream compatibility is resolved
-	// #[runtime::pallet_index(46)]
-	// pub type DdcClustersGov = pallet_ddc_clusters_gov::Pallet<Runtime>;
+	#[runtime::pallet_index(46)]
+	pub type DdcClustersGov = pallet_ddc_clusters_gov::Pallet<Runtime>;
 
 	#[runtime::pallet_index(47)]
 	pub type Ismp = pallet_ismp::Pallet<Runtime>;
@@ -1685,6 +1779,7 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Tx
 // 		pallet_staking::migrations::v17::MigrateDisabledToSession<Runtime>,
 // 	>,
 // );
+
 type Migrations = ();
 
 parameter_types! {
@@ -1696,16 +1791,31 @@ parameter_types! {
 pub mod migrations {
 	use super::*;
 
+	/// When this is removed, should also remove `OldSessionKeys`.
+	pub struct UpgradeSessionKeys;
+	impl frame_support::traits::OnRuntimeUpgrade for UpgradeSessionKeys {
+		fn on_runtime_upgrade() -> Weight {
+			Session::upgrade_keys::<OldSessionKeys, _>(transform_session_keys);
+			Perbill::from_percent(50) * RuntimeBlockWeights::get().max_block
+		}
+	}
+
 	pub type Unreleased = (
 		// pallet_ddc_customers::migrations::v2::MigrateToV2<Runtime>, // ignore the addition of
 		// `total_customers_usage` field as it was never deployed on MAINNET
 		pallet_ddc_clusters::migrations::v3::MigrateToV3<Runtime>,
 		// pallet_ddc_nodes::migrations::v1::MigrateToV1<Runtime>, // ignore the addition of
 		// `total_usage` field as it was never deployed on MAINNET
+		UpgradeSessionKeys,
 		// pallet_ddc_verification::migrations::v1::MigrateToV1<Runtime>, // ignore as the
 		// `ddc-verification` pallet was never deployed on MAINNET
+		pallet_ddc_payouts::migrations::v1::MigrateToV1<Runtime>,
+		pallet_ddc_payouts::migrations::v2::MigrateToV2<Runtime>,
+		pallet_ddc_payouts::migrations::v3::MigrateToV3<Runtime>,
 		// pallet_ddc_verification::migrations::v2::MigrateToV2<Runtime>, // ignore as the
 		// `ddc-verification` pallet was never deployed on MAINNET
+		pallet_ddc_payouts::migrations::v4::MigrateToV4<Runtime>,
+		pallet_ddc_payouts::migrations::v5::MigrateToV5<Runtime>,
 		// pallet_ddc_customers::migrations::v3_mbm::LazyMigrationV2ToV3<Runtime>, // ingore the
 		// removal of `total_customers_usage` field as it was never deployed on MAINNET
 		// pallet_ddc_nodes::migrations::v2_mbm::LazyMigrationV1ToV2<Runtime>, // ignore the
@@ -1776,7 +1886,8 @@ mod benches {
 		[pallet_referenda, Referenda]
 		[pallet_whitelist, Whitelist]
 		[pallet_collective, TechComm]
-		// [pallet_ddc_clusters_gov, DdcClustersGov] // TEMPORARILY DISABLED due to trait compatibility issue
+		[pallet_ddc_clusters_gov, DdcClustersGov]
+		[pallet_ddc_payouts, DdcPayouts]
 		[pallet_token_gateway, TokenGateway]
 		[pallet_migrations, MultiBlockMigrations]
 		[pallet_fee_handler, FeeHandler]
@@ -2071,7 +2182,7 @@ impl_runtime_apis! {
 	impl pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<
 		Block,
 		Balance,
-> for Runtime {
+	> for Runtime {
 		fn query_info(uxt: <Block as BlockT>::Extrinsic, len: u32) -> RuntimeDispatchInfo<Balance> {
 			TransactionPayment::query_info(uxt, len)
 		}
@@ -2119,7 +2230,7 @@ impl_runtime_apis! {
 		Block,
 		AccountId,
 		Balance,
-> for Runtime {
+	> for Runtime {
 		fn pending_rewards(member: AccountId) -> Balance {
 			NominationPools::api_pending_rewards(member).unwrap_or_default()
 		}
@@ -2162,9 +2273,7 @@ impl_runtime_apis! {
 	impl frame_try_runtime::TryRuntime<Block> for Runtime {
 		fn on_runtime_upgrade(checks: frame_try_runtime::UpgradeCheckSelect) -> (Weight, Weight) {
 			log::info!("try-runtime::on_runtime_upgrade cere.");
-			let weight = Executive::try_runtime_upgrade(checks).inspect_err(|e| {
-				log::error!("try_runtime_upgrade failed: {:?}", e);
-			}).unwrap_or_else(|_| Weight::zero());
+			let weight = Executive::try_runtime_upgrade(checks).unwrap();
 			(weight, RuntimeBlockWeights::get().max_block)
 		}
 
