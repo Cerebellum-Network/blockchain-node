@@ -70,43 +70,6 @@ jobs:
             build-cache-test:${{ github.sha }}
 
 # Alternative: Dedicated cache-only build
-cache-build:
-  name: Cache Build Artifacts
-  runs-on: ubuntu-latest
-  if: false  # Disabled
-  steps:
-    - uses: actions/checkout@v4
-
-    - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: 1.82.0
-        override: true
-        target: wasm32-unknown-unknown
-        components: rust-src
-
-    # Advanced Rust caching strategy
-    - name: Advanced Rust Cache
-      uses: Swatinem/rust-cache@v2
-      with:
-        # Use content-addressed caching
-        key: ${{ hashFiles('Cargo.lock') }}
-        shared-key: "global-build-cache"
-        cache-on-failure: true
-        # Cache target directory and registry
-        cache-targets: true
-        cache-all-crates: true
-
-    - name: Configure Git
-      run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
-
-    # Pre-build dependencies for caching
-    - name: Cache Dependencies
-      run: |
-        # Build only dependencies for maximum cache efficiency
-        cargo build --release --dependencies-only || true
-        cargo build --release --features try-runtime --dependencies-only || true
-
 # SECURITY NOTES:
 # 1. This uses GitHub Container Registry (free, secure)
 # 2. No AWS credentials in Docker build args
