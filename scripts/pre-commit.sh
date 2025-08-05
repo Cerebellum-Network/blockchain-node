@@ -6,7 +6,7 @@ echo "🔍 Running pre-commit security checks..."
 
 # 1. Code formatting checks
 echo "📝 Checking code formatting..."
-cargo +nightly-2024-03-12 fmt -- --check
+cargo  fmt -- --check
 if [ $? -ne 0 ]; then
 	echo "❌ Run \`cargo fmt\` to fix formatting issues before committing."
 	exit 1

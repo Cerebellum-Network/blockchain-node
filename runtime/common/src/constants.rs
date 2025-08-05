@@ -36,12 +36,14 @@ pub mod time {
 	pub use ddc_primitives::{BlockNumber, Moment};
 
 	/// Since BABE is probabilistic this is the average expected block time that
-	/// we are targeting. Blocks will be produced at a minimum duration defined
-	/// by `SLOT_DURATION`, but some slots will not be allocated to any
-	/// authority and hence no block will be produced. We expect to have this
-	/// block time on average following the defined slot duration and the value
-	/// of `c` configured for BABE (where `1 - c` represents the probability of
-	/// a slot being empty).
+	/// we are targeting.
+	///
+	/// Blocks will be produced at a minimum duration defined by `SLOT_DURATION`,
+	/// but some slots will not be allocated to any authority and hence no block
+	/// will be produced. We expect to have this block time on average following
+	/// the defined slot duration and the value of `c` configured for BABE (where
+	/// `1 - c` represents the probability of a slot being empty).
+	///
 	/// This value is only used indirectly to define the unit constants below
 	/// that are expressed in blocks. The rest of the code should use
 	/// `SLOT_DURATION` instead (like the Timestamp pallet for calculating the

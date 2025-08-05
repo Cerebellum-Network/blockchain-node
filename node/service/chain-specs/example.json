@@ -3,7 +3,7 @@
   "id": "cere_dev",
   "chainType": "Development",
   "bootNodes": [],
-  "telemetryEndpoints": null,
+  "telemetryEndpoints": [],
   "protocolId": "cere",
   "properties": {
     "ss58Format": 54,
