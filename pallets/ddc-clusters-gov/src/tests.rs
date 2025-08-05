@@ -1,4 +1,5 @@
 //! Tests for the module.
+#![allow(clippy::extra_unused_type_parameters)]
 
 use ddc_primitives::{ClusterNodeKind, ClusterParams, ClusterProtocolParams, StorageNodeParams};
 use frame_support::{assert_noop, assert_ok};

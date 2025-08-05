@@ -1,4 +1,5 @@
 //! Tests for the module.
+#![allow(clippy::extra_unused_type_parameters)]
 
 use ddc_primitives::{
 	ClusterNodeKind, ClusterNodeStatus, ClusterParams, ClusterProtocolParams, ClusterStatus,

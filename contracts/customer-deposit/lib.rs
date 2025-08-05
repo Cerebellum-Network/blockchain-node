@@ -152,7 +152,7 @@ mod customer_deposit {
 		#[ink(message)]
 		fn get_balance(&self, owner: AccountId32) -> Option<Ledger> {
 			let owner = from_account_32(&owner);
-			let ledger = self.balances.get(&owner)?;
+			let ledger = self.balances.get(owner)?;
 			Some(ledger.into_ledger(owner))
 		}
 
@@ -164,8 +164,8 @@ mod customer_deposit {
 			let end_index = (from_index.saturating_add(limit)).min(self.count);
 
 			while index < end_index {
-				if let Some(owner) = self.accounts.get(&index) {
-					if let Some(ledger) = self.balances.get(&owner) {
+				if let Some(owner) = self.accounts.get(index) {
+					if let Some(ledger) = self.balances.get(owner) {
 						results.push(ledger.into_ledger(owner));
 					}
 				}
@@ -188,12 +188,12 @@ mod customer_deposit {
 				return Err(Error::InsufficientDeposit.into());
 			}
 
-			if self.balances.get(&owner).is_none() {
+			if self.balances.get(owner).is_none() {
 				self.accounts.insert(self.count, &owner);
 				self.count = self.count.checked_add(1).ok_or(Error::ArithmeticOverflow)?;
 			}
 
-			if let Some(mut ledger) = self.balances.get(&owner) {
+			if let Some(mut ledger) = self.balances.get(owner) {
 				// Existing ledger - update balances
 				ledger.total = ledger.total.checked_add(value).ok_or(Error::ArithmeticOverflow)?;
 				ledger.active =
@@ -233,12 +233,12 @@ mod customer_deposit {
 				return Err(Error::InsufficientDeposit.into());
 			}
 
-			if self.balances.get(&owner).is_none() {
+			if self.balances.get(owner).is_none() {
 				self.accounts.insert(self.count, &owner);
 				self.count = self.count.checked_add(1).ok_or(Error::ArithmeticOverflow)?;
 			}
 
-			if !self.balances.contains(&owner) {
+			if !self.balances.contains(owner) {
 				// New ledger - no need for existential deposit check since contract holds all
 				// tokens
 				let ledger =
@@ -247,7 +247,7 @@ mod customer_deposit {
 				self.balances.insert(owner, &ledger);
 			} else {
 				// Existing ledger - update balances
-				let mut ledger = self.balances.get(&owner).ok_or(Error::NotOwner)?;
+				let mut ledger = self.balances.get(owner).ok_or(Error::NotOwner)?;
 				ledger.total = ledger.total.checked_add(value).ok_or(Error::ArithmeticOverflow)?;
 				ledger.active =
 					ledger.active.checked_add(value).ok_or(Error::ArithmeticOverflow)?;
@@ -273,7 +273,7 @@ mod customer_deposit {
 		#[ink(message)]
 		fn unlock_deposit(&mut self, value: BalanceU128) -> Result<(), CustomerDepositError> {
 			let owner = self.env().caller();
-			let mut ledger = self.balances.get(&owner).ok_or(Error::NotOwner)?;
+			let mut ledger = self.balances.get(owner).ok_or(Error::NotOwner)?;
 
 			// Ensure sufficient active balance
 			if value > ledger.active {
@@ -313,7 +313,7 @@ mod customer_deposit {
 				ledger.unlocking.push(LinearUnlockChunk { value, block: unlock_block });
 			}
 
-			self.balances.insert(&owner, &ledger);
+			self.balances.insert(owner, &ledger);
 
 			self.env().emit_event(DdcBalanceUnlocked {
 				cluster_id: self.cluster_id,
@@ -331,7 +331,7 @@ mod customer_deposit {
 			let current_block = self.env().block_number();
 
 			// Get ledger or fail
-			let mut ledger = self.balances.get(&owner).ok_or(Error::NoLedger)?;
+			let mut ledger = self.balances.get(owner).ok_or(Error::NoLedger)?;
 
 			// Consolidate unlocked chunks and update total
 			let old_total = ledger.total;
@@ -352,7 +352,7 @@ mod customer_deposit {
 				ledger.active = 0;
 			}
 
-			self.balances.insert(&owner, &ledger);
+			self.balances.insert(owner, &ledger);
 
 			self.env().emit_event(DdcBalanceWithdrawn {
 				cluster_id: self.cluster_id,
@@ -384,22 +384,22 @@ mod customer_deposit {
 				let customer_id = from_account_32(&chain_customer_id);
 
 				// Check if the customer has a ledger
-				if let Some(mut ledger) = self.balances.get(&customer_id) {
+				if let Some(mut ledger) = self.balances.get(customer_id) {
 					// Calculate the actual amount that can be charged (partial or full)
 					let actually_charged = ledger.active.min(amount_to_deduct);
 
 					// Deduct the charged amount from the active and total balances
 					ledger.active = ledger.active.saturating_sub(actually_charged);
 					ledger.total = ledger.total.saturating_sub(actually_charged);
-					self.balances.insert(&customer_id, &ledger);
+					self.balances.insert(customer_id, &ledger);
 
 					// Transfer the tokens from the contract's vault to the payout_vault
 					if actually_charged > 0 {
-						if let Err(_) = self.env().transfer(payout_vault, actually_charged) {
+						if self.env().transfer(payout_vault, actually_charged).is_err() {
 							// Revert balance changes if transfer fails
 							ledger.active = ledger.active.saturating_add(actually_charged);
 							ledger.total = ledger.total.saturating_add(actually_charged);
-							self.balances.insert(&customer_id, &ledger);
+							self.balances.insert(customer_id, &ledger);
 							// Skip adding to `charged_amounts` if transfer failed
 							continue;
 						}
@@ -442,9 +442,9 @@ mod customer_deposit {
 		}
 	}
 
-	impl Into<UnlockChunk> for LinearUnlockChunk {
-		fn into(self) -> UnlockChunk {
-			UnlockChunk { value: self.value, block: self.block }
+	impl From<LinearUnlockChunk> for UnlockChunk {
+		fn from(other: LinearUnlockChunk) -> Self {
+			UnlockChunk { value: other.value, block: other.block }
 		}
 	}
 

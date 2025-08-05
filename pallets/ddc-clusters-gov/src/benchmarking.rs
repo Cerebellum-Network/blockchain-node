@@ -1,4 +1,5 @@
 //! DdcClustersGov pallet benchmarking.
+#![allow(clippy::extra_unused_type_parameters)]
 
 use ddc_primitives::{
 	ClusterBondingParams, ClusterId, ClusterNodeKind, ClusterParams, ClusterProtocolParams,
@@ -34,8 +35,7 @@ pub fn fund_user<T: Config>(user: T::AccountId, balance_factor: u128) -> T::Acco
 }
 
 pub fn create_account<T: Config>(name: &'static str) -> T::AccountId {
-	let account = account(name, 0, 0);
-	account
+	account(name, 0, 0)
 }
 
 pub fn create_cluster_with_nodes<T: Config>(
@@ -561,7 +561,7 @@ benchmarks! {
 		unit_per_mb_streamed: 48828,
 		unit_per_put_request: 10,
 		unit_per_get_request: 5,
-		customer_deposit_contract: customer_deposit_contract,
+		customer_deposit_contract,
 	})
 	verify {
 		let cluster_id = ClusterId::from([1; 20]);
