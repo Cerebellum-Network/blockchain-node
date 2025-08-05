@@ -228,7 +228,7 @@ timeout-minutes: 60
     "strict": true,
     "contexts": [
       "Check Lints",
-      "Cargo check", 
+      "Check Runtime", 
       "Run Clippy",
       "Run tests",
       "Security Audit"
