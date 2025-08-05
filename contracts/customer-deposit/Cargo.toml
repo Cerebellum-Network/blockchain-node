@@ -6,10 +6,10 @@ edition = "2021"
 publish = false
 
 [dependencies]
-base64ct = { version = "=1.6.0" }
-ddc-primitives = { path = "/Users/yahortsaryk/work/workspace-blockchain/ddc-primitives", default-features = false }
-ink = { version = "5.1.0", default-features = false }
-sp-runtime = { version = "41.1.0", default-features = false }
+base64ct = { version = "=1.6.0" } # the version of `base64ct` should be pinned for ink-related requirements 
+ddc-primitives = { git = "https://github.com/Cerebellum-Network/ddc-primitives.git", branch = "dev", default-features = false }
+ink = { workspace = true }
+sp-runtime = { workspace = true }
 
 [lib]
 path = "lib.rs"
