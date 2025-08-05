@@ -1780,16 +1780,17 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Tx
 // 	>,
 // );
 
-
 parameter_types! {
 	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
 	pub const MaxPoolsToMigrate: u32 = 250;
 }
 
-type Migrations = (pallet_nomination_pools::migration::unversioned::DelegationStakeMigration<
-    Runtime,
-    MaxPoolsToMigrate,
->,);
+type Migrations = (
+	pallet_nomination_pools::migration::unversioned::DelegationStakeMigration<
+		Runtime,
+		MaxPoolsToMigrate,
+	>,
+);
 
 /// Migrations for DDC pallets, unreleased to MAINNET
 pub mod migrations {
@@ -1827,7 +1828,6 @@ pub mod migrations {
 		// pallet_ddc_verification::migrations::v3::MigrateToV3<Runtime>, // ignore as the
 		// `ddc-verification` pallet was never deployed on MAINNET
 		// pallet_ddc_nodes::migrations::v0_v2::MigrateFromV0ToV2<Runtime>,
-
 	);
 
 	pub type UnreleasedMultiblock =
