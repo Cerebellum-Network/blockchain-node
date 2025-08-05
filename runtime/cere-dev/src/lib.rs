@@ -1424,7 +1424,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
 	const DISABLE_PAYOUTS_CUTOFF: bool = false;
-	const OCW_INTERVAL: u16 = 1; // every 5th block
+	const OCW_INTERVAL: u16 = 5; // every 5th block
 }
 
 parameter_types! {
@@ -1524,7 +1524,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	type InspRedundancyFactor = TenPercentOfValidators;
 	type InspBackupsFactor = TenPercentOfValidators;
 
-	const OCW_INTERVAL: u16 = 1; // every 10th block
+	const OCW_INTERVAL: u16 = 10; // every 10th block
 	const TCA_INSPECTION_STEP: u64 = 0;
 	const MIN_INSP_REDUNDANCY_FACTOR: u8 = 3;
 	const MIN_INSP_BACKUPS_FACTOR: u8 = 1;
