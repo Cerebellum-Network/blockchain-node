@@ -1771,15 +1771,6 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, TxExtension>;
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, TxExtension>;
 // const IDENTITY_MIGRATION_KEY_LIMIT: u64 = u64::MAX; // for `pallet_identity` migration below
 
-/// Migrations for FRAME pallets, unreleased to MAINNET
-// type Migrations = (
-// 	pallet_staking::migrations::v16::MigrateV15ToV16<Runtime>,
-// 	pallet_session::migrations::v1::MigrateV0ToV1<
-// 		Runtime,
-// 		pallet_staking::migrations::v17::MigrateDisabledToSession<Runtime>,
-// 	>,
-// );
-
 parameter_types! {
 	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
 	pub const MaxPoolsToMigrate: u32 = 250;
