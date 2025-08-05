@@ -172,10 +172,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73160,
+	spec_version: 73163,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 25,
+	transaction_version: 26,
 	system_version: 0,
 };
 
@@ -1744,7 +1744,7 @@ parameter_types! {
 	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
 }
 
-type Migrations = ();
+type Migrations = (pallet_ddc_clusters::migrations::v4::MigrateToV4<Runtime>);
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
