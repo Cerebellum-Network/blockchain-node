@@ -70,6 +70,10 @@ use frame_system::{
 #[cfg(any(feature = "std", test))]
 pub use pallet_balances::Call as BalancesCall;
 pub use pallet_chainbridge;
+use pallet_contracts::{
+	chain_extension::{ChainExtension, Environment, Ext, InitState, RetVal},
+	Determinism,
+};
 pub use pallet_ddc_clusters;
 pub use pallet_ddc_customers;
 pub use pallet_ddc_nodes;
@@ -88,7 +92,6 @@ pub use pallet_sudo::Call as SudoCall;
 #[allow(deprecated)]
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
-use pallet_contracts::{Determinism, chain_extension::{ChainExtension, Environment, Ext, InitState, RetVal}};
 use sp_api::impl_runtime_apis;
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use sp_core::{
@@ -340,20 +343,20 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 			ProxyType::Any => true,
 			ProxyType::NonTransfer => !matches!(
 				c,
-				RuntimeCall::Balances(..) |
-					RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. }) |
-					RuntimeCall::Indices(pallet_indices::Call::transfer { .. }) |
-					RuntimeCall::NominationPools(..) |
-					RuntimeCall::ConvictionVoting(..) |
-					RuntimeCall::Referenda(..) |
-					RuntimeCall::Whitelist(..)
+				RuntimeCall::Balances(..)
+					| RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
+					| RuntimeCall::Indices(pallet_indices::Call::transfer { .. })
+					| RuntimeCall::NominationPools(..)
+					| RuntimeCall::ConvictionVoting(..)
+					| RuntimeCall::Referenda(..)
+					| RuntimeCall::Whitelist(..)
 			),
 			ProxyType::Governance => matches!(
 				c,
-				RuntimeCall::Treasury(..) |
-					RuntimeCall::ConvictionVoting(..) |
-					RuntimeCall::Referenda(..) |
-					RuntimeCall::Whitelist(..)
+				RuntimeCall::Treasury(..)
+					| RuntimeCall::ConvictionVoting(..)
+					| RuntimeCall::Referenda(..)
+					| RuntimeCall::Whitelist(..)
 			),
 			ProxyType::Staking => matches!(c, RuntimeCall::Staking(..)),
 		}
@@ -749,8 +752,8 @@ impl Get<Option<BalancingConfig>> for OffchainRandomBalancing {
 			max => {
 				let seed = sp_io::offchain::random_seed();
 				let random = <u32>::decode(&mut TrailingZeroInput::new(&seed))
-					.expect("input is padded with zeroes; qed") %
-					max.saturating_add(1);
+					.expect("input is padded with zeroes; qed")
+					% max.saturating_add(1);
 				random as usize
 			},
 		};
@@ -998,8 +1001,11 @@ impl ChainExtension<Runtime> for CereChainExtension {
 				let _cluster_id: ClusterId20 = env.read_as_unbounded(env.in_len())?;
 				let payouts_pallet_id = DdcPayouts::pallet_account_id();
 
-				env.write(&payouts_pallet_id.encode(), false, None)
-					.map_err(|_| DispatchError::Other("ChainExtension failed to call `get_payouts_origin_id` function"))?;
+				env.write(&payouts_pallet_id.encode(), false, None).map_err(|_| {
+					DispatchError::Other(
+						"ChainExtension failed to call `get_payouts_origin_id` function",
+					)
+				})?;
 
 				Ok(RetVal::Converging(0))
 			},

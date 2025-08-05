@@ -1,7 +1,7 @@
 use frame_support::{storage_alias, traits::OnRuntimeUpgrade};
 use log::info;
 use serde::{Deserialize, Serialize};
-use sp_runtime::{Saturating, Perquintill};
+use sp_runtime::{Perquintill, Saturating};
 
 use super::*;
 
@@ -485,7 +485,16 @@ pub mod v3 {
 	>;
 
 	#[derive(
-		Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo, PartialEq, Default, Serialize, Deserialize,
+		Clone,
+		Encode,
+		Decode,
+		DecodeWithMemTracking,
+		RuntimeDebug,
+		TypeInfo,
+		PartialEq,
+		Default,
+		Serialize,
+		Deserialize,
 	)]
 	#[scale_info(skip_type_params(Balance, BlockNumber, T))]
 	pub struct ClusterProtocolParams<Balance, BlockNumber> {
@@ -608,14 +617,19 @@ pub mod v3 {
 pub mod v4 {
 	use super::*;
 	use crate::BalanceOf;
-	use frame_support::{
-		pallet_prelude::*,
-		traits::{Get},
-		weights::Weight,
-	};
+	use frame_support::{pallet_prelude::*, traits::Get, weights::Weight};
 
 	#[derive(
-		Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo, PartialEq, Default, Serialize, Deserialize,
+		Clone,
+		Encode,
+		Decode,
+		DecodeWithMemTracking,
+		RuntimeDebug,
+		TypeInfo,
+		PartialEq,
+		Default,
+		Serialize,
+		Deserialize,
 	)]
 	#[scale_info(skip_type_params(Balance, BlockNumber, T))]
 	pub struct ClusterProtocolParams<Balance, BlockNumber, AccountId> {
@@ -637,7 +651,11 @@ pub mod v4 {
 		crate::Pallet<T>,
 		Twox64Concat,
 		ClusterId,
-		ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>, <T as frame_system::Config>::AccountId>,
+		ClusterProtocolParams<
+			BalanceOf<T>,
+			BlockNumberFor<T>,
+			<T as frame_system::Config>::AccountId,
+		>,
 	>;
 
 	pub fn migrate_to_v4<T: Config>() -> Weight {
@@ -663,7 +681,6 @@ pub mod v4 {
 				|cluster_id: ClusterId, old_cluster_params: v3::ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>| {
 					info!(target: LOG_TARGET, "     Migrating protocol params for cluster {:?} ...", cluster_id);
 					translated.saturating_inc();
-					
 					let bytes = [0u8; 32];
 					let default_customer_deposit_contract = T::AccountId::decode(&mut &bytes.encode()[..])
 						.expect("Customer deposit contract to be parsed");
@@ -736,6 +753,4 @@ pub mod v4 {
 			Ok(())
 		}
 	}
-
-
 }

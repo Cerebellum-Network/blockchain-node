@@ -1,16 +1,18 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use ink::env::Environment;
-use ink::env::chain_extension::FromStatusCode;
 use ddc_primitives::{
-	contracts::types::{ClusterId as ClusterId20, AccountId as AccountId32, Balance as BalanceU128},
 	contracts::customer_deposit::{
-		types::{Ledger, UnlockChunk},
-		traits::{DdcBalancesFetcher, DdcBalancesDepositor, DdcPayoutsPayer},
-		events::{DdcBalanceDeposited, DdcBalanceUnlocked, DdcBalanceWithdrawn, DdcBalanceCharged},
 		errors::Error as CustomerDepositError,
+		events::{DdcBalanceCharged, DdcBalanceDeposited, DdcBalanceUnlocked, DdcBalanceWithdrawn},
+		traits::{DdcBalancesDepositor, DdcBalancesFetcher, DdcPayoutsPayer},
+		types::{Ledger, UnlockChunk},
+	},
+	contracts::types::{
+		AccountId as AccountId32, Balance as BalanceU128, ClusterId as ClusterId20,
 	},
 };
+use ink::env::chain_extension::FromStatusCode;
+use ink::env::Environment;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[ink::scale_derive(TypeInfo)]
@@ -28,27 +30,26 @@ impl Environment for CereEnvironment {
 
 #[ink::chain_extension(extension = 1)]
 pub trait DdcPayoutsExtension {
-    type ErrorCode = DdcPayoutsErr;
+	type ErrorCode = DdcPayoutsErr;
 
-    #[ink(function = 1)]
-    fn get_payouts_origin_id(cluster_id: ClusterId20) -> AccountId32;
+	#[ink(function = 1)]
+	fn get_payouts_origin_id(cluster_id: ClusterId20) -> AccountId32;
 }
-
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub enum DdcPayoutsErr {
-    FailGetAuthorizedOriginId,
+	FailGetAuthorizedOriginId,
 }
 
 impl FromStatusCode for DdcPayoutsErr {
-    fn from_status_code(status_code: u32) -> Result<(), Self> {
-        match status_code {
-            0 => Ok(()),
-            1 => Err(Self::FailGetAuthorizedOriginId),
-            _ => panic!("encountered unknown status code"),
-        }
-    }
+	fn from_status_code(status_code: u32) -> Result<(), Self> {
+		match status_code {
+			0 => Ok(()),
+			1 => Err(Self::FailGetAuthorizedOriginId),
+			_ => panic!("encountered unknown status code"),
+		}
+	}
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -68,10 +69,9 @@ mod customer_deposit {
 	use ink::{prelude::vec::Vec, storage::Mapping};
 
 	use super::{
-		Error, AccountId32, ClusterId20, BalanceU128,
-		DdcBalanceDeposited, DdcBalanceUnlocked, DdcBalanceWithdrawn, DdcBalanceCharged,
-		DdcBalancesFetcher, DdcBalancesDepositor, DdcPayoutsPayer, CustomerDepositError,
-		Ledger, UnlockChunk
+		AccountId32, BalanceU128, ClusterId20, CustomerDepositError, DdcBalanceCharged,
+		DdcBalanceDeposited, DdcBalanceUnlocked, DdcBalanceWithdrawn, DdcBalancesDepositor,
+		DdcBalancesFetcher, DdcPayoutsPayer, Error, Ledger, UnlockChunk,
 	};
 
 	pub const MIN_EXISTENTIAL_DEPOSIT: Balance = 10000000000;
@@ -220,7 +220,7 @@ mod customer_deposit {
 
 			Ok(())
 		}
-	
+
 		/// Top up deposit balance for specific owner on behalf faucet.
 		#[ink(message, payable)]
 		fn deposit_for(&mut self, owner: AccountId32) -> Result<(), CustomerDepositError> {
@@ -268,7 +268,7 @@ mod customer_deposit {
 
 			Ok(())
 		}
-	
+
 		/// Initiate unlocking of deposit balance on behalf its owner.
 		#[ink(message)]
 		fn unlock_deposit(&mut self, value: BalanceU128) -> Result<(), CustomerDepositError> {
@@ -323,7 +323,7 @@ mod customer_deposit {
 
 			Ok(())
 		}
-	
+
 		/// Withdraw unlocked deposit balance on behalf its owner.
 		#[ink(message)]
 		fn withdraw_unlocked(&mut self) -> Result<(), CustomerDepositError> {
@@ -438,19 +438,13 @@ mod customer_deposit {
 
 	impl From<UnlockChunk> for LinearUnlockChunk {
 		fn from(other: UnlockChunk) -> Self {
-			LinearUnlockChunk {
-				value: other.value,
-				block: other.block,
-			}
+			LinearUnlockChunk { value: other.value, block: other.block }
 		}
 	}
 
 	impl Into<UnlockChunk> for LinearUnlockChunk {
 		fn into(self) -> UnlockChunk {
-			UnlockChunk {
-				value: self.value,
-				block: self.block,
-			}
+			UnlockChunk { value: self.value, block: self.block }
 		}
 	}
 
@@ -467,21 +461,19 @@ mod customer_deposit {
 			}
 		}
 	}
-	
 }
 
 #[cfg(test)]
 mod tests {
 	use ddc_primitives::contracts::{
-		customer_deposit::traits::{DdcPayoutsPayer, DdcBalancesFetcher, DdcBalancesDepositor}, 
-		types::ClusterId as ClusterId20
+		customer_deposit::traits::{DdcBalancesDepositor, DdcBalancesFetcher, DdcPayoutsPayer},
+		types::ClusterId as ClusterId20,
 	};
 	use ink::env::test;
 
 	use super::*;
 	use crate::customer_deposit::{
-		from_account_32, to_account_32, CustomerDepositContract, 
-		MIN_EXISTENTIAL_DEPOSIT,
+		from_account_32, to_account_32, CustomerDepositContract, MIN_EXISTENTIAL_DEPOSIT,
 	};
 
 	const PAYOUTS_PALLET: AccountId32 = AccountId32::new([
@@ -496,7 +488,9 @@ mod tests {
 
 	type Balance = <ink::env::DefaultEnvironment as Environment>::Balance;
 
-	fn setup(endowment: u128) -> (CustomerDepositContract, test::DefaultAccounts<ink::env::DefaultEnvironment>) {
+	fn setup(
+		endowment: u128,
+	) -> (CustomerDepositContract, test::DefaultAccounts<ink::env::DefaultEnvironment>) {
 		let contract = CustomerDepositContract::new(CLUSTER_ID, UNLOCK_DELAY_BLOCKS);
 		let accounts = test::default_accounts::<ink::env::DefaultEnvironment>();
 		ink::env::test::set_account_balance::<ink::env::DefaultEnvironment>(
@@ -592,7 +586,10 @@ mod tests {
 		test::set_value_transferred::<ink::env::DefaultEnvironment>(MIN_EXISTENTIAL_DEPOSIT - 1);
 
 		// Deposit fails (dust)
-		assert_eq!(contract.deposit_for(to_account_32(&accounts.bob).unwrap()).unwrap_err(), Error::InsufficientDeposit.into());
+		assert_eq!(
+			contract.deposit_for(to_account_32(&accounts.bob).unwrap()).unwrap_err(),
+			Error::InsufficientDeposit.into()
+		);
 	}
 
 	#[ink::test]
@@ -704,17 +701,19 @@ mod tests {
 		assert!(contract.withdraw_unlocked().is_ok());
 
 		// Now ledger should reset
-		assert_eq!(contract.get_balance(to_account_32(&accounts.alice).unwrap()), Some(Ledger {
-			owner: to_account_32(&accounts.alice).unwrap(),
-			total: 0,
-			active: 0,
-			unlocking: vec![],
-		}));
+		assert_eq!(
+			contract.get_balance(to_account_32(&accounts.alice).unwrap()),
+			Some(Ledger {
+				owner: to_account_32(&accounts.alice).unwrap(),
+				total: 0,
+				active: 0,
+				unlocking: vec![],
+			})
+		);
 	}
 
 	#[ink::test]
 	fn test_charge_return_value() {
-
 		struct MockedPayoutsExtension;
 		impl ink::env::test::ChainExtension for MockedPayoutsExtension {
 			/// The static function id of the chain extension.
@@ -728,12 +727,7 @@ mod tests {
 			/// SCALE encoded result. The error code is taken from the
 			/// `ink::env::chain_extension::FromStatusCode` implementation for
 			/// `DdcPayoutsErr`.
-			fn call(
-				&mut self,
-				_func_id: u16,
-				_input: &[u8],
-				output: &mut Vec<u8>,
-			) -> u32 {
+			fn call(&mut self, _func_id: u16, _input: &[u8], output: &mut Vec<u8>) -> u32 {
 				let ret: AccountId32 = PAYOUTS_PALLET;
 				ink::scale::Encode::encode_to(&ret, output);
 				0
@@ -848,7 +842,6 @@ mod tests {
 
 	#[ink::test]
 	fn test_get_balances_beyond_range() {
-		
 		let (mut contract, accounts) = setup(ENDOWMENT * 5);
 
 		test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
