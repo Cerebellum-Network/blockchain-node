@@ -30,24 +30,24 @@ jobs:
           cache-on-failure: true
       - name: Configure Git
         run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
-      
+
       - name: Install try-runtime
         run: cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.8.0 --locked
-        
+
       - name: Build for try-runtime
         run: |
           CARGO_INCREMENTAL=1 cargo build --release --features try-runtime
-          
+
       # Test with local node instead of external network
       - name: Start local test node
         run: |
           ./target/release/cere --dev --tmp &
           sleep 10
-          
+
       - name: Check Try-Runtime (Local)
         run: |
           # Test against local node - much faster and more reliable
           try-runtime --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
           on-runtime-upgrade --disable-idempotency-checks \
           snap --path /tmp/snap
-        continue-on-error: true 
+        continue-on-error: true
