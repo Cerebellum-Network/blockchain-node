@@ -157,7 +157,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73151,
+	spec_version: 73152,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 25,
@@ -1678,7 +1678,8 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Tx
 
 // We don't have a limit in the Relay Chain.
 parameter_types! {
-			pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
+	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
+	pub const MaxPoolsToMigrate: u32 = 250;
 }
 // All migrations executed on runtime upgrade as a nested tuple of types implementing
 // `OnRuntimeUpgrade`. Note: These are examples and do not need to be run directly
@@ -1689,10 +1690,14 @@ type Migrations = (
 		Runtime,
 		pallet_staking::migrations::v17::MigrateDisabledToSession<Runtime>,
 	>,
+	pallet_nomination_pools::migration::unversioned::DelegationStakeMigration<
+		Runtime,
+		MaxPoolsToMigrate,
+	>,
 );
 //
-// pub mod migrations {
-// 	use super::*;
+//pub mod migrations {
+//	use super::*;
 //
 // 	/// When this is removed, should also remove `OldSessionKeys`.
 // 	pub struct UpgradeSessionKeys;
@@ -1704,12 +1709,12 @@ type Migrations = (
 // 	}
 //
 // 	/// Unreleased migrations. Add new ones here:
-// 	pub type Unreleased = (
+//	pub type Unreleased = (
 // 		pallet_ddc_customers::migration::v2::MigrateToV2<Runtime>,
 // 		pallet_ddc_clusters::migrations::v3::MigrateToV3<Runtime>,
 // 		pallet_ddc_nodes::migrations::v1::MigrateToV1<Runtime>,
-// 	);
-// }
+//	);
+//}
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
