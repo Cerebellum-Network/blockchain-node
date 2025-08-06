@@ -153,7 +153,7 @@ jobs:
           CARGO_INCREMENTAL=1 cargo build --release --features try-runtime
       - name: Check Try-Runtime
         run: |
-          try-runtime --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
+          try-runtime --runtime ./target/release/wbuild/cere-dev-runtime/cere_dev_runtime.compact.compressed.wasm \
           on-runtime-upgrade --disable-idempotency-checks --blocktime 6000 live --uri wss://archive.devnet.cere.network:443
 
   clippy:

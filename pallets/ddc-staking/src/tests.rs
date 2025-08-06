@@ -1,4 +1,5 @@
 //! Tests for the module.
+#![allow(clippy::extra_unused_type_parameters)]
 
 use ddc_primitives::{
 	ClusterNodeKind, ClusterNodeStatus, ClusterParams, ClusterProtocolParams, ClusterStatus,
@@ -15,6 +16,23 @@ use super::{mock::*, *};
 
 pub const BLOCK_TIME: u64 = 1000;
 pub const INIT_TIMESTAMP: u64 = 30_000;
+
+fn default_cluster_protocol_params<T: Config>(
+) -> ClusterProtocolParams<Balance, BlockNumber, AccountId> {
+	ClusterProtocolParams {
+		customer_deposit_contract: AccountId::from(CLUSTER_CUSTOMER_DEPOSIT_CONTRACT),
+		treasury_share: Default::default(),
+		validators_share: Default::default(),
+		cluster_reserve_share: Default::default(),
+		storage_bond_size: Default::default(),
+		storage_chill_delay: Default::default(),
+		storage_unbonding_delay: Default::default(),
+		unit_per_mb_stored: Default::default(),
+		unit_per_mb_streamed: Default::default(),
+		unit_per_put_request: Default::default(),
+		unit_per_get_request: Default::default(),
+	}
+}
 
 #[test]
 fn test_default_staking_ledger() {
@@ -703,7 +721,7 @@ fn bond_cluster_works() {
 		CLUSTER_CONTROLLER,
 		CLUSTER_STASH,
 		ClusterParams::default(),
-		ClusterProtocolParams::default(),
+		default_cluster_protocol_params::<Test>(),
 		ClusterStatus::Unbonded,
 	);
 
@@ -794,7 +812,7 @@ fn bond_cluster_works_only_for_unbonded_cluster() {
 		USER_KEY_1,
 		USER_KEY_1,
 		ClusterParams::default(),
-		ClusterProtocolParams::default(),
+		default_cluster_protocol_params::<Test>(),
 		ClusterStatus::Bonded,
 	);
 	let bond_1 = build_cluster_bond(USER_KEY_1, USER_KEY_1, BONDED_CLUSTER_ID);
@@ -805,7 +823,7 @@ fn bond_cluster_works_only_for_unbonded_cluster() {
 		USER_KEY_2,
 		USER_KEY_2,
 		ClusterParams::default(),
-		ClusterProtocolParams::default(),
+		default_cluster_protocol_params::<Test>(),
 		ClusterStatus::Activated,
 	);
 	let bond_2 = build_cluster_bond(USER_KEY_2, USER_KEY_2, ACTIVATED_CLUSTER_ID);
@@ -816,7 +834,7 @@ fn bond_cluster_works_only_for_unbonded_cluster() {
 		USER_KEY_3,
 		USER_KEY_3,
 		ClusterParams::default(),
-		ClusterProtocolParams::default(),
+		default_cluster_protocol_params::<Test>(),
 		ClusterStatus::Unbonding,
 	);
 	let bond_3 = build_cluster_bond(USER_KEY_3, USER_KEY_3, UNBONDING_CLUSTER_ID);
@@ -863,7 +881,7 @@ fn unbond_bonded_cluster_works() {
 		USER_KEY_1,
 		USER_KEY_1,
 		ClusterParams::default(),
-		ClusterProtocolParams::default(),
+		default_cluster_protocol_params::<Test>(),
 		ClusterStatus::Bonded,
 	);
 	let bond_1 = build_cluster_bond(USER_KEY_1, USER_KEY_1, BONDED_CLUSTER_ID);
@@ -944,7 +962,7 @@ fn unbond_activated_cluster_works() {
 		USER_KEY_1,
 		USER_KEY_1,
 		ClusterParams::default(),
-		ClusterProtocolParams::default(),
+		default_cluster_protocol_params::<Test>(),
 		ClusterStatus::Activated,
 	);
 	let bond_1 = build_cluster_bond(USER_KEY_1, USER_KEY_1, ACTIVATED_CLUSTER_ID);
@@ -1024,7 +1042,7 @@ fn withdraw_unbonded_cluster_works() {
 		USER_KEY_1,
 		USER_KEY_1,
 		ClusterParams::default(),
-		ClusterProtocolParams::default(),
+		default_cluster_protocol_params::<Test>(),
 		ClusterStatus::Bonded,
 	);
 	let bond_1 = build_cluster_bond(USER_KEY_1, USER_KEY_1, BONDED_CLUSTER_ID);
@@ -1111,7 +1129,7 @@ fn withdraw_activated_cluster_works() {
 		USER_KEY_1,
 		USER_KEY_1,
 		ClusterParams::default(),
-		ClusterProtocolParams::default(),
+		default_cluster_protocol_params::<Test>(),
 		ClusterStatus::Activated,
 	);
 	let bond_1 = build_cluster_bond(USER_KEY_1, USER_KEY_1, ACTIVATED_CLUSTER_ID);

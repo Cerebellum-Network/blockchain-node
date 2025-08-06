@@ -269,7 +269,7 @@ impl ExtBuilder {
 			..Default::default()
 		}
 		.assimilate_storage(&mut t);
-
+		let customer_deposit_contract = AccountId::from([5; 32]);
 		let cluster_protocol_params = ClusterProtocolParams {
 			treasury_share: Perquintill::from_float(0.05),
 			validators_share: Perquintill::from_float(0.01),
@@ -281,6 +281,7 @@ impl ExtBuilder {
 			unit_per_mb_streamed: 10,
 			unit_per_put_request: 10,
 			unit_per_get_request: 10,
+			customer_deposit_contract,
 		};
 
 		let node_pub_key = NodePubKey::StoragePubKey(AccountId::from([0; 32]));

@@ -163,10 +163,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73163,
+	spec_version: 73164,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 25,
+	transaction_version: 26,
 	system_version: 0,
 };
 
@@ -1367,7 +1367,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
 	type PalletId = PayoutsPalletId;
 	type Currency = Balances;
-	type CustomerCharger = DdcCustomers;
+	type CustomerBalanceSource = pallet_ddc_payouts::CustomerBalancePallet<Runtime, DdcCustomers>;
 	type BucketManager = DdcCustomers;
 	type ClusterProtocol = DdcClusters;
 	type TreasuryVisitor = TreasuryWrapper;
@@ -1773,14 +1773,13 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Tx
 
 /// Migrations for FRAME pallets, unreleased to MAINNET
 // type Migrations = (
-// 	pallet_staking::migrations::v16::MigrateV15ToV16<Runtime>,
-// 	pallet_session::migrations::v1::MigrateV0ToV1<
+// 	pallet_nomination_pools::migration::unversioned::DelegationStakeMigration<
 // 		Runtime,
-// 		pallet_staking::migrations::v17::MigrateDisabledToSession<Runtime>,
+// 		MaxPoolsToMigrate,
 // 	>,
 // );
 
-type Migrations = ();
+type Migrations = pallet_ddc_clusters::migrations::v4::MigrateToV4<Runtime>;
 
 parameter_types! {
 	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
@@ -1823,10 +1822,7 @@ pub mod migrations {
 		// pallet_ddc_verification::migrations::v3::MigrateToV3<Runtime>, // ignore as the
 		// `ddc-verification` pallet was never deployed on MAINNET
 		// pallet_ddc_nodes::migrations::v0_v2::MigrateFromV0ToV2<Runtime>,
-		pallet_nomination_pools::migration::unversioned::DelegationStakeMigration<
-			Runtime,
-			MaxPoolsToMigrate,
-		>,
+		pallet_ddc_clusters::migrations::v4::MigrateToV4<Runtime>,
 	);
 
 	pub type UnreleasedMultiblock =

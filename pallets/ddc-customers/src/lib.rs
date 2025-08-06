@@ -192,7 +192,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			owner_id: T::AccountId,
 			charged: BalanceOf<T>,
-			expected_to_charge: BalanceOf<T>,
+			expected: BalanceOf<T>,
 		},
 		/// Bucket with specific id created
 		BucketCreated { cluster_id: ClusterId, bucket_id: BucketId },
@@ -774,7 +774,7 @@ pub mod pallet {
 				cluster_id,
 				owner_id: bucket_owner,
 				charged: actually_charged,
-				expected_to_charge: amount_to_deduct,
+				expected: amount_to_deduct,
 			});
 
 			Ok(actually_charged.saturated_into::<u128>())
