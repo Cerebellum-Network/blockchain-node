@@ -138,7 +138,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: frame_system::Config + pallet_contracts::Config {
 		/// The accounts's pallet id, used for deriving its sovereign account ID.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
@@ -303,7 +303,7 @@ pub mod pallet {
 		///
 		/// Anyone can create a bucket
 		#[pallet::call_index(0)]
-		#[pallet::weight(T::WeightInfo::create_bucket())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_bucket())]
 		pub fn create_bucket(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -327,7 +327,7 @@ pub mod pallet {
 		///
 		/// Emits `Deposited`.
 		#[pallet::call_index(1)]
-		#[pallet::weight(T::WeightInfo::deposit())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::deposit())]
 		pub fn deposit(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -349,7 +349,7 @@ pub mod pallet {
 		///
 		/// Emits `Deposited`.
 		#[pallet::call_index(2)]
-		#[pallet::weight(T::WeightInfo::deposit_extra())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::deposit_extra())]
 		pub fn deposit_extra(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -378,7 +378,7 @@ pub mod pallet {
 		///
 		/// Emits `Deposited`.
 		#[pallet::call_index(3)]
-		#[pallet::weight(T::WeightInfo::deposit())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::deposit())]
 		pub fn deposit_for(
 			origin: OriginFor<T>,
 			owner: T::AccountId,
@@ -416,7 +416,7 @@ pub mod pallet {
 		///
 		/// See also [`Call::withdraw_unlocked_deposit`].
 		#[pallet::call_index(4)]
-		#[pallet::weight(T::WeightInfo::unlock_deposit())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::unlock_deposit())]
 		pub fn unlock_deposit(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -484,7 +484,7 @@ pub mod pallet {
 		///
 		/// See also [`Call::unlock_deposit`].
 		#[pallet::call_index(5)]
-		#[pallet::weight(T::WeightInfo::withdraw_unlocked_deposit_kill())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::withdraw_unlocked_deposit_kill())]
 		pub fn withdraw_unlocked_deposit(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -548,7 +548,7 @@ pub mod pallet {
 		///
 		/// Emits `BucketUpdated`.
 		#[pallet::call_index(6)]
-		#[pallet::weight(T::WeightInfo::set_bucket_params())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_bucket_params())]
 		pub fn set_bucket_params(
 			origin: OriginFor<T>,
 			bucket_id: BucketId,
@@ -570,7 +570,7 @@ pub mod pallet {
 		///
 		/// Only an owner can remove a bucket
 		#[pallet::call_index(7)]
-		#[pallet::weight(T::WeightInfo::remove_bucket())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::remove_bucket())]
 		pub fn remove_bucket(origin: OriginFor<T>, bucket_id: BucketId) -> DispatchResult {
 			// todo! can we set total_usage to None and save bytes
 			let owner = ensure_signed(origin)?;

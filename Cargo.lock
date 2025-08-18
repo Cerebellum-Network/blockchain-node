@@ -9254,6 +9254,8 @@ dependencies = [
  "hex-literal 0.4.1",
  "log",
  "pallet-balances",
+ "pallet-contracts",
+ "pallet-insecure-randomness-collective-flip",
  "pallet-timestamp",
  "parity-scale-codec",
  "rand_chacha 0.3.1",

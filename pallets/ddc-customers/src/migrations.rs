@@ -470,7 +470,7 @@ pub mod v3_mbm {
 			// migration cannot be complete.
 			let required = match &cursor {
 				Some(state) => Self::required_weight(state),
-				None => T::WeightInfo::migration_v3_buckets_step(),
+				None => <T as pallet::Config>::WeightInfo::migration_v3_buckets_step(),
 			};
 			if meter.remaining().any_lt(required) {
 				return Err(SteppedMigrationError::InsufficientWeight { required });
@@ -481,7 +481,7 @@ pub mod v3_mbm {
 				// scenario.
 				let required_weight = match &cursor {
 					Some(state) => Self::required_weight(state),
-					None => T::WeightInfo::migration_v3_buckets_step(),
+					None => <T as pallet::Config>::WeightInfo::migration_v3_buckets_step(),
 				};
 				if !meter.can_consume(required_weight) {
 					break;
@@ -593,7 +593,7 @@ pub mod v3_mbm {
 
 		pub(crate) fn required_weight(step: &MigrationState) -> Weight {
 			match step {
-				MigrationState::MigratingBuckets(_) => T::WeightInfo::migration_v3_buckets_step(),
+				MigrationState::MigratingBuckets(_) => <T as pallet::Config>::WeightInfo::migration_v3_buckets_step(),
 				MigrationState::Finished => Weight::zero(),
 			}
 		}
@@ -686,7 +686,7 @@ pub mod v4_mbm {
 			// migration cannot be complete.
 			let required = match &cursor {
 				Some(state) => Self::required_weight(state),
-				None => T::WeightInfo::migration_v4_ledgers_step(),
+				None => <T as pallet::Config>::WeightInfo::migration_v4_ledgers_step(),
 			};
 			if meter.remaining().any_lt(required) {
 				return Err(SteppedMigrationError::InsufficientWeight { required });
@@ -697,7 +697,7 @@ pub mod v4_mbm {
 				// scenario.
 				let required_weight = match &cursor {
 					Some(state) => Self::required_weight(state),
-					None => T::WeightInfo::migration_v4_ledgers_step(),
+					None => <T as pallet::Config>::WeightInfo::migration_v4_ledgers_step(),
 				};
 				if !meter.can_consume(required_weight) {
 					break;
@@ -876,7 +876,7 @@ pub mod v4_mbm {
 		pub(crate) fn required_weight(step: &MigrationState<T::AccountId>) -> Weight {
 			match step {
 				MigrationState::MigratingLedgers(_, _) => {
-					T::WeightInfo::migration_v4_ledgers_step()
+					<T as pallet::Config>::WeightInfo::migration_v4_ledgers_step()
 				},
 				MigrationState::TransferringBalance(_) => {
 					// This is copied from pallet_balances::WeightInfo::transfer_allow_death()
