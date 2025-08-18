@@ -37,6 +37,7 @@ pub trait WeightInfo {
 	fn remove_bucket() -> Weight;
 	fn migration_v3_buckets_step() -> Weight;
 	fn migration_v4_ledgers_step() -> Weight;
+	fn migration_v5_ledgers_step() -> Weight;
 }
 
 /// Weights for pallet_ddc_customers using the Substrate node and recommended hardware.
@@ -143,6 +144,10 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(6_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
+
+	fn migration_v5_ledgers_step() -> Weight {
+		Weight::zero()
+	}
 }
 
 // For backwards compatibility and tests
@@ -247,5 +252,9 @@ impl WeightInfo for () {
 		Weight::from_parts(58_380_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(6_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
+	}
+
+	fn migration_v5_ledgers_step() -> Weight {
+		Weight::zero()
 	}
 }

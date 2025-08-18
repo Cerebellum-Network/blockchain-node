@@ -12,6 +12,7 @@ mod tests;
 use codec::{Decode, Encode};
 use ddc_primitives::{
 	traits::{
+
 		bucket::BucketManager,
 		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery},
 		customer::{CustomerCharger, CustomerDepositor, CustomerVisitor},
@@ -20,7 +21,7 @@ use ddc_primitives::{
 };
 use frame_support::{
 	parameter_types,
-	traits::{Currency, DefensiveSaturating, ExistenceRequirement},
+	traits::{Currency, DefensiveSaturating, ExistenceRequirement, fungible::Inspect, UnfilteredDispatchable},
 	BoundedVec, Deserialize, PalletId, Serialize,
 };
 use frame_system::pallet_prelude::*;
@@ -31,6 +32,7 @@ use sp_runtime::{
 	traits::{AccountIdConversion, Saturating, Zero},
 	RuntimeDebug, SaturatedConversion,
 };
+use sp_std::fmt::Debug;
 use sp_std::prelude::*;
 
 use crate::weights::WeightInfo;
@@ -41,6 +43,12 @@ pub mod migrations;
 pub type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
+/// The balance type of contracts pallet.
+pub type ContractsBalanceOf<T> =
+    <<T as pallet_contracts::Config>::Currency as Inspect<
+        <T as frame_system::Config>::AccountId
+    >>::Balance;
+	
 parameter_types! {
 	/// A limit to the number of pending unlocks an account may have in parallel.
 	pub MaxUnlockingChunks: u32 = 32;
@@ -154,6 +162,8 @@ pub mod pallet {
 		>;
 		type ClusterCreator: ClusterCreator<Self::AccountId, BlockNumberFor<Self>, BalanceOf<Self>>;
 		type WeightInfo: WeightInfo;
+		#[cfg(feature = "runtime-benchmarks")]
+		type ContractDeployer: ContractDeployer<Self::AccountId, ContractsBalanceOf<Self>>;
 	}
 
 	#[pallet::storage]
@@ -967,4 +977,55 @@ pub mod pallet {
 			Ok(bucket.owner_id)
 		}
 	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	pub trait ContractDeployer<AccountId, Balance> {
+		fn deploy_contract(
+			deployer: AccountId,
+			value: Balance,
+			gas_limit: Weight,
+			storage_deposit_limit: Option<Balance>,
+			code: Vec<u8>,
+			data: Vec<u8>,
+			salt: Vec<u8>,
+		) -> DispatchResult;
+	}
+	
+	#[cfg(feature = "runtime-benchmarks")]
+	impl<T: Config> ContractDeployer<T::AccountId, ContractsBalanceOf<T>> for Pallet<T>
+	where
+		ContractsBalanceOf<T>: codec::HasCompact,
+		<ContractsBalanceOf<T> as codec::HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode,
+	{
+		fn deploy_contract(
+			deployer: T::AccountId,
+			value: ContractsBalanceOf<T>,
+			gas_limit: Weight,
+			storage_deposit_limit: Option<ContractsBalanceOf<T>>,
+			code: Vec<u8>,
+			data: Vec<u8>,
+			salt: Vec<u8>,
+		) -> DispatchResult {
+	
+			let instantiate_call: pallet_contracts::Call<T> =
+				pallet_contracts::Call::instantiate_with_code {
+					value: value,
+					gas_limit: gas_limit,
+					storage_deposit_limit: storage_deposit_limit.map(Into::into),
+					code: code,
+					data: data,
+					salt: salt
+				};
+			
+			let result = instantiate_call
+				.dispatch_bypass_filter(frame_system::RawOrigin::Signed(deployer).into());
+
+			match result {
+				Ok(_) => Ok(()),
+				Err(e) => Err(DispatchError::from(e.error)
+			),
+			}
+		}
+	}
+
 }

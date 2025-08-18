@@ -1330,6 +1330,8 @@ impl pallet_ddc_customers::Config for Runtime {
 	type ClusterProtocol = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterCreator = pallet_ddc_clusters::Pallet<Runtime>;
 	type WeightInfo = pallet_ddc_customers::weights::SubstrateWeight<Runtime>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type ContractDeployer = pallet_ddc_customers::Pallet<Runtime>;
 }
 
 impl pallet_ddc_clusters::Config for Runtime {

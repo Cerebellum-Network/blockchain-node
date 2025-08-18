@@ -328,4 +328,30 @@ mod benchmarks {
 
 		Ok(())
 	}
+
+	#[benchmark]
+	fn migration_v5_ledgers_step() -> Result<(), BenchmarkError> {
+		use crate::{
+			migrations::v5_mbm::{LazyMigrationV4ToV5},
+			ClusterLedger as V4Ledgers,
+		};
+
+		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+		let _ = create_dafault_cluster::<T>(user.clone());
+
+		let setup = LazyMigrationV4ToV5::<T>::setup_benchmark_env_for_migration();
+		assert_eq!(V4Ledgers::<T>::iter_values().count(), 1);
+
+		#[block]
+		{
+			LazyMigrationV4ToV5::<T>::ledgers_step(None, None);
+		}
+
+		// assert_eq!(V4Ledgers::<T>::iter_values().count(), 1);
+		// let ledger = V4Ledgers::<T>::get(setup.cluster_id, &setup.ledger_owner);
+
+		// assert!(ledger.is_some());
+
+		Ok(())
+	}
 }
