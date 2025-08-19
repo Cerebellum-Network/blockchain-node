@@ -12,7 +12,6 @@ mod tests;
 use codec::{Decode, Encode};
 use ddc_primitives::{
 	traits::{
-
 		bucket::BucketManager,
 		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery},
 		customer::{CustomerCharger, CustomerDepositor, CustomerVisitor},
@@ -21,7 +20,10 @@ use ddc_primitives::{
 };
 use frame_support::{
 	parameter_types,
-	traits::{Currency, DefensiveSaturating, ExistenceRequirement, fungible::Inspect, UnfilteredDispatchable},
+	traits::{
+		fungible::Inspect, Currency, DefensiveSaturating, ExistenceRequirement,
+		UnfilteredDispatchable,
+	},
 	BoundedVec, Deserialize, PalletId, Serialize,
 };
 use frame_system::pallet_prelude::*;
@@ -29,7 +31,7 @@ pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_io::hashing::blake2_128;
 use sp_runtime::{
-	traits::{AccountIdConversion, Saturating, Zero, StaticLookup},
+	traits::{AccountIdConversion, Saturating, StaticLookup, Zero},
 	RuntimeDebug, SaturatedConversion,
 };
 use sp_std::fmt::Debug;
@@ -44,11 +46,10 @@ pub type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 /// The balance type of contracts pallet.
-pub type ContractsBalanceOf<T> =
-    <<T as pallet_contracts::Config>::Currency as Inspect<
-        <T as frame_system::Config>::AccountId
-    >>::Balance;
-	
+pub type ContractsBalanceOf<T> = <<T as pallet_contracts::Config>::Currency as Inspect<
+	<T as frame_system::Config>::AccountId,
+>>::Balance;
+
 parameter_types! {
 	/// A limit to the number of pending unlocks an account may have in parallel.
 	pub MaxUnlockingChunks: u32 = 32;
@@ -997,12 +998,14 @@ pub mod pallet {
 			data: Vec<u8>,
 		) -> DispatchResult;
 	}
-	
+
 	impl<T: Config> ContractMigrator<T::AccountId, ContractsBalanceOf<T>> for Pallet<T>
 	where
 		ContractsBalanceOf<T>: codec::HasCompact,
-		<ContractsBalanceOf<T> as codec::HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode,
-		<<T as frame_system::Config>::Lookup as StaticLookup>::Source: From<<T as frame_system::Config>::AccountId>
+		<ContractsBalanceOf<T> as codec::HasCompact>::Type:
+			Clone + Eq + PartialEq + Debug + TypeInfo + Encode,
+		<<T as frame_system::Config>::Lookup as StaticLookup>::Source:
+			From<<T as frame_system::Config>::AccountId>,
 	{
 		fn deploy_contract(
 			deployer: T::AccountId,
@@ -1013,17 +1016,16 @@ pub mod pallet {
 			data: Vec<u8>,
 			salt: Vec<u8>,
 		) -> DispatchResult {
-	
 			let instantiate_call: pallet_contracts::Call<T> =
 				pallet_contracts::Call::instantiate_with_code {
-					value: value,
-					gas_limit: gas_limit,
+					value,
+					gas_limit,
 					storage_deposit_limit: storage_deposit_limit.map(Into::into),
-					code: code,
-					data: data,
-					salt: salt
+					code,
+					data,
+					salt,
 				};
-			
+
 			let result = instantiate_call
 				.dispatch_bypass_filter(frame_system::RawOrigin::Signed(deployer).into());
 
@@ -1044,11 +1046,16 @@ pub mod pallet {
 			storage_deposit_limit: Option<ContractsBalanceOf<T>>,
 			data: Vec<u8>,
 		) -> DispatchResult {
-			let call_call: pallet_contracts::Call<T> =
-				pallet_contracts::Call::call { dest: dest.into(), value: value, gas_limit: gas_limit, storage_deposit_limit: storage_deposit_limit.map(Into::into), data: data };
+			let call_call: pallet_contracts::Call<T> = pallet_contracts::Call::call {
+				dest: dest.into(),
+				value,
+				gas_limit,
+				storage_deposit_limit: storage_deposit_limit.map(Into::into),
+				data,
+			};
 
-			let result = call_call
-				.dispatch_bypass_filter(frame_system::RawOrigin::Signed(caller).into());
+			let result =
+				call_call.dispatch_bypass_filter(frame_system::RawOrigin::Signed(caller).into());
 
 			match result {
 				Ok(_) => Ok(()),
@@ -1059,5 +1066,4 @@ pub mod pallet {
 			}
 		}
 	}
-
 }

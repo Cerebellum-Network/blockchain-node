@@ -11,8 +11,8 @@ repository.workspace = true
 [dependencies]
 # 3rd-party dependencies
 codec = { workspace = true }
-hex-literal = { workspace = true }
 hex = { workspace = true }
+hex-literal = { workspace = true }
 log = { workspace = true }
 rand_chacha = { workspace = true, optional = true }
 scale-info = { workspace = true }
@@ -22,10 +22,10 @@ serde = { workspace = true }
 frame-benchmarking = { workspace = true, optional = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
+sp-core = { workspace = true }
 sp-io = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
-sp-core = { workspace = true }
 
 pallet-contracts = { version = "40.1.0", default-features = false }
 
@@ -35,8 +35,8 @@ ddc-primitives = { workspace = true }
 [dev-dependencies]
 frame-benchmarking = { workspace = true, default-features = true }
 pallet-balances = { workspace = true, default-features = true }
-pallet-timestamp = { workspace = true, default-features = true }
 pallet-insecure-randomness-collective-flip = { version = "28.0.0", default-features = true }
+pallet-timestamp = { workspace = true, default-features = true }
 sp-core = { workspace = true, default-features = true }
 sp-io = { workspace = true, default-features = true }
 sp-tracing = { workspace = true, default-features = true }

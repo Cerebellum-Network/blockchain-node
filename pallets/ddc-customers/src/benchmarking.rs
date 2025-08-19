@@ -331,10 +331,7 @@ mod benchmarks {
 
 	#[benchmark]
 	fn migration_v5_ledgers_step() -> Result<(), BenchmarkError> {
-		use crate::{
-			migrations::v5_mbm::{LazyMigrationV4ToV5},
-			ClusterLedger as V4Ledgers,
-		};
+		use crate::{migrations::v5_mbm::LazyMigrationV4ToV5, ClusterLedger as V4Ledgers};
 
 		let _setup = LazyMigrationV4ToV5::<T>::setup_benchmark_env_for_migration();
 		assert_eq!(V4Ledgers::<T>::iter_values().count(), 1);
