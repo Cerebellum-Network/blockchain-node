@@ -1196,7 +1196,9 @@ pub mod v5_mbm {
 					ledger.total,
 					ExistenceRequirement::AllowDeath,
 				) {
-					log::error!("❌ Error transferring {:?} tokens for customer {:?}: {:?}. Resolve this issue manually after the migration.", ledger.total, ledger.owner, e);
+					let cluster_vault_balance =
+						<T as pallet::Config>::Currency::free_balance(&cluster_vault_id);
+					log::error!("❌ Error transferring {:?} tokens for customer {:?}: {:?}. Possibly, the cluster vault is out of balance ({:?}). Resolve this issue manually after finishing multi-block migration.", ledger.total, ledger.owner, e, cluster_vault_balance);
 				} else {
 					// Delete pallet ledger after transferring tokens back to customer address
 					v5_mbm::ClusterLedger::<T>::remove(cluster_id, &ledger.owner);
@@ -1238,6 +1240,7 @@ pub mod v5_mbm {
 							"Failed to call `deposit` function of contract"
 						);
 					} else {
+						// the ledger is removed
 						log::warn!("Deposit value is too low to pay the contract storage fee for customer {:?} with {:?} of original total tokens. Skipping the ledger migration.", ledger.owner, ledger.total);
 					}
 				}
