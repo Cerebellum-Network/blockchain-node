@@ -959,6 +959,7 @@ pub mod v4_mbm {
 pub mod v5_mbm {
 
 	use codec::{Decode, Encode};
+	use ddc_primitives::DOLLARS as CERE;
 	use frame_support::traits::Currency;
 	use frame_support::{
 		migrations::{MigrationId, SteppedMigration, SteppedMigrationError},
@@ -976,7 +977,7 @@ pub mod v5_mbm {
 	use super::*;
 
 	pub type LedgerDoubleMapKey = [u8; 96];
-	pub const DEPOSIT_CONTRACT_FEE: u128 = 4_3000000000; // ~ 4.3 CERE
+	pub const DEPOSIT_CONTRACT_FEE: u128 = 6 * CERE; // ~ 6 CERE
 
 	/// Progressive states of a migration. The migration starts with the first variant and ends with
 	/// the last.
@@ -1198,7 +1199,7 @@ pub mod v5_mbm {
 				) {
 					let cluster_vault_balance =
 						<T as pallet::Config>::Currency::free_balance(&cluster_vault_id);
-					log::error!("❌ Error transferring {:?} tokens for customer {:?}: {:?}. Possibly, the cluster vault is out of balance ({:?}). Resolve this issue manually after finishing multi-block migration.", ledger.total, ledger.owner, e, cluster_vault_balance);
+					log::error!("❌ Error transferring {:?} tokens for customer {:?}: {:?}. Possibly, the cluster vault {:?} is out of balance ({:?}). Resolve this issue manually after finishing multi-block migration.", ledger.total, ledger.owner, e, cluster_vault_id, cluster_vault_balance);
 				} else {
 					// Delete pallet ledger after transferring tokens back to customer address
 					v5_mbm::ClusterLedger::<T>::remove(cluster_id, &ledger.owner);
@@ -1213,34 +1214,50 @@ pub mod v5_mbm {
 					let total: u128 = ledger.total.saturated_into::<u128>();
 					let deposit_value = total.saturating_sub(DEPOSIT_CONTRACT_FEE); // keeping ledger in contract's storage requires storage fee and call fee, so we keep it from the total amount
 
+					let owner_balance =
+						<T as pallet::Config>::Currency::free_balance(&ledger.owner)
+							.saturated_into::<u128>();
 					if deposit_value
 						>= <T as pallet::Config>::Currency::minimum_balance()
 							.saturated_into::<u128>()
-					{
-						let contract_address =
+						&& owner_balance
+							>= deposit_value.saturating_add(DEPOSIT_CONTRACT_FEE).saturating_add(
+								<T as pallet::Config>::Currency::minimum_balance()
+									.saturated_into::<u128>(),
+							) {
+						log::info!(
+							"Migrating {:?} deposited tokens for customer {:?} with balance {:?}",
+							deposit_value,
+							ledger.owner,
+							owner_balance
+						);
+
+						if let Ok(contract_address) =
 							<T as pallet::Config>::ClusterProtocol::get_customer_deposit_contract(
 								&cluster_id,
-							)
-							.expect(
-								"Customer deposit contract address should be set for the cluster",
+							) {
+							// ledger is removed, funds transferred to owner ledger in contract
+							if let Err(e) = <T as pallet::Config>::ContractMigrator::call_contract(
+								ledger.owner.clone(),
+								contract_address,
+								deposit_value.saturated_into::<ContractsBalanceOf<T>>(),
+								Weight::from_parts(10_000_000_000, 10_000_000_000),
+								None,
+								vec![0x2d, 0x1d, 0x87, 0x45], // `deposit` function selector
+							) {
+								log::error!(
+									"❌ Error calling `deposit` function in contract: {:?}. Resolve the issue manually after finishing multi-block migration.",
+									e
+								);
+							}
+						} else {
+							log::error!(
+								"❌ Contract address is not set for the cluster {:?}. Resolve the issue manually after finishing multi-block migration.",
+								cluster_id
 							);
-						let data = vec![0x2d, 0x1d, 0x87, 0x45]; // `deposit` function selector
-
-						let call_result = <T as pallet::Config>::ContractMigrator::call_contract(
-							ledger.owner.clone(),
-							contract_address,
-							deposit_value.saturated_into::<ContractsBalanceOf<T>>(),
-							Weight::from_parts(10_000_000_000, 10_000_000_000),
-							None,
-							data,
-						);
-
-						assert!(
-							call_result.is_ok(),
-							"Failed to call `deposit` function of contract"
-						);
+						}
 					} else {
-						// the ledger is removed
+						// ledger is removed, funds transferred to original owner address
 						log::warn!("Deposit value is too low to pay the contract storage fee for customer {:?} with {:?} of original total tokens. Skipping the ledger migration.", ledger.owner, ledger.total);
 					}
 				}
