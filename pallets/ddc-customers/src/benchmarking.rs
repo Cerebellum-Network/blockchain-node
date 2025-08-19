@@ -344,8 +344,7 @@ mod benchmarks {
 			LazyMigrationV4ToV5::<T>::ledgers_step(None, None);
 		}
 
-		// todo: drop cluster ledgers from pallet
-		// assert_eq!(V4Ledgers::<T>::iter_values().count(), 0);
+		assert_eq!(V4Ledgers::<T>::iter_values().count(), 0);
 
 		Ok(())
 	}

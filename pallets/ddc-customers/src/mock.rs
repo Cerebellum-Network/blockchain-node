@@ -152,8 +152,7 @@ impl crate::pallet::Config for Test {
 	type ClusterProtocol = TestClusterProtocol;
 	type ClusterCreator = TestClusterCreator;
 	type WeightInfo = ();
-	#[cfg(feature = "runtime-benchmarks")]
-	type ContractDeployer = TestContractDeployer;
+	type ContractMigrator = TestContractMigrator;
 }
 
 pub struct TestClusterProtocol;
@@ -353,10 +352,8 @@ impl ClusterCreator<AccountId, BlockNumber, Balance> for TestClusterCreator {
 	}
 }
 
-#[cfg(feature = "runtime-benchmarks")]
-pub struct TestContractDeployer;
-#[cfg(feature = "runtime-benchmarks")]
-impl ContractDeployer<AccountId, Balance> for TestContractDeployer {
+pub struct TestContractMigrator;
+impl ContractMigrator<AccountId, Balance> for TestContractMigrator {
 	fn deploy_contract(
 		_deployer: AccountId,
 		_value: Balance,
@@ -365,6 +362,17 @@ impl ContractDeployer<AccountId, Balance> for TestContractDeployer {
 		_code: Vec<u8>,
 		_data: Vec<u8>,
 		_salt: Vec<u8>,
+	) -> DispatchResult {
+		Ok(())
+	}
+
+	fn call_contract(
+		_caller: AccountId,
+		_dest: AccountId,
+		_value: Balance,
+		_gas_limit: Weight,
+		_storage_deposit_limit: Option<Balance>,
+		_data: Vec<u8>,
 	) -> DispatchResult {
 		Ok(())
 	}

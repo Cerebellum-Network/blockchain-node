@@ -966,7 +966,11 @@ use frame_support::{
 	use frame_support::traits::Currency;
 	use codec::{Decode, Encode};
 	use sp_io::storage;
+
+	#[cfg(feature = "runtime-benchmarks")]
 	use sp_runtime::AccountId32;
+
+	#[cfg(feature = "runtime-benchmarks")]
 	use sp_core::crypto::Ss58Codec;
 
 	use frame_support::traits::fungible::Inspect;
@@ -983,14 +987,14 @@ use frame_support::{
 
 	use super::*;
 
-	type LedgerDoubleMapKey = [u8; 96];
+	pub type LedgerDoubleMapKey = [u8; 96];
+	pub const DEPOSIT_CONTRACT_FEE: u128 = 4_3000000000; // ~ 4.3 CERE
 
 	/// Progressive states of a migration. The migration starts with the first variant and ends with
 	/// the last.
 	#[derive(Decode, Encode, MaxEncodedLen, Eq, PartialEq, Debug)]
 	pub enum MigrationState {
 		MigratingLedgersFromPalletToContract(LedgerDoubleMapKey, ClusterId),
-		TransferringBalanceToContract(ClusterId),
 		Finished,
 	}
 
@@ -1043,9 +1047,6 @@ use frame_support::{
 					Some(MigrationState::MigratingLedgersFromPalletToContract(maybe_last_key, maybe_cluster_id)) => {
 						Self::ledgers_step(Some(Vec::from(maybe_last_key)), Some(maybe_cluster_id))
 					},
-					Some(MigrationState::TransferringBalanceToContract(cluster_id)) => {
-						Self::transfer_balance_step(cluster_id)
-					},
 					Some(MigrationState::Finished) => {
 						StorageVersion::new(Self::id().version_to as u16).put::<Pallet<T>>();
 						return Ok(None);
@@ -1076,30 +1077,19 @@ use frame_support::{
 				on_chain_version
 			);
 
-			let prev_count = v5_mbm::ClusterLedger::<T>::iter_values().count();
+			ensure!(
+				on_chain_version < 5,
+				"the `on_chain_version` version should be the 5th after the v5 migration"
+			);
 
-			Ok((prev_count as u64).encode())
+			Ok(vec![])
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), DispatchError> {
+		fn post_upgrade(_prev_state: Vec<u8>) -> Result<(), DispatchError> {
 			info!(
 				target: LOG_TARGET,
 				"POST-CHECK Step in v5 migration"
-			);
-
-			let prev_count: u64 = Decode::decode(&mut &prev_state[..])
-				.expect("pre_upgrade provides a valid state; qed");
-
-			info!(
-				target: LOG_TARGET,
-				"Executing post check of v5 migration prev_count={:?} ...", prev_count
-			);
-
-			let post_count = v5_mbm::ClusterLedger::<T>::iter_values().count() as u64;
-			ensure!(
-				prev_count == post_count,
-				"ledger count before and after the v5 migration should be the same"
 			);
 
 			let current_version = Pallet::<T>::in_code_storage_version();
@@ -1208,71 +1198,66 @@ use frame_support::{
 			};
 
 			let (ledgers, next_cursor) = page_cluster_ledgers::<T>(cluster_id, maybe_last_key, 1);
-			log::info!("ledgers.len() ====> {:?}", ledgers.len());
 			for (_, ledger) in ledgers {
-				log::info!("ledger.owner ----> {:?}", ledger.owner);
-				log::info!("ledger.active ----> {:?}", ledger.active);
-				log::info!("ledger.total ----> {:?}", ledger.total);
-				log::info!("ledger.unlocking.len() ----> {:?}", ledger.unlocking.len());
+				let cluster_vault_id = crate::Pallet::<T>::cluster_vault_id(&cluster_id);
 
-				// todo: call contract to migrate ledger
+				if let Err(e) = <T as pallet::Config>::Currency::transfer(
+					&cluster_vault_id,
+					&ledger.owner,
+					ledger.total,
+					ExistenceRequirement::AllowDeath,
+				) {
+					log::error!("❌ Error transferring {:?} tokens for customer {:?}: {:?}. Resolve this issue manually after the migration.", ledger.total, ledger.owner, e);
+				} else {
+
+					// Delete pallet ledger after transferring tokens back to customer address
+					v5_mbm::ClusterLedger::<T>::remove(&cluster_id,&ledger.owner);
+
+					log::info!(
+						"✅ Successfully transferred {:?} tokens from cluster vault {:?} to customer {:?}",
+						ledger.total,
+						cluster_vault_id,
+						ledger.owner
+					);
+
+					// todo: replace with actual contract address for the target network
+					let contract_address_bytes: [u8; 32] = [0x21, 0x74, 0xdf, 0x6b, 0x9a, 0xd9, 0x8a, 0x8b, 0x14, 0x12, 0xa4, 0xa9, 0xe0, 0xf1, 0x75, 0xeb, 0xef, 0x3e, 0x06, 0x14, 0x1a, 0x0f, 0xdd, 0x64, 0x79, 0xbe, 0xdc, 0x7e, 0x28, 0x0c, 0x6c, 0xd1];
+					let contract_address = T::AccountId::decode(&mut &contract_address_bytes[..]).unwrap();
+					let data = vec![0x2d, 0x1d, 0x87, 0x45]; // `deposit` function selector
+					
+					let total: u128 = ledger.total.saturated_into::<u128>();
+					let deposit_value = total.saturating_sub(DEPOSIT_CONTRACT_FEE); // keeping ledger in contract's storage requires storage fee and call fee, so we keep it from the total amount
+					if deposit_value > 0 {
+						let call_result = <T as pallet::Config>::ContractMigrator::call_contract(
+							ledger.owner.clone(),
+							contract_address,
+							deposit_value.saturated_into::<ContractsBalanceOf<T>>(),
+							Weight::from_parts(10_000_000_000, 10_000_000_000),
+							None,
+							data
+						);
+
+						assert!(call_result.is_ok(), "Failed to call `deposit` function of contract");
+											
+					} else {
+						log::warn!("Deposit value is too low to pay the contract storage fee for customer {:?} with {:?} of original total tokens. Skipping the ledger migration.", ledger.owner, ledger.total);
+					}
+				}
 			}
 
 			if let Some(key) = next_cursor {
-				let last_key: LedgerDoubleMapKey = key.try_into().expect("Vector must be exactly 32 bytes long");
+				let last_key: LedgerDoubleMapKey = key.try_into().expect("Vector must be exactly 96 bytes long");
 				MigrationState::MigratingLedgersFromPalletToContract(last_key, cluster_id)
 			} else {
-				MigrationState::TransferringBalanceToContract(cluster_id)
+				MigrationState::Finished
 			}
 		}
 
-		pub(crate) fn transfer_balance_step(
-			cluster_id: &ClusterId,
-		) -> MigrationState {
-			// todo: transfer funds to customer deposit contract
-
-			// let pallet_account_id = crate::Pallet::<T>::pallet_account_id();
-			// let cluster_vault_id = crate::Pallet::<T>::cluster_vault_id(cluster_id);
-
-			// let pallet_balance = <T as pallet::Config>::Currency::free_balance(&pallet_account_id);
-
-			// if pallet_balance > <T as pallet::Config>::Currency::minimum_balance() {
-			// 	if let Err(e) = <T as pallet::Config>::Currency::transfer(
-			// 		&pallet_account_id,
-			// 		&cluster_vault_id,
-			// 		pallet_balance,
-			// 		ExistenceRequirement::AllowDeath,
-			// 	) {
-			// 		log::error!("❌ Error transferring balance: {:?}. Resolve this issue manually after the migration.", e);
-			// 	} else {
-			// 		log::info!(
-			// 			"✅ Successfully transferred {:?} tokens from pallet {:?} to cluster vault {:?}",
-			// 			pallet_balance,
-			// 			pallet_account_id,
-			// 			cluster_vault_id
-			// 		);
-			// 	}
-			// }
-
-			MigrationState::Finished
-		}
 
 		pub(crate) fn required_weight(step: &MigrationState) -> Weight {
 			match step {
 				MigrationState::MigratingLedgersFromPalletToContract(_, _) => {
 					<T as pallet::Config>::WeightInfo::migration_v5_ledgers_step()
-				},
-				MigrationState::TransferringBalanceToContract(_) => {
-					// This is copied from pallet_balances::WeightInfo::transfer_allow_death()
-
-					// Proof Size summary in bytes:
-					//  Measured:  `0`
-					//  Estimated: `3593`
-					// Minimum execution time: 44_771_000 picoseconds.
-					Weight::from_parts(45_635_000, 0)
-						.saturating_add(Weight::from_parts(0, 3593))
-						.saturating_add(T::DbWeight::get().reads(1))
-						.saturating_add(T::DbWeight::get().writes(1))
 				},
 				MigrationState::Finished => Weight::zero(),
 			}
@@ -1299,21 +1284,22 @@ use frame_support::{
 			use ddc_primitives::{ClusterParams, ClusterProtocolParams, DOLLARS as CERE};
 			use sp_runtime::Perquintill;
 
+			frame_system::Pallet::<T>::set_block_number(BlockNumberFor::<T>::from(1u32));
+
 			let cluster_id = ClusterId::from(DEFAULT_CLUSTER);
 			let cluster_vault_id = crate::Pallet::<T>::cluster_vault_id(&cluster_id);
 
-			// 6PrZPs13WDfipuKAqpvx3T5usCC5VG7RYCsVMJXRosnSXV3q / 0x0f34e9208feb46b0e1c36d759ebd0886ac73ba8054147a9618a526f5872b83b1
-			let cluster_owner = frame_benchmarking::account::<T::AccountId>("account", 1, 0);
+			let cluster_owner = frame_benchmarking::account::<T::AccountId>("account", 1, 0); // 6PrZPs13WDfipuKAqpvx3T5usCC5VG7RYCsVMJXRosnSXV3q / 0x0f34e9208feb46b0e1c36d759ebd0886ac73ba8054147a9618a526f5872b83b1
 			endow_account::<T>(&cluster_owner, 1000000 * CERE);
 
 			let contract_code = &include_bytes!("./benchmarking_customer_deposit.wasm")[..];
 			let contract_data = vec![0x9b, 0xae, 0x9d, 0x5e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x0a, 0x00, 0x00, 0x00];
 			let salt = vec![0x01];
 
-			let deploy_result = <T as pallet::Config>::ContractDeployer::deploy_contract(
+			let deploy_result = <T as pallet::Config>::ContractMigrator::deploy_contract(
 				cluster_owner.clone(),
 				ContractsBalanceOf::<T>::zero(),
-				Weight::from_parts(100_000_000_000, 100_000_000_000),
+				Weight::from_parts(10_000_000_000, 10_000_000_000),
 				None,
 				contract_code.to_vec(),
 				contract_data,
@@ -1321,8 +1307,12 @@ use frame_support::{
 			);
 
 			assert!(deploy_result.is_ok(), "Failed to deploy customer deposit contract");
+			frame_system::Pallet::<T>::events().iter().for_each(|_event| {
+				// To learn contract address, look for `Contracts(Event::Instantiated { deployer: 0f34e9208feb46b0e1c36d759ebd0886ac73ba8054147a9618a526f5872b83b1 (5CQeHxWC...), contract: 2174df6b9ad98a8b1412a4a9e0f175ebef3e06141a0fdd6479bedc7e280c6cd1 (5Cpa9zQ4...) }), topics: [] }` event`   
+				// log::info!("emitted event {:?}", _event);
+			});
 
-			// contract address is deterministic from: deployer + contract_code + contract_data + salt
+			// contract address is deterministic from: deployer + contract_code + contract_data + salt, so we can rely on hardcoded contract address value here
 			let contract_address = T::AccountId::decode(&mut &AccountId32::from_ss58check("6SKbAKXgXz8k39ggCZ8KWSMMqtLWzAtjbawrRuPoYKaDtwBD").unwrap().encode()[..]).unwrap();
 
 			let cluster_protocol_params: ClusterProtocolParams<

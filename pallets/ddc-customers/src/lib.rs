@@ -29,7 +29,7 @@ pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_io::hashing::blake2_128;
 use sp_runtime::{
-	traits::{AccountIdConversion, Saturating, Zero},
+	traits::{AccountIdConversion, Saturating, Zero, StaticLookup},
 	RuntimeDebug, SaturatedConversion,
 };
 use sp_std::fmt::Debug;
@@ -162,8 +162,7 @@ pub mod pallet {
 		>;
 		type ClusterCreator: ClusterCreator<Self::AccountId, BlockNumberFor<Self>, BalanceOf<Self>>;
 		type WeightInfo: WeightInfo;
-		#[cfg(feature = "runtime-benchmarks")]
-		type ContractDeployer: ContractDeployer<Self::AccountId, ContractsBalanceOf<Self>>;
+		type ContractMigrator: ContractMigrator<Self::AccountId, ContractsBalanceOf<Self>>;
 	}
 
 	#[pallet::storage]
@@ -978,8 +977,7 @@ pub mod pallet {
 		}
 	}
 
-	#[cfg(feature = "runtime-benchmarks")]
-	pub trait ContractDeployer<AccountId, Balance> {
+	pub trait ContractMigrator<AccountId, Balance> {
 		fn deploy_contract(
 			deployer: AccountId,
 			value: Balance,
@@ -989,13 +987,22 @@ pub mod pallet {
 			data: Vec<u8>,
 			salt: Vec<u8>,
 		) -> DispatchResult;
+
+		fn call_contract(
+			caller: AccountId,
+			dest: AccountId,
+			value: Balance,
+			gas_limit: Weight,
+			storage_deposit_limit: Option<Balance>,
+			data: Vec<u8>,
+		) -> DispatchResult;
 	}
 	
-	#[cfg(feature = "runtime-benchmarks")]
-	impl<T: Config> ContractDeployer<T::AccountId, ContractsBalanceOf<T>> for Pallet<T>
+	impl<T: Config> ContractMigrator<T::AccountId, ContractsBalanceOf<T>> for Pallet<T>
 	where
 		ContractsBalanceOf<T>: codec::HasCompact,
 		<ContractsBalanceOf<T> as codec::HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode,
+		<<T as frame_system::Config>::Lookup as StaticLookup>::Source: From<<T as frame_system::Config>::AccountId>
 	{
 		fn deploy_contract(
 			deployer: T::AccountId,
@@ -1022,8 +1029,33 @@ pub mod pallet {
 
 			match result {
 				Ok(_) => Ok(()),
-				Err(e) => Err(DispatchError::from(e.error)
-			),
+				Err(e) => {
+					log::error!("❌ Error deploying contract: {:?}", e.error);
+					Err(DispatchError::from(e.error))
+				},
+			}
+		}
+
+		fn call_contract(
+			caller: T::AccountId,
+			dest: T::AccountId,
+			value: ContractsBalanceOf<T>,
+			gas_limit: Weight,
+			storage_deposit_limit: Option<ContractsBalanceOf<T>>,
+			data: Vec<u8>,
+		) -> DispatchResult {
+			let call_call: pallet_contracts::Call<T> =
+				pallet_contracts::Call::call { dest: dest.into(), value: value, gas_limit: gas_limit, storage_deposit_limit: storage_deposit_limit.map(Into::into), data: data };
+
+			let result = call_call
+				.dispatch_bypass_filter(frame_system::RawOrigin::Signed(caller).into());
+
+			match result {
+				Ok(_) => Ok(()),
+				Err(e) => {
+					log::error!("❌ Error calling contract: {:?}", e.error);
+					Err(DispatchError::from(e.error))
+				},
 			}
 		}
 	}
