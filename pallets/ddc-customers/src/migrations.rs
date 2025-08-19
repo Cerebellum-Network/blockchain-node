@@ -1095,6 +1095,7 @@ pub mod v5_mbm {
 		}
 	}
 
+	#[allow(clippy::type_complexity)]
 	fn page_cluster_ledgers<T: Config>(
 		k1: ClusterId,
 		start_after: Option<Vec<u8>>, // raw cursor; pass `None` to start
@@ -1104,7 +1105,7 @@ pub mod v5_mbm {
 		let blank_k2 = T::AccountId::decode(&mut &blank[..]).unwrap();
 
 		// Build a real *full* key, then drop the last 32 bytes (H2(k2)).
-		let mut full = v5_mbm::ClusterLedger::<T>::hashed_key_for(k1.clone(), blank_k2);
+		let mut full = v5_mbm::ClusterLedger::<T>::hashed_key_for(k1, blank_k2);
 		// H2 = Blake2_256 → 32 bytes to trim:
 		full.truncate(full.len() - 32);
 		let prefix = full; // now = module+storage + H1(k1)
@@ -1198,7 +1199,7 @@ pub mod v5_mbm {
 					log::error!("❌ Error transferring {:?} tokens for customer {:?}: {:?}. Resolve this issue manually after the migration.", ledger.total, ledger.owner, e);
 				} else {
 					// Delete pallet ledger after transferring tokens back to customer address
-					v5_mbm::ClusterLedger::<T>::remove(&cluster_id, &ledger.owner);
+					v5_mbm::ClusterLedger::<T>::remove(cluster_id, &ledger.owner);
 
 					log::info!(
 						"✅ Successfully transferred {:?} tokens from cluster vault {:?} to customer {:?}",
@@ -1262,6 +1263,7 @@ pub mod v5_mbm {
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
+	#[allow(dead_code)]
 	pub(crate) struct BenchmarkingSetupV4ToV5<A> {
 		pub(crate) customer_deposit_contract: A,
 		pub(crate) customer: A,
@@ -1376,7 +1378,7 @@ pub mod v5_mbm {
 				unlocking: Default::default(),
 			};
 
-			v5_mbm::ClusterLedger::<T>::insert(&cluster_id, &customer, &ledger);
+			v5_mbm::ClusterLedger::<T>::insert(cluster_id, &customer, &ledger);
 
 			BenchmarkingSetupV4ToV5::<T::AccountId> {
 				customer_deposit_contract: contract_address,

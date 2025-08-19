@@ -1033,7 +1033,7 @@ pub mod pallet {
 				Ok(_) => Ok(()),
 				Err(e) => {
 					log::error!("❌ Error deploying contract: {:?}", e.error);
-					Err(DispatchError::from(e.error))
+					Err(e.error)
 				},
 			}
 		}
@@ -1061,7 +1061,7 @@ pub mod pallet {
 				Ok(_) => Ok(()),
 				Err(e) => {
 					log::error!("❌ Error calling contract: {:?}", e.error);
-					Err(DispatchError::from(e.error))
+					Err(e.error)
 				},
 			}
 		}
