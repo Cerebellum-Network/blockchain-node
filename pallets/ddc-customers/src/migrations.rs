@@ -957,27 +957,14 @@ pub mod v4_mbm {
 
 pub mod v5_mbm {
 
-use frame_support::{
+	use frame_support::{
 		migrations::{MigrationId, SteppedMigration, SteppedMigrationError},
 		pallet_prelude::*,
 		weights::WeightMeter,
-
 	};
-	use frame_support::traits::Currency;
 	use codec::{Decode, Encode};
 	use sp_io::storage;
-
-	#[cfg(feature = "runtime-benchmarks")]
-	use sp_runtime::AccountId32;
-
-	#[cfg(feature = "runtime-benchmarks")]
-	use sp_core::crypto::Ss58Codec;
-
-	use frame_support::traits::fungible::Inspect;
-	pub type BalanceOf3<T> =
-		<<T as pallet_contracts::Config>::Currency as Inspect<
-			<T as frame_system::Config>::AccountId
-		>>::Balance;
+	use frame_support::traits::Currency;
 
 	const DEVNET_CLUSTER: [u8; 20] = hex!("7f82864e4f097e63d04cc279e4d8d2eb45a42ffa");
 	const TESTNET_CLUSTER: [u8; 20] = hex!("825c4b2352850de9986d9d28568db6f0c023a1e3");
@@ -1004,8 +991,8 @@ use frame_support::{
 		type Identifier = MigrationId<20>;
 
 		fn id() -> Self::Identifier {
+			// For MAINNET, change it as: version_from = 1 version_to = 5  
 			MigrationId { pallet_id: *PALLET_MIGRATIONS_ID, version_from: 4, version_to: 5 }
-			// from 1 to 5 for TESTNET and MAINNET
 		}
 
 		fn step(
@@ -1221,13 +1208,16 @@ use frame_support::{
 					);
 
 					// todo: replace with actual contract address for the target network
-					let contract_address_bytes: [u8; 32] = [0x21, 0x74, 0xdf, 0x6b, 0x9a, 0xd9, 0x8a, 0x8b, 0x14, 0x12, 0xa4, 0xa9, 0xe0, 0xf1, 0x75, 0xeb, 0xef, 0x3e, 0x06, 0x14, 0x1a, 0x0f, 0xdd, 0x64, 0x79, 0xbe, 0xdc, 0x7e, 0x28, 0x0c, 0x6c, 0xd1];
-					let contract_address = T::AccountId::decode(&mut &contract_address_bytes[..]).unwrap();
-					let data = vec![0x2d, 0x1d, 0x87, 0x45]; // `deposit` function selector
+					// let contract_address_bytes: [u8; 32] = [0x21, 0x74, 0xdf, 0x6b, 0x9a, 0xd9, 0x8a, 0x8b, 0x14, 0x12, 0xa4, 0xa9, 0xe0, 0xf1, 0x75, 0xeb, 0xef, 0x3e, 0x06, 0x14, 0x1a, 0x0f, 0xdd, 0x64, 0x79, 0xbe, 0xdc, 0x7e, 0x28, 0x0c, 0x6c, 0xd1];
+					// let contract_address = T::AccountId::decode(&mut &contract_address_bytes[..]).unwrap();
 					
 					let total: u128 = ledger.total.saturated_into::<u128>();
 					let deposit_value = total.saturating_sub(DEPOSIT_CONTRACT_FEE); // keeping ledger in contract's storage requires storage fee and call fee, so we keep it from the total amount
-					if deposit_value > 0 {
+					
+					if deposit_value >= <T as pallet::Config>::Currency::minimum_balance().saturated_into::<u128>() {
+						let contract_address = <T as pallet::Config>::ClusterProtocol::get_customer_deposit_contract(&cluster_id).expect("Customer deposit contract address should be set for the cluster");
+						let data = vec![0x2d, 0x1d, 0x87, 0x45]; // `deposit` function selector
+
 						let call_result = <T as pallet::Config>::ContractMigrator::call_contract(
 							ledger.owner.clone(),
 							contract_address,
@@ -1238,7 +1228,6 @@ use frame_support::{
 						);
 
 						assert!(call_result.is_ok(), "Failed to call `deposit` function of contract");
-											
 					} else {
 						log::warn!("Deposit value is too low to pay the contract storage fee for customer {:?} with {:?} of original total tokens. Skipping the ledger migration.", ledger.owner, ledger.total);
 					}
@@ -1308,13 +1297,14 @@ use frame_support::{
 
 			assert!(deploy_result.is_ok(), "Failed to deploy customer deposit contract");
 			frame_system::Pallet::<T>::events().iter().for_each(|_event| {
-				// To learn contract address, look for `Contracts(Event::Instantiated { deployer: 0f34e9208feb46b0e1c36d759ebd0886ac73ba8054147a9618a526f5872b83b1 (5CQeHxWC...), contract: 2174df6b9ad98a8b1412a4a9e0f175ebef3e06141a0fdd6479bedc7e280c6cd1 (5Cpa9zQ4...) }), topics: [] }` event`   
+				// To learn contract address, look for `Contracts(Event::Instantiated { deployer: 0f34e9208feb46b0e1c36d759ebd0886ac73ba8054147a9618a526f5872b83b1 (5CQeHxWC...), contract: 2174df6b9ad98a8b1412a4a9e0f175ebef3e06141a0fdd6479bedc7e280c6cd1 (5Cpa9zQ4...) }), topics: [] }` event  
 				// log::info!("emitted event {:?}", _event);
 			});
 
-			// contract address is deterministic from: deployer + contract_code + contract_data + salt, so we can rely on hardcoded contract address value here
-			let contract_address = T::AccountId::decode(&mut &AccountId32::from_ss58check("6SKbAKXgXz8k39ggCZ8KWSMMqtLWzAtjbawrRuPoYKaDtwBD").unwrap().encode()[..]).unwrap();
-
+			// contract address is deterministic from: deployer + contract_code + contract_data + salt, so we can rely on hardcoded contract address here
+			let contract_address_bytes: [u8; 32] = [0x21, 0x74, 0xdf, 0x6b, 0x9a, 0xd9, 0x8a, 0x8b, 0x14, 0x12, 0xa4, 0xa9, 0xe0, 0xf1, 0x75, 0xeb, 0xef, 0x3e, 0x06, 0x14, 0x1a, 0x0f, 0xdd, 0x64, 0x79, 0xbe, 0xdc, 0x7e, 0x28, 0x0c, 0x6c, 0xd1];
+			let contract_address = T::AccountId::decode(&mut &contract_address_bytes[..]).unwrap();
+			
 			let cluster_protocol_params: ClusterProtocolParams<
 				BalanceOf<T>,
 				BlockNumberFor<T>,

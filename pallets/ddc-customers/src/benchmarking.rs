@@ -336,7 +336,7 @@ mod benchmarks {
 			ClusterLedger as V4Ledgers,
 		};
 
-		let setup = LazyMigrationV4ToV5::<T>::setup_benchmark_env_for_migration();
+		let _setup = LazyMigrationV4ToV5::<T>::setup_benchmark_env_for_migration();
 		assert_eq!(V4Ledgers::<T>::iter_values().count(), 1);
 
 		#[block]
