@@ -155,12 +155,12 @@ jobs:
       - name: Download weights.rs files
         run: |
           mkdir -p weights
-          scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_clusters_weights.rs weights/pallet_ddc_clusters_weights.rs
-          scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_clusters_gov_weights.rs weights/pallet_ddc_clusters_gov_weights.rs
+          # scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_clusters_weights.rs weights/pallet_ddc_clusters_weights.rs
+          # scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_clusters_gov_weights.rs weights/pallet_ddc_clusters_gov_weights.rs
           scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_customers_weights.rs weights/pallet_ddc_customers_weights.rs
-          scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_nodes_weights.rs weights/pallet_ddc_nodes_weights.rs
-          scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_staking_weights.rs weights/pallet_ddc_staking_weights.rs
-          scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_payouts_weights.rs weights/pallet_ddc_payouts_weights.rs
+          # scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_nodes_weights.rs weights/pallet_ddc_nodes_weights.rs
+          # scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_staking_weights.rs weights/pallet_ddc_staking_weights.rs
+          # scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_payouts_weights.rs weights/pallet_ddc_payouts_weights.rs
 
       - name: Upload weights.rs artifacts
         uses: actions/upload-artifact@v4
