@@ -1,6 +1,6 @@
 //! DdcCustomers pallet benchmarking.
 
-use ddc_primitives::{BucketParams, ClusterId, ClusterParams, ClusterProtocolParams, DOLLARS as CERE};
+use ddc_primitives::{BucketParams, ClusterId, ClusterParams, ClusterProtocolParams};
 use frame_support::traits::Currency;
 use sp_runtime::Perquintill;
 use sp_std::prelude::*;
@@ -344,10 +344,8 @@ mod benchmarks {
 			LazyMigrationV4ToV5::<T>::ledgers_step(None, None);
 		}
 
-		// assert_eq!(V4Ledgers::<T>::iter_values().count(), 1);
-		// let ledger = V4Ledgers::<T>::get(setup.cluster_id, &setup.ledger_owner);
-
-		// assert!(ledger.is_none());
+		// todo: drop cluster ledgers from pallet
+		// assert_eq!(V4Ledgers::<T>::iter_values().count(), 0);
 
 		Ok(())
 	}
