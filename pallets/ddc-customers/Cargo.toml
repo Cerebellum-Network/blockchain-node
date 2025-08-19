@@ -12,6 +12,7 @@ repository.workspace = true
 # 3rd-party dependencies
 codec = { workspace = true }
 hex-literal = { workspace = true }
+hex = { workspace = true }
 log = { workspace = true }
 rand_chacha = { workspace = true, optional = true }
 scale-info = { workspace = true }
@@ -44,6 +45,7 @@ substrate-test-utils = { workspace = true, default-features = true }
 [features]
 default = ["std"]
 std = [
+  "hex/std",
   "codec/std",
   "ddc-primitives/std",
   "frame-support/std",

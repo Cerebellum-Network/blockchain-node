@@ -956,7 +956,8 @@ pub mod v4_mbm {
 
 
 pub mod v5_mbm {
-	use frame_support::{
+
+use frame_support::{
 		migrations::{MigrationId, SteppedMigration, SteppedMigrationError},
 		pallet_prelude::*,
 		weights::WeightMeter,
@@ -964,7 +965,6 @@ pub mod v5_mbm {
 	};
 	use frame_support::traits::Currency;
 	use sp_core::crypto::Ss58Codec;
-
 	use sp_runtime::AccountId32;
 
 	use frame_support::traits::fungible::Inspect;
@@ -1242,22 +1242,31 @@ pub mod v5_mbm {
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
+	fn endow_account<T: Config>(account: &T::AccountId, amount: u128) {
+        let balance = amount.saturated_into::<BalanceOf<T>>();
+        let _ = <T as pallet::Config>::Currency::make_free_balance_be(account, balance);
+    }
+
+	#[cfg(feature = "runtime-benchmarks")]
 	impl<T: Config> LazyMigrationV4ToV5<T> {
 		pub(crate) fn setup_benchmark_env_for_migration() -> BenchmarkingSetupV4ToV5<T::AccountId>
 		{
-			use ddc_primitives::{ClusterParams, ClusterProtocolParams};
+			use ddc_primitives::{ClusterParams, ClusterProtocolParams, DOLLARS as CERE};
 			use sp_runtime::Perquintill;
 
 			let cluster_id = ClusterId::from(DEFAULT_CLUSTER);
+			let cluster_vault_id = crate::Pallet::<T>::cluster_vault_id(&cluster_id);
 
 			// 6PrZPs13WDfipuKAqpvx3T5usCC5VG7RYCsVMJXRosnSXV3q / 0x0f34e9208feb46b0e1c36d759ebd0886ac73ba8054147a9618a526f5872b83b1
-			let cluster_owner: T::AccountId = frame_benchmarking::account("account", 1, 0);
+			let cluster_owner = frame_benchmarking::account::<T::AccountId>("account", 1, 0);
+			endow_account::<T>(&cluster_owner, 1000000 * CERE);
+
 			let contract_code = &include_bytes!("./benchmarking_customer_deposit.wasm")[..];
 			let contract_data = vec![0x9b, 0xae, 0x9d, 0x5e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x0a, 0x00, 0x00, 0x00];
 			let salt = vec![0x01];
 
 			let deploy_result = <T as pallet::Config>::ContractDeployer::deploy_contract(
-				cluster_owner.clone(),
+				cluster_owner.clone(), // 6PrZPs13WDfipuKAqpvx3T5usCC5VG7RYCsVMJXRosnSXV3q / 0x0f34e9208feb46b0e1c36d759ebd0886ac73ba8054147a9618a526f5872b83b1
 				ContractsBalanceOf::<T>::zero(),
 				Weight::from_parts(100_000_000_000, 100_000_000_000),
 				None,
@@ -1268,7 +1277,7 @@ pub mod v5_mbm {
 
 			assert!(deploy_result.is_ok(), "Failed to deploy customer deposit contract");
 
-			// contract address is inferred from: deployer + contract_code + contract_data + salt
+			// contract address is deterministic from: deployer + contract_code + contract_data + salt
 			let contract_address = T::AccountId::decode(&mut &AccountId32::from_ss58check("6SKbAKXgXz8k39ggCZ8KWSMMqtLWzAtjbawrRuPoYKaDtwBD").unwrap().encode()[..]).unwrap();
 
 			let cluster_protocol_params: ClusterProtocolParams<
@@ -1296,25 +1305,38 @@ pub mod v5_mbm {
 				replication_total: 3,
 			};
 
-			let _ = <T as pallet::Config>::ClusterCreator::create_cluster(
+			let create_cluster_result = <T as pallet::Config>::ClusterCreator::create_cluster(
 				cluster_id,
 				cluster_owner.clone(),
 				cluster_owner.clone(),
 				cluster_params,
 				cluster_protocol_params,
 			);
+			assert!(create_cluster_result.is_ok(), "Failed to create cluster");
 
-			let owner: T::AccountId = frame_benchmarking::account("account", 2, 0);
+			let customer = frame_benchmarking::account::<T::AccountId>("customer", 1, 0);
+			let customer_endowment = 100_u128 * CERE;
+			endow_account::<T>(&customer, customer_endowment);
+			
+			let customer_deposit = 90_u128 * CERE;
+			let deposit_transfer_result = <T as pallet::Config>::Currency::transfer(
+				&customer.clone(),
+				&cluster_vault_id,
+				customer_deposit.saturated_into::<BalanceOf<T>>(),
+				ExistenceRequirement::AllowDeath,
+			);
+			assert!(deposit_transfer_result.is_ok(), "Failed to transfer customer deposit to vault");
+
 			let ledger = CustomerLedger {
-				owner: owner.clone(),
-				total: 100_0000000000_u128.saturated_into::<BalanceOf<T>>(),
-				active: 100_0000000000_u128.saturated_into::<BalanceOf<T>>(),
+				owner: customer.clone(),
+				total: customer_deposit.saturated_into::<BalanceOf<T>>(),
+				active: customer_deposit.saturated_into::<BalanceOf<T>>(),
 				unlocking: Default::default(),
 			};
 
-			v5_mbm::ClusterLedger::<T>::insert(&cluster_id, &owner, &ledger);
+			v5_mbm::ClusterLedger::<T>::insert(&cluster_id, &customer, &ledger);
 
-			BenchmarkingSetupV4ToV5::<T::AccountId> { ledger_owner: owner, cluster_id }
+			BenchmarkingSetupV4ToV5::<T::AccountId> { ledger_owner: customer, cluster_id }
 		}
 	}
 }
