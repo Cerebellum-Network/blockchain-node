@@ -115,7 +115,7 @@ jobs:
           ./target/release/cere benchmark pallet \
             --chain=dev \
             --pallet="pallet_ddc_customers" \
-            --extrinsic="migration_v5_ledgers_step" \
+            --extrinsic="*" \
             --steps=50 \
             --repeat=20 \
             --template=./.maintain/frame-weight-template.hbs \

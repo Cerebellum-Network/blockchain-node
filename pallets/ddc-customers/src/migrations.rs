@@ -1088,6 +1088,11 @@ pub mod v5_mbm {
 			frame_support::ensure!(current_version >= 5, "must_upgrade to 5th version or higher");
 
 			ensure!(
+				v5_mbm::ClusterLedger::<T>::iter_values().count() == 0,
+				"Not all legacy ledgers have been migrated"
+			);
+
+			ensure!(
 				on_chain_version == 5,
 				"the `on_chain_version` version should be the 5th after the v5 migration"
 			);
