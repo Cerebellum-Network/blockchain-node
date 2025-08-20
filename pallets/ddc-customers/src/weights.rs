@@ -173,7 +173,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: UNKNOWN KEY `0xa2898fd2306761a0230ff94d9afe1206421d3cb30000000000000000` (r:1 w:1)
 	// Proof: UNKNOWN KEY `0xa2898fd2306761a0230ff94d9afe1206421d3cb30000000000000000` (r:1 w:1)
 	fn migration_v5_ledgers_step() -> Weight {
-		Weight::from_parts(995_000_000_u64, 0)
+		Weight::from_parts(1_305_664_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(22_u64))
 			.saturating_add(T::DbWeight::get().writes(12_u64))
 	}
@@ -311,7 +311,7 @@ impl WeightInfo for () {
 	// Storage: UNKNOWN KEY `0xa2898fd2306761a0230ff94d9afe1206421d3cb30000000000000000` (r:1 w:1)
 	// Proof: UNKNOWN KEY `0xa2898fd2306761a0230ff94d9afe1206421d3cb30000000000000000` (r:1 w:1)
 	fn migration_v5_ledgers_step() -> Weight {
-		Weight::from_parts(995_000_000_u64, 0)
+		Weight::from_parts(1_305_664_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(22_u64))
 			.saturating_add(RocksDbWeight::get().writes(12_u64))
 	}

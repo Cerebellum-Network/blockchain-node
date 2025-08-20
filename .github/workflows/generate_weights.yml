@@ -91,25 +91,25 @@ jobs:
           
           cargo build --release --features=runtime-benchmarks --verbose
           
-          # # Benchmark the external pallet_ddc_clusters
-          # ./target/release/cere benchmark pallet \
-          #   --chain=dev \
-          #   --pallet="pallet_ddc_clusters" \
-          #   --extrinsic="*" \
-          #   --steps=50 \
-          #   --repeat=20 \
-          #   --template=./.maintain/frame-weight-template.hbs \
-          #   --output=./pallet_ddc_clusters_weights.rs
+          # Benchmark the external pallet_ddc_clusters
+          ./target/release/cere benchmark pallet \
+            --chain=dev \
+            --pallet="pallet_ddc_clusters" \
+            --extrinsic="*" \
+            --steps=50 \
+            --repeat=20 \
+            --template=./.maintain/frame-weight-template.hbs \
+            --output=./pallet_ddc_clusters_weights.rs
           
-          # # Benchmark the external pallet_ddc_clusters_gov
-          # ./target/release/cere benchmark pallet \
-          #   --chain=dev \
-          #   --pallet="pallet_ddc_clusters_gov" \
-          #   --extrinsic="*" \
-          #   --steps=50 \
-          #   --repeat=20 \
-          #   --template=./.maintain/frame-weight-template.hbs \
-          #   --output=./pallet_ddc_clusters_gov_weights.rs
+          # Benchmark the external pallet_ddc_clusters_gov
+          ./target/release/cere benchmark pallet \
+            --chain=dev \
+            --pallet="pallet_ddc_clusters_gov" \
+            --extrinsic="*" \
+            --steps=50 \
+            --repeat=20 \
+            --template=./.maintain/frame-weight-template.hbs \
+            --output=./pallet_ddc_clusters_gov_weights.rs
           
           # Benchmark the external pallet_ddc_customers
           ./target/release/cere benchmark pallet \
@@ -121,46 +121,46 @@ jobs:
             --template=./.maintain/frame-weight-template.hbs \
             --output=./pallet_ddc_customers_weights.rs
           
-          # # Benchmark the external pallet_ddc_nodes
-          # ./target/release/cere benchmark pallet \
-          #   --chain=dev \
-          #   --pallet="pallet_ddc_nodes" \
-          #   --extrinsic="*" \
-          #   --steps=50 \
-          #   --repeat=20 \
-          #   --template=./.maintain/frame-weight-template.hbs \
-          #   --output=./pallet_ddc_nodes_weights.rs
+          # Benchmark the external pallet_ddc_nodes
+          ./target/release/cere benchmark pallet \
+            --chain=dev \
+            --pallet="pallet_ddc_nodes" \
+            --extrinsic="*" \
+            --steps=50 \
+            --repeat=20 \
+            --template=./.maintain/frame-weight-template.hbs \
+            --output=./pallet_ddc_nodes_weights.rs
           
-          # # Benchmark the external pallet_ddc_staking
-          # ./target/release/cere benchmark pallet \
-          #   --chain=dev \
-          #   --pallet="pallet_ddc_staking" \
-          #   --extrinsic="*" \
-          #   --steps=50 \
-          #   --repeat=20 \
-          #   --template=./.maintain/frame-weight-template.hbs \
-          #   --output=./pallet_ddc_staking_weights.rs
+          # Benchmark the external pallet_ddc_staking
+          ./target/release/cere benchmark pallet \
+            --chain=dev \
+            --pallet="pallet_ddc_staking" \
+            --extrinsic="*" \
+            --steps=50 \
+            --repeat=20 \
+            --template=./.maintain/frame-weight-template.hbs \
+            --output=./pallet_ddc_staking_weights.rs
           
-          # # Benchmark the external pallet_ddc_payouts
-          # ./target/release/cere benchmark pallet \
-          #   --chain=dev \
-          #   --pallet="pallet_ddc_payouts" \
-          #   --extrinsic="*" \
-          #   --steps=50 \
-          #   --repeat=20 \
-          #   --template=./.maintain/frame-weight-template.hbs \
-          #   --output=./pallet_ddc_payouts_weights.rs
+          # Benchmark the external pallet_ddc_payouts
+          ./target/release/cere benchmark pallet \
+            --chain=dev \
+            --pallet="pallet_ddc_payouts" \
+            --extrinsic="*" \
+            --steps=50 \
+            --repeat=20 \
+            --template=./.maintain/frame-weight-template.hbs \
+            --output=./pallet_ddc_payouts_weights.rs
           EOF
 
       - name: Download weights.rs files
         run: |
           mkdir -p weights
-          # scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_clusters_weights.rs weights/pallet_ddc_clusters_weights.rs
-          # scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_clusters_gov_weights.rs weights/pallet_ddc_clusters_gov_weights.rs
+          scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_clusters_weights.rs weights/pallet_ddc_clusters_weights.rs
+          scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_clusters_gov_weights.rs weights/pallet_ddc_clusters_gov_weights.rs
           scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_customers_weights.rs weights/pallet_ddc_customers_weights.rs
-          # scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_nodes_weights.rs weights/pallet_ddc_nodes_weights.rs
-          # scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_staking_weights.rs weights/pallet_ddc_staking_weights.rs
-          # scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_payouts_weights.rs weights/pallet_ddc_payouts_weights.rs
+          scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_nodes_weights.rs weights/pallet_ddc_nodes_weights.rs
+          scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_staking_weights.rs weights/pallet_ddc_staking_weights.rs
+          scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_payouts_weights.rs weights/pallet_ddc_payouts_weights.rs
 
       - name: Upload weights.rs artifacts
         uses: actions/upload-artifact@v4
