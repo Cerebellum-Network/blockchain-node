@@ -163,10 +163,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73163,
+	spec_version: 73168,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 25,
+	transaction_version: 26,
 	system_version: 0,
 };
 
@@ -1330,6 +1330,7 @@ impl pallet_ddc_customers::Config for Runtime {
 	type ClusterProtocol = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterCreator = pallet_ddc_clusters::Pallet<Runtime>;
 	type WeightInfo = pallet_ddc_customers::weights::SubstrateWeight<Runtime>;
+	type ContractMigrator = pallet_ddc_customers::Pallet<Runtime>;
 }
 
 impl pallet_ddc_clusters::Config for Runtime {
@@ -1367,7 +1368,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
 	type PalletId = PayoutsPalletId;
 	type Currency = Balances;
-	type CustomerCharger = DdcCustomers;
+	type CustomerBalanceSource = pallet_ddc_payouts::CustomerBalancePallet<Runtime, DdcCustomers>;
 	type BucketManager = DdcCustomers;
 	type ClusterProtocol = DdcClusters;
 	type TreasuryVisitor = TreasuryWrapper;
@@ -1527,6 +1528,7 @@ impl pallet_migrations::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	#[cfg(not(feature = "runtime-benchmarks"))]
 	type Migrations = ();
+	// type Migrations = pallet_ddc_customers::migrations::v5_mbm::LazyMigrationV4ToV5<Runtime>; // enable after migrating Cluster Gov Params
 	// Benchmarks need mocked migrations to guarantee that they succeed.
 	#[cfg(feature = "runtime-benchmarks")]
 	type Migrations = pallet_migrations::mock_helpers::MockedMigrations;
@@ -1771,6 +1773,16 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, TxExtension>;
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, TxExtension>;
 // const IDENTITY_MIGRATION_KEY_LIMIT: u64 = u64::MAX; // for `pallet_identity` migration below
 
+/// Migrations for FRAME pallets, unreleased to MAINNET
+// type Migrations = (
+// 	pallet_nomination_pools::migration::unversioned::DelegationStakeMigration<
+// 		Runtime,
+// 		MaxPoolsToMigrate,
+// 	>,
+// );
+
+type Migrations = pallet_ddc_clusters::migrations::v4::MigrateToV4<Runtime>;
+
 parameter_types! {
 	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
 	pub const MaxPoolsToMigrate: u32 = 250;
@@ -1819,6 +1831,7 @@ pub mod migrations {
 		// pallet_ddc_verification::migrations::v3::MigrateToV3<Runtime>, // ignore as the
 		// `ddc-verification` pallet was never deployed on MAINNET
 		// pallet_ddc_nodes::migrations::v0_v2::MigrateFromV0ToV2<Runtime>,
+		pallet_ddc_clusters::migrations::v4::MigrateToV4<Runtime>,
 	);
 
 	pub type UnreleasedMultiblock =

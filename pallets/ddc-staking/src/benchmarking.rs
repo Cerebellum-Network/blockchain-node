@@ -164,6 +164,7 @@ benchmarks! {
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 1_000_000);
 		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 1_000_000);
+		let customer_deposit_contract = create_funded_user_with_balance::<T>("customer-deposit-contract", 0, 1_000_000);
 
 		T::ClusterCreator::create_cluster(
 			cluster_id,
@@ -186,6 +187,7 @@ benchmarks! {
 				unit_per_mb_streamed: 10,
 				unit_per_put_request: 10,
 				unit_per_get_request: 10,
+				customer_deposit_contract,
 			}
 		)?;
 
@@ -201,8 +203,9 @@ benchmarks! {
 
 	unbond_cluster {
 		let cluster_id = ClusterId::from([1; 20]);
-		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 1_000_000) ;
+		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 1_000_000);
 		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 1_000_000);
+		let customer_deposit_contract = create_funded_user_with_balance::<T>("customer-deposit-contract", 0, 1_000_000);
 
 		T::ClusterCreator::create_cluster(
 			cluster_id,
@@ -225,6 +228,7 @@ benchmarks! {
 				unit_per_mb_streamed: 10,
 				unit_per_put_request: 10,
 				unit_per_get_request: 10,
+				customer_deposit_contract,
 			}
 		)?;
 
@@ -242,6 +246,7 @@ benchmarks! {
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 1_000_000);
 		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 1_000_000);
+		let customer_deposit_contract = create_funded_user_with_balance::<T>("customer-deposit-contract", 0, 1_000_000);
 
 		T::ClusterCreator::create_cluster(
 			cluster_id,
@@ -264,6 +269,7 @@ benchmarks! {
 				unit_per_mb_streamed: 10,
 				unit_per_put_request: 10,
 				unit_per_get_request: 10,
+				customer_deposit_contract,
 			}
 		)?;
 

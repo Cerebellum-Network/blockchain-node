@@ -255,7 +255,11 @@ pub mod pallet {
 		pub fn propose_activate_cluster_protocol(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
-			cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
+			cluster_protocol_params: ClusterProtocolParams<
+				BalanceOf<T>,
+				BlockNumberFor<T>,
+				T::AccountId,
+			>,
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
 			Self::ensure_cluster_manager(caller_id.clone(), cluster_id)?;
@@ -306,7 +310,11 @@ pub mod pallet {
 		pub fn propose_update_cluster_protocol(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
-			cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
+			cluster_protocol_params: ClusterProtocolParams<
+				BalanceOf<T>,
+				BlockNumberFor<T>,
+				T::AccountId,
+			>,
 			member: ClusterMember,
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
@@ -440,7 +448,11 @@ pub mod pallet {
 		pub fn activate_cluster_protocol(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
-			cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
+			cluster_protocol_params: ClusterProtocolParams<
+				BalanceOf<T>,
+				BlockNumberFor<T>,
+				T::AccountId,
+			>,
 		) -> DispatchResult {
 			T::OpenGovActivatorOrigin::ensure_origin(origin)?;
 			T::ClusterProtocol::activate_cluster_protocol(&cluster_id)?;
@@ -452,7 +464,11 @@ pub mod pallet {
 		pub fn update_cluster_protocol(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
-			cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
+			cluster_protocol_params: ClusterProtocolParams<
+				BalanceOf<T>,
+				BlockNumberFor<T>,
+				T::AccountId,
+			>,
 		) -> DispatchResult {
 			T::OpenGovUpdaterOrigin::ensure_origin(origin)?;
 			T::ClusterProtocol::update_cluster_protocol(&cluster_id, cluster_protocol_params)

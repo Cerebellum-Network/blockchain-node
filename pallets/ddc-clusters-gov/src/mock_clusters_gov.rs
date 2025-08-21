@@ -656,6 +656,7 @@ mod pallet_mock_origins {
 pub const CLUSTER_ID: [u8; 20] = [1; 20];
 pub const CLUSTER_MANAGER_ID: [u8; 32] = [1; 32];
 pub const CLUSTER_RESERVE_ID: [u8; 32] = [2; 32];
+pub const CLUSTER_CUSTOMER_DEPOSIT_CONTRACT: [u8; 32] = [3; 32];
 
 pub const NODE_PROVIDER_ID_1: [u8; 32] = [11; 32];
 pub const NODE_PROVIDER_ID_2: [u8; 32] = [12; 32];
@@ -668,7 +669,8 @@ pub const NODE_PUB_KEY_3: [u8; 32] = [113; 32];
 pub const ENDOWMENT: u128 = 1000 * CERE;
 
 #[allow(clippy::type_complexity)]
-pub type BuiltCluster = (Cluster<AccountId>, ClusterProtocolParams<Balance, BlockNumber>);
+pub type BuiltCluster =
+	(Cluster<AccountId>, ClusterProtocolParams<Balance, BlockNumber, AccountId>);
 #[allow(clippy::type_complexity)]
 pub type BuiltNode = (NodePubKey, StorageNode<Test>, ClusterNodeStatus, ClusterNodeKind);
 
@@ -677,7 +679,7 @@ pub fn build_cluster(
 	manager_id: [u8; 32],
 	reserve_id: [u8; 32],
 	params: ClusterParams<AccountId>,
-	protocol_params: ClusterProtocolParams<Balance, BlockNumber>,
+	protocol_params: ClusterProtocolParams<Balance, BlockNumber, AccountId>,
 	status: ClusterStatus,
 ) -> BuiltCluster {
 	let mut cluster = Cluster::new(
