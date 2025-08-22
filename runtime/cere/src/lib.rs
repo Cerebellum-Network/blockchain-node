@@ -1788,13 +1788,6 @@ parameter_types! {
 	pub const MaxPoolsToMigrate: u32 = 250;
 }
 
-type Migrations = (
-	pallet_nomination_pools::migration::unversioned::DelegationStakeMigration<
-		Runtime,
-		MaxPoolsToMigrate,
-	>,
-);
-
 /// Migrations for DDC pallets, unreleased to MAINNET
 pub mod migrations {
 	use super::*;
