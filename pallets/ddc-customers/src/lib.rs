@@ -20,7 +20,10 @@ use ddc_primitives::{
 };
 use frame_support::{
 	parameter_types,
-	traits::{Currency, DefensiveSaturating, ExistenceRequirement},
+	traits::{
+		fungible::Inspect, Currency, DefensiveSaturating, ExistenceRequirement,
+		UnfilteredDispatchable,
+	},
 	BoundedVec, Deserialize, PalletId, Serialize,
 };
 use frame_system::pallet_prelude::*;
@@ -28,9 +31,10 @@ pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_io::hashing::blake2_128;
 use sp_runtime::{
-	traits::{AccountIdConversion, Saturating, Zero},
+	traits::{AccountIdConversion, Saturating, StaticLookup, Zero},
 	RuntimeDebug, SaturatedConversion,
 };
+use sp_std::fmt::Debug;
 use sp_std::prelude::*;
 
 use crate::weights::WeightInfo;
@@ -40,6 +44,11 @@ pub mod migrations;
 /// The balance type of this pallet.
 pub type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+
+/// The balance type of contracts pallet.
+pub type ContractsBalanceOf<T> = <<T as pallet_contracts::Config>::Currency as Inspect<
+	<T as frame_system::Config>::AccountId,
+>>::Balance;
 
 parameter_types! {
 	/// A limit to the number of pending unlocks an account may have in parallel.
@@ -138,7 +147,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: frame_system::Config + pallet_contracts::Config {
 		/// The accounts's pallet id, used for deriving its sovereign account ID.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
@@ -154,6 +163,7 @@ pub mod pallet {
 		>;
 		type ClusterCreator: ClusterCreator<Self::AccountId, BlockNumberFor<Self>, BalanceOf<Self>>;
 		type WeightInfo: WeightInfo;
+		type ContractMigrator: ContractMigrator<Self::AccountId, ContractsBalanceOf<Self>>;
 	}
 
 	#[pallet::storage]
@@ -192,7 +202,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			owner_id: T::AccountId,
 			charged: BalanceOf<T>,
-			expected_to_charge: BalanceOf<T>,
+			expected: BalanceOf<T>,
 		},
 		/// Bucket with specific id created
 		BucketCreated { cluster_id: ClusterId, bucket_id: BucketId },
@@ -303,7 +313,7 @@ pub mod pallet {
 		///
 		/// Anyone can create a bucket
 		#[pallet::call_index(0)]
-		#[pallet::weight(T::WeightInfo::create_bucket())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_bucket())]
 		pub fn create_bucket(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -327,7 +337,7 @@ pub mod pallet {
 		///
 		/// Emits `Deposited`.
 		#[pallet::call_index(1)]
-		#[pallet::weight(T::WeightInfo::deposit())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::deposit())]
 		pub fn deposit(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -349,7 +359,7 @@ pub mod pallet {
 		///
 		/// Emits `Deposited`.
 		#[pallet::call_index(2)]
-		#[pallet::weight(T::WeightInfo::deposit_extra())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::deposit_extra())]
 		pub fn deposit_extra(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -378,7 +388,7 @@ pub mod pallet {
 		///
 		/// Emits `Deposited`.
 		#[pallet::call_index(3)]
-		#[pallet::weight(T::WeightInfo::deposit())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::deposit())]
 		pub fn deposit_for(
 			origin: OriginFor<T>,
 			owner: T::AccountId,
@@ -416,7 +426,7 @@ pub mod pallet {
 		///
 		/// See also [`Call::withdraw_unlocked_deposit`].
 		#[pallet::call_index(4)]
-		#[pallet::weight(T::WeightInfo::unlock_deposit())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::unlock_deposit())]
 		pub fn unlock_deposit(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -484,7 +494,7 @@ pub mod pallet {
 		///
 		/// See also [`Call::unlock_deposit`].
 		#[pallet::call_index(5)]
-		#[pallet::weight(T::WeightInfo::withdraw_unlocked_deposit_kill())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::withdraw_unlocked_deposit_kill())]
 		pub fn withdraw_unlocked_deposit(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -548,7 +558,7 @@ pub mod pallet {
 		///
 		/// Emits `BucketUpdated`.
 		#[pallet::call_index(6)]
-		#[pallet::weight(T::WeightInfo::set_bucket_params())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_bucket_params())]
 		pub fn set_bucket_params(
 			origin: OriginFor<T>,
 			bucket_id: BucketId,
@@ -570,7 +580,7 @@ pub mod pallet {
 		///
 		/// Only an owner can remove a bucket
 		#[pallet::call_index(7)]
-		#[pallet::weight(T::WeightInfo::remove_bucket())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::remove_bucket())]
 		pub fn remove_bucket(origin: OriginFor<T>, bucket_id: BucketId) -> DispatchResult {
 			// todo! can we set total_usage to None and save bytes
 			let owner = ensure_signed(origin)?;
@@ -774,7 +784,7 @@ pub mod pallet {
 				cluster_id,
 				owner_id: bucket_owner,
 				charged: actually_charged,
-				expected_to_charge: amount_to_deduct,
+				expected: amount_to_deduct,
 			});
 
 			Ok(actually_charged.saturated_into::<u128>())
@@ -965,6 +975,95 @@ pub mod pallet {
 		fn get_bucket_owner(bucket_id: &BucketId) -> Result<T::AccountId, DispatchError> {
 			let bucket = Buckets::<T>::get(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
 			Ok(bucket.owner_id)
+		}
+	}
+
+	pub trait ContractMigrator<AccountId, Balance> {
+		fn deploy_contract(
+			deployer: AccountId,
+			value: Balance,
+			gas_limit: Weight,
+			storage_deposit_limit: Option<Balance>,
+			code: Vec<u8>,
+			data: Vec<u8>,
+			salt: Vec<u8>,
+		) -> DispatchResult;
+
+		fn call_contract(
+			caller: AccountId,
+			dest: AccountId,
+			value: Balance,
+			gas_limit: Weight,
+			storage_deposit_limit: Option<Balance>,
+			data: Vec<u8>,
+		) -> DispatchResult;
+	}
+
+	impl<T: Config> ContractMigrator<T::AccountId, ContractsBalanceOf<T>> for Pallet<T>
+	where
+		ContractsBalanceOf<T>: codec::HasCompact,
+		<ContractsBalanceOf<T> as codec::HasCompact>::Type:
+			Clone + Eq + PartialEq + Debug + TypeInfo + Encode,
+		<<T as frame_system::Config>::Lookup as StaticLookup>::Source:
+			From<<T as frame_system::Config>::AccountId>,
+	{
+		fn deploy_contract(
+			deployer: T::AccountId,
+			value: ContractsBalanceOf<T>,
+			gas_limit: Weight,
+			storage_deposit_limit: Option<ContractsBalanceOf<T>>,
+			code: Vec<u8>,
+			data: Vec<u8>,
+			salt: Vec<u8>,
+		) -> DispatchResult {
+			let instantiate_call: pallet_contracts::Call<T> =
+				pallet_contracts::Call::instantiate_with_code {
+					value,
+					gas_limit,
+					storage_deposit_limit: storage_deposit_limit.map(Into::into),
+					code,
+					data,
+					salt,
+				};
+
+			let result = instantiate_call
+				.dispatch_bypass_filter(frame_system::RawOrigin::Signed(deployer).into());
+
+			match result {
+				Ok(_) => Ok(()),
+				Err(e) => {
+					log::error!("❌ Error deploying contract: {:?}", e.error);
+					Err(e.error)
+				},
+			}
+		}
+
+		fn call_contract(
+			caller: T::AccountId,
+			dest: T::AccountId,
+			value: ContractsBalanceOf<T>,
+			gas_limit: Weight,
+			storage_deposit_limit: Option<ContractsBalanceOf<T>>,
+			data: Vec<u8>,
+		) -> DispatchResult {
+			let call_call: pallet_contracts::Call<T> = pallet_contracts::Call::call {
+				dest: dest.into(),
+				value,
+				gas_limit,
+				storage_deposit_limit: storage_deposit_limit.map(Into::into),
+				data,
+			};
+
+			let result =
+				call_call.dispatch_bypass_filter(frame_system::RawOrigin::Signed(caller).into());
+
+			match result {
+				Ok(_) => Ok(()),
+				Err(e) => {
+					log::error!("❌ Error calling contract: {:?}", e.error);
+					Err(e.error)
+				},
+			}
 		}
 	}
 }

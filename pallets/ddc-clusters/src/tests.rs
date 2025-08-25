@@ -22,6 +22,7 @@ fn create_cluster_works() {
 		let cluster_manager_id = AccountId::from([1; 32]);
 		let cluster_reserve_id = AccountId::from([2; 32]);
 		let auth_contract = AccountId::from([3; 32]);
+		let customer_deposit_contract = AccountId::from([4; 32]);
 
 		let cluster_protocol_params = ClusterProtocolParams {
 			treasury_share: Perquintill::from_float(0.05),
@@ -34,6 +35,7 @@ fn create_cluster_works() {
 			unit_per_mb_streamed: 10,
 			unit_per_put_request: 10,
 			unit_per_get_request: 10,
+			customer_deposit_contract,
 		};
 
 		// Creating 1 cluster should work fine
@@ -134,6 +136,7 @@ fn add_join_and_delete_node_works() {
 		let cluster_reserve_id = AccountId::from([2; 32]);
 		let node_pub_key = AccountId::from([3; 32]);
 		let node_pub_key2 = AccountId::from([4; 32]);
+		let customer_deposit_contract = AccountId::from([5; 32]);
 
 		let contract_id = deploy_contract();
 
@@ -178,6 +181,7 @@ fn add_join_and_delete_node_works() {
 				unit_per_mb_streamed: 10,
 				unit_per_put_request: 10,
 				unit_per_get_request: 10,
+				customer_deposit_contract,
 			}
 		));
 
@@ -456,6 +460,7 @@ fn set_cluster_params_works() {
 		let cluster_reserve_id = AccountId::from([2; 32]);
 		let auth_contract_1 = AccountId::from([3; 32]);
 		let auth_contract_2 = AccountId::from([4; 32]);
+		let customer_deposit_contract = AccountId::from([5; 32]);
 
 		// Cluster doesn't exist
 		assert_noop!(
@@ -494,6 +499,7 @@ fn set_cluster_params_works() {
 				unit_per_mb_streamed: 10,
 				unit_per_put_request: 10,
 				unit_per_get_request: 10,
+				customer_deposit_contract,
 			}
 		));
 
@@ -586,6 +592,7 @@ fn set_last_validated_era_works() {
 		let cluster_reserve_id = AccountId::from([2; 32]);
 		let auth_contract_1 = AccountId::from([3; 32]);
 		let era_id: EhdEra = 22;
+		let customer_deposit_contract = AccountId::from([4; 32]);
 
 		// Cluster doesn't exist
 		assert_noop!(
@@ -615,6 +622,7 @@ fn set_last_validated_era_works() {
 				unit_per_mb_streamed: 10,
 				unit_per_put_request: 10,
 				unit_per_get_request: 10,
+				customer_deposit_contract,
 			}
 		));
 
@@ -638,6 +646,7 @@ fn cluster_visitor_works() {
 		let cluster_manager_id = AccountId::from([1; 32]);
 		let cluster_reserve_id = AccountId::from([2; 32]);
 		let auth_contract = AccountId::from([3; 32]);
+		let customer_deposit_contract = AccountId::from([4; 32]);
 
 		let cluster_protocol_params = ClusterProtocolParams {
 			treasury_share: Perquintill::from_float(0.05),
@@ -650,6 +659,7 @@ fn cluster_visitor_works() {
 			unit_per_mb_streamed: 10,
 			unit_per_put_request: 10,
 			unit_per_get_request: 10,
+			customer_deposit_contract,
 		};
 
 		// Creating 1 cluster should work fine
@@ -773,6 +783,7 @@ fn cluster_creator_works() {
 		let cluster_manager_id = AccountId::from([1; 32]);
 		let cluster_reserve_id = AccountId::from([2; 32]);
 		let auth_contract = AccountId::from([3; 32]);
+		let customer_deposit_contract = AccountId::from([4; 32]);
 
 		let cluster_protocol_params = ClusterProtocolParams {
 			treasury_share: Perquintill::from_float(0.05),
@@ -785,6 +796,7 @@ fn cluster_creator_works() {
 			unit_per_mb_streamed: 10,
 			unit_per_put_request: 10,
 			unit_per_get_request: 10,
+			customer_deposit_contract,
 		};
 
 		assert_ok!(<DdcClusters as ClusterCreator<

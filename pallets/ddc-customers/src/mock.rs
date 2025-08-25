@@ -8,15 +8,18 @@ use ddc_primitives::{
 };
 use frame_support::{
 	construct_runtime, derive_impl, parameter_types,
-	traits::{ConstU32, ConstU64},
+	traits::{ConstBool, ConstU32, ConstU64, Nothing},
 };
-use frame_system::mocking::MockBlock;
+
+use frame_system::{mocking::MockBlock, EnsureSigned};
 use sp_io::TestExternalities;
 use sp_runtime::{
-	traits::IdentityLookup, BuildStorage, DispatchError, DispatchResult, Perquintill,
+	traits::{Convert, IdentityLookup},
+	BuildStorage, DispatchError, DispatchResult, Perbill, Perquintill, Weight,
 };
 
 use crate::{self as pallet_ddc_customers, *};
+use pallet_contracts as contracts;
 
 /// The AccountId alias in this test module.
 pub(crate) type AccountId = u128;
@@ -30,8 +33,10 @@ construct_runtime!(
 	{
 		System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+		Balances: pallet_balances,
 		DdcCustomers: pallet_ddc_customers::{Pallet, Call, Storage, Config<T>, Event<T>},
+		Contracts: contracts::{Pallet, Call, Storage, Event<T>, HoldReason},
+		Randomness: pallet_insecure_randomness_collective_flip::{Pallet, Storage},
 	}
 );
 
@@ -62,7 +67,7 @@ impl pallet_balances::Config for Test {
 	type FreezeIdentifier = ();
 	type RuntimeFreezeReason = ();
 	type MaxFreezes = ();
-	type RuntimeHoldReason = ();
+	type RuntimeHoldReason = RuntimeHoldReason;
 	type DoneSlashHandler = ();
 }
 
@@ -78,6 +83,64 @@ parameter_types! {
 	pub const UnlockingDelay: BlockNumber = 10u64; // 10 blocks for test
 }
 
+parameter_types! {
+	pub const DepositPerItem: Balance = 0;
+	pub const DepositPerByte: Balance = 0;
+	pub const SignedClaimHandicap: BlockNumber = 2;
+	pub const TombstoneDeposit: Balance = 16;
+	pub const StorageSizeOffset: u32 = 8;
+	pub const RentByteFee: Balance = 4;
+	pub const RentDepositOffset: Balance = 10_000;
+	pub const SurchargeReward: Balance = 150;
+	pub const MaxDepth: u32 = 100;
+	pub const MaxValueSize: u32 = 16_384;
+	pub Schedule: pallet_contracts::Schedule<Test> = Default::default();
+	pub static DefaultDepositLimit: Balance = 10_000_000;
+	pub const CodeHashLockupDepositPercent: Perbill = Perbill::from_percent(0);
+	pub const MaxDelegateDependencies: u32 = 32;
+}
+
+impl Convert<Weight, BalanceOf<Self>> for Test {
+	fn convert(w: Weight) -> BalanceOf<Self> {
+		w.ref_time().into()
+	}
+}
+
+impl pallet_contracts::Config for Test {
+	type Time = Timestamp;
+	type Randomness = Randomness;
+	type Currency = Balances;
+	type RuntimeEvent = RuntimeEvent;
+	type CallStack = [pallet_contracts::Frame<Self>; 5];
+	type WeightPrice = Self; //pallet_transaction_payment::Module<Self>;
+	type WeightInfo = ();
+	type ChainExtension = ();
+	type Schedule = Schedule;
+	type RuntimeCall = RuntimeCall;
+	type CallFilter = Nothing;
+	type DepositPerByte = DepositPerByte;
+	type DepositPerItem = DepositPerItem;
+	type DefaultDepositLimit = DefaultDepositLimit;
+	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
+	type MaxCodeLen = ConstU32<{ 123 * 1024 }>;
+	type MaxStorageKeyLen = ConstU32<128>;
+	type UnsafeUnstableInterface = ConstBool<false>;
+	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
+	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
+	type MaxTransientStorageSize = ();
+	type MaxDelegateDependencies = MaxDelegateDependencies;
+	type RuntimeHoldReason = RuntimeHoldReason;
+	type UploadOrigin = EnsureSigned<AccountId>;
+	type InstantiateOrigin = EnsureSigned<AccountId>;
+	type Debug = ();
+	type Environment = ();
+	type Migrations = ();
+	type ApiVersion = ();
+	type Xcm = ();
+}
+
+impl pallet_insecure_randomness_collective_flip::Config for Test {}
+
 impl crate::pallet::Config for Test {
 	type UnlockingDelay = UnlockingDelay;
 	type Currency = Balances;
@@ -86,6 +149,7 @@ impl crate::pallet::Config for Test {
 	type ClusterProtocol = TestClusterProtocol;
 	type ClusterCreator = TestClusterCreator;
 	type WeightInfo = ();
+	type ContractMigrator = TestContractMigrator;
 }
 
 pub struct TestClusterProtocol;
@@ -170,13 +234,17 @@ impl ClusterProtocol<AccountId, BlockNumber, Balance> for TestClusterProtocol {
 		unimplemented!()
 	}
 
+	fn get_customer_deposit_contract(_cluster_id: &ClusterId) -> Result<AccountId, DispatchError> {
+		unimplemented!()
+	}
+
 	fn activate_cluster_protocol(_cluster_id: &ClusterId) -> DispatchResult {
 		unimplemented!()
 	}
 
 	fn update_cluster_protocol(
 		_cluster_id: &ClusterId,
-		_cluster_protocol_params: ClusterProtocolParams<Balance, BlockNumber>,
+		_cluster_protocol_params: ClusterProtocolParams<Balance, BlockNumber, AccountId>,
 	) -> DispatchResult {
 		unimplemented!()
 	}
@@ -275,7 +343,33 @@ impl ClusterCreator<AccountId, BlockNumber, Balance> for TestClusterCreator {
 		_cluster_manager_id: AccountId,
 		_cluster_reserve_id: AccountId,
 		_cluster_params: ClusterParams<AccountId>,
-		_cluster_protocol_params: ClusterProtocolParams<Balance, BlockNumber>,
+		_cluster_protocol_params: ClusterProtocolParams<Balance, BlockNumber, AccountId>,
+	) -> DispatchResult {
+		Ok(())
+	}
+}
+
+pub struct TestContractMigrator;
+impl ContractMigrator<AccountId, Balance> for TestContractMigrator {
+	fn deploy_contract(
+		_deployer: AccountId,
+		_value: Balance,
+		_gas_limit: Weight,
+		_storage_deposit_limit: Option<Balance>,
+		_code: Vec<u8>,
+		_data: Vec<u8>,
+		_salt: Vec<u8>,
+	) -> DispatchResult {
+		Ok(())
+	}
+
+	fn call_contract(
+		_caller: AccountId,
+		_dest: AccountId,
+		_value: Balance,
+		_gas_limit: Weight,
+		_storage_deposit_limit: Option<Balance>,
+		_data: Vec<u8>,
 	) -> DispatchResult {
 		Ok(())
 	}

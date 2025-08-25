@@ -36,7 +36,8 @@ benchmarks! {
 								erasure_coding_total: 6,
 								replication_total: 3
 							};
-		let cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>> = ClusterProtocolParams {
+		let customer_deposit_contract = account::<T::AccountId>("customer-deposit-contract", 0, 0);
+		let cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>, T::AccountId> = ClusterProtocolParams {
 			treasury_share: Perquintill::default(),
 			validators_share: Perquintill::default(),
 			cluster_reserve_share: Perquintill::default(),
@@ -47,6 +48,7 @@ benchmarks! {
 			unit_per_mb_streamed: 10,
 			unit_per_put_request: 10,
 			unit_per_get_request: 10,
+			customer_deposit_contract,
 		};
 	}: _(RawOrigin::Signed(user.clone()), cluster_id, user.clone(), cluster_params, cluster_protocol_params)
 	verify {
@@ -58,9 +60,10 @@ benchmarks! {
 		let node_pub_key = NodePubKey::StoragePubKey(AccountId32::from(bytes));
 		let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+		let customer_deposit_contract = account::<T::AccountId>("customer-deposit-contract", 0, 0);
 		let balance = <T as pallet::Config>::Currency::minimum_balance() * 1_000_000u32.into();
 		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
-		let _ = config_cluster_and_node::<T>(user.clone(), node_pub_key.clone(), cluster_id);
+		let _ = config_cluster_and_node::<T>(user.clone(), node_pub_key.clone(), cluster_id, customer_deposit_contract);
 	}: _(RawOrigin::Signed(user.clone()), cluster_id, node_pub_key.clone(), ClusterNodeKind::Genesis)
 	verify {
 		assert!(ClustersNodes::<T>::contains_key(cluster_id, node_pub_key));
@@ -71,9 +74,10 @@ benchmarks! {
 		let node_pub_key = NodePubKey::StoragePubKey(AccountId32::from(bytes));
 		let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+		let customer_deposit_contract = account::<T::AccountId>("customer-deposit-contract", 0, 0);
 		let balance = <T as pallet::Config>::Currency::minimum_balance() * 1_000_000u32.into();
 		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
-		let _ = config_cluster_and_node::<T>(user.clone(), node_pub_key.clone(), cluster_id);
+		let _ = config_cluster_and_node::<T>(user.clone(), node_pub_key.clone(), cluster_id, customer_deposit_contract);
 	}: _(RawOrigin::Signed(user.clone()), cluster_id, node_pub_key.clone())
 	verify {
 		assert!(ClustersNodes::<T>::contains_key(cluster_id, node_pub_key));
@@ -84,9 +88,10 @@ benchmarks! {
 		let node_pub_key = NodePubKey::StoragePubKey(AccountId32::from(bytes));
 		let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+		let customer_deposit_contract = account::<T::AccountId>("customer-deposit-contract", 0, 0);
 		let balance = <T as pallet::Config>::Currency::minimum_balance() * 1_000_000u32.into();
 		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
-		let _ = config_cluster_and_node::<T>(user.clone(), node_pub_key.clone(), cluster_id);
+		let _ = config_cluster_and_node::<T>(user.clone(), node_pub_key.clone(), cluster_id, customer_deposit_contract);
 		let _ = DdcClusters::<T>::add_node(
 			RawOrigin::Signed(user.clone()).into(),
 			cluster_id,
@@ -102,7 +107,8 @@ benchmarks! {
 		let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
 		let user_2 = account::<T::AccountId>("user", USER_SEED_2, 0u32);
-		let _ = config_cluster::<T>(user.clone(), cluster_id);
+		let customer_deposit_contract = account::<T::AccountId>("customer-deposit-contract", 0, 0);
+		let _ = config_cluster::<T>(user.clone(), cluster_id, customer_deposit_contract);
 		let new_cluster_params = ClusterParams {
 									node_provider_auth_contract: Some(user_2.clone()),
 									erasure_coding_required: 4,
@@ -127,9 +133,10 @@ benchmarks! {
 		let node_pub_key = NodePubKey::StoragePubKey(AccountId32::from(bytes));
 		let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+		let customer_deposit_contract = account::<T::AccountId>("customer-deposit-contract", 0, 0);
 		let balance = <T as pallet::Config>::Currency::minimum_balance() * 1_000_000u32.into();
 		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
-		let _ = config_cluster_and_node::<T>(user.clone(), node_pub_key.clone(), cluster_id);
+		let _ = config_cluster_and_node::<T>(user.clone(), node_pub_key.clone(), cluster_id, customer_deposit_contract);
 		DdcClusters::<T>::add_node(RawOrigin::Signed(user.clone()).into(), cluster_id, node_pub_key.clone(), ClusterNodeKind::Genesis)?;
 
 	}: _(RawOrigin::Signed(user.clone()), cluster_id, node_pub_key.clone(), true)
