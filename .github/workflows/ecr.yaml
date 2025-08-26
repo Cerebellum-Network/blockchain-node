@@ -6,7 +6,6 @@ on:
       - dev
       - staging
       - master
-      - 'fix-7.3.12-rc1'
   pull_request:
     branches:
       - 'release/**'
