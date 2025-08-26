@@ -1,9 +1,14 @@
 name: Publish docker image to DockerHub
 on:
-  release:
-    types:
-      - published
+  # Triggers the workflow on push or pull request events but only for the master branch
+  push:
+    branches: [ '**' ]
+
+  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
 
 env:
   ECR_REPOSITORY: pos-network-node
@@ -13,15 +18,13 @@ jobs:
   tag-and-push:
     runs-on: [self-hosted, cere-network-xlarge]
     steps:
-      - name: Configure Git
-        run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+      - name: Configure aws credentials
+        uses: aws-actions/configure-aws-credentials@v2
         with:
-          aws-access-key-id: ${{ secrets.DEV_NETWORK_AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.DEV_NETWORK_AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: arn:aws:iam::${{ vars.SHARED_AWS_ACCOUNT_ID }}:role/github
+          role-session-name: ${{ github.event.repository.name }}
           aws-region: us-west-2
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
@@ -34,11 +37,13 @@ jobs:
           docker image tag $ECR_REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA $ECR_REGISTRY/$ECR_REPOSITORY:${GITHUB_REF##*/}
           docker image tag $ECR_REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA $DOCKERHUB_REPOSITORY/$PACKAGE_NAME:latest
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:${GITHUB_REF##*/}
+
       - name: Login to DockerHub
         uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Publish image to DockerHub
         id: docker_publish
         run: |
