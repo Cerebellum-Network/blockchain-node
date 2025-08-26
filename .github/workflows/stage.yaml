@@ -7,7 +7,6 @@ on:
       - master
       - 'release/**'
       - 'hotfix/**'
-      - 'fix-7.3.12-rc1'
 
 env:
   PROFILE: release
