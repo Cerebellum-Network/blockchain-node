@@ -164,7 +164,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73170,
+	spec_version: 73171,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 26,
@@ -1397,7 +1397,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
 	type PalletId = PayoutsPalletId;
 	type Currency = Balances;
-	type CustomerBalanceSource = pallet_ddc_payouts::CustomerBalancePallet<Runtime, DdcCustomers>;
+	type CustomerBalanceSource = pallet_ddc_payouts::CustomerBalanceContract<Runtime>;
 	type BucketManager = DdcCustomers;
 	type ClusterProtocol = DdcClusters;
 	type TreasuryVisitor = TreasuryWrapper;
@@ -1556,8 +1556,8 @@ parameter_types! {
 impl pallet_migrations::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	#[cfg(not(feature = "runtime-benchmarks"))]
-	type Migrations = ();
-	// type Migrations = pallet_ddc_customers::migrations::v5_mbm::LazyMigrationV4ToV5<Runtime>; // enable after migrating Cluster Gov Params
+	// type Migrations = ();
+	type Migrations = pallet_ddc_customers::migrations::v5_mbm::LazyMigrationV4ToV5<Runtime>; // enable after migrating Cluster Gov Params
 	// Benchmarks need mocked migrations to guarantee that they succeed.
 	#[cfg(feature = "runtime-benchmarks")]
 	type Migrations = pallet_migrations::mock_helpers::MockedMigrations;
