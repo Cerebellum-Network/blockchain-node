@@ -1558,7 +1558,6 @@ impl pallet_migrations::Config for Runtime {
 	#[cfg(not(feature = "runtime-benchmarks"))]
 	// type Migrations = ();
 	type Migrations = pallet_ddc_customers::migrations::v5_mbm::LazyMigrationV4ToV5<Runtime>; // enable after migrating Cluster Gov Params
-	// Benchmarks need mocked migrations to guarantee that they succeed.
 	#[cfg(feature = "runtime-benchmarks")]
 	type Migrations = pallet_migrations::mock_helpers::MockedMigrations;
 	type CursorMaxLen = ConstU32<65_536>;
