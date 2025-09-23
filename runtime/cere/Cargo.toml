@@ -106,9 +106,9 @@ pallet-erc20 = { workspace = true }
 pallet-erc721 = { workspace = true }
 pallet-fee-handler = { workspace = true }
 pallet-origins = { workspace = true }
+pallet-pool-withdrawal-fix = { workspace = true }
 pallet-referenda = { workspace = true }
 pallet-whitelist = { workspace = true }
-pallet-pool-withdrawal-fix = { workspace = true }
 
 # Hyperbridge Depedencies
 anyhow = { workspace = true }
