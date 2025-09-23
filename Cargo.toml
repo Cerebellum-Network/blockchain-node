@@ -22,6 +22,7 @@ members = [
   "pallets/ddc-clusters-gov",
   "pallets/fee-handler",
   "pallets/origins",
+  "pallets/withdrawal-fix",
   "runtime/cere",
   "runtime/cere-dev",
   "contracts/customer-deposit",
@@ -194,6 +195,7 @@ pallet-erc20 = { path = "pallets/erc20", default-features = false }
 pallet-erc721 = { path = "pallets/erc721", default-features = false }
 pallet-origins = { path = "pallets/origins", default-features = false }
 pallet-fee-handler = { path = "pallets/fee-handler", default-features = false }
+pallet-withdrawal-fix = { path = "pallets/withdrawal-fix", default-features = false }
 
 # Cere External Dependencies
 ddc-primitives = { git = "https://github.com/Cerebellum-Network/ddc-primitives.git", branch = "staging", default-features = false }
