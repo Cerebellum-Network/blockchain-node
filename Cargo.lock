@@ -10831,6 +10831,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-withdrawal-fix"
+version = "7.3.4"
+dependencies = [
+ "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=staging)",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-xcm"
 version = "19.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
