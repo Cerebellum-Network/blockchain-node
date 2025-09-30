@@ -22,6 +22,7 @@ members = [
   "pallets/ddc-clusters-gov",
   "pallets/fee-handler",
   "pallets/origins",
+  "pallets/pool-withdrawal-fix",
   "runtime/cere",
   "runtime/cere-dev",
   "contracts/customer-deposit",
@@ -193,6 +194,7 @@ pallet-ddc-staking = { path = "pallets/ddc-staking", default-features = false }
 pallet-erc20 = { path = "pallets/erc20", default-features = false }
 pallet-erc721 = { path = "pallets/erc721", default-features = false }
 pallet-origins = { path = "pallets/origins", default-features = false }
+pallet-pool-withdrawal-fix = { path = "pallets/pool-withdrawal-fix", default-features = false }
 pallet-fee-handler = { path = "pallets/fee-handler", default-features = false }
 
 # Cere External Dependencies

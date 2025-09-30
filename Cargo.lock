@@ -2187,6 +2187,7 @@ dependencies = [
  "pallet-offences",
  "pallet-offences-benchmarking",
  "pallet-origins",
+ "pallet-pool-withdrawal-fix",
  "pallet-preimage",
  "pallet-proxy",
  "pallet-recovery",
@@ -2326,6 +2327,7 @@ dependencies = [
  "pallet-offences",
  "pallet-offences-benchmarking",
  "pallet-origins",
+ "pallet-pool-withdrawal-fix",
  "pallet-preimage",
  "pallet-proxy",
  "pallet-recovery",
@@ -10078,6 +10080,22 @@ dependencies = [
  "serde",
  "sp-core",
  "sp-runtime",
+]
+
+[[package]]
+name = "pallet-pool-withdrawal-fix"
+version = "7.3.3"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-runtime",
+ "sp-staking",
+ "sp-std",
 ]
 
 [[package]]
