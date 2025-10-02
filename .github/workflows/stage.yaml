@@ -2,6 +2,7 @@ name: Release to stage
 on:
   push:
     branches:
+      - 'devops/palark/**'
       - dev
       - staging
       - master
