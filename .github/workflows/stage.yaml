@@ -50,6 +50,14 @@ jobs:
           echo "CERE_RUNTIME=cere_runtime.compact.compressed.${GITHUB_SHA:0:7}.wasm" >> ${GITHUB_ENV}
           echo "CERE_DEV_RUNTIME=cere_dev_runtime.compact.compressed.${GITHUB_SHA:0:7}.wasm" >> ${GITHUB_ENV}
 
+      - name: Prepare /mnt buildx cache
+        run: |
+          sudo mkdir -p /mnt/docker/buildx-cache
+          # Make it writable for the buildkit container (root) and the runner user
+          sudo chown -R root:root /mnt/docker/buildx-cache
+          sudo chmod -R 0777 /mnt/docker/buildx-cache
+          ls -ld /mnt/docker/buildx-cache
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -64,10 +72,6 @@ jobs:
           override: true
           target: wasm32-unknown-unknown
           components: rust-src
-
-      # Set up Docker Buildx
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
       
       # Build and push docker image to ECR (cache stored on /mnt)
       - name: Build and push docker image to ECR
