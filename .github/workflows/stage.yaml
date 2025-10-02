@@ -1,9 +1,7 @@
 name: Release to stage
-
 on:
   push:
     branches:
-      - 'devops/palark/**'
       - dev
       - staging
       - master
@@ -21,27 +19,11 @@ jobs:
       contents: read
       id-token: write
     steps:
-      # Shallow checkout to reduce disk usage
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
 
-      # Free up disk space on GitHub-hosted runner (safe removals)
-      - name: Free up disk space (safe)
-        run: |
-          sudo rm -rf /usr/local/lib/android || true
-          sudo rm -rf /opt/hostedtoolcache/CodeQL || true
-          sudo rm -rf /opt/ghc || true
-          sudo rm -rf /usr/share/dotnet || true
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY" || true
-          sudo docker system prune -af --volumes || true
-          df -h
-
-      # Force HTTPS GitHub URLs to use a token for private dependencies
       - name: Configure Git
         run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
 
-      # Cache cargo registry and git to speed up builds and reduce downloads
       - name: Cache cargo registry
         uses: actions/cache@v4
         continue-on-error: false
@@ -53,7 +35,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      # Configure AWS credentials for ECR login
       - name: configure aws credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -62,23 +43,19 @@ jobs:
           aws-region: us-west-2
           mask-aws-account-id: true
 
-      # Prepare short SHA and expected artifact names
       - name: Configure environment variables
         run: |
-          echo "GITHUB_SHA_SHORT=${GITHUB_SHA:0:7}" >> ${GITHUB_ENV}
+          echo "GITHUB_SHA=${GITHUB_SHA:0:7}" >> ${GITHUB_ENV}
           echo "CERE_RUNTIME=cere_runtime.compact.compressed.${GITHUB_SHA:0:7}.wasm" >> ${GITHUB_ENV}
           echo "CERE_DEV_RUNTIME=cere_dev_runtime.compact.compressed.${GITHUB_SHA:0:7}.wasm" >> ${GITHUB_ENV}
 
-      # Enable Buildx (required for cache/export features)
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Authenticate to Amazon ECR
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # Install Rust toolchain used by the workspace
       - name: Install toolchain and rust-src
         uses: actions-rs/toolchain@v1
         with:
@@ -87,57 +64,37 @@ jobs:
           target: wasm32-unknown-unknown
           components: rust-src
 
-      # Build and push the runtime image (uses GHA cache to reduce local disk usage)
-      - name: Build & push docker image to ECR (with GHA cache)
+      - name: Build and push docker image to ECR
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile
-          target: runtime
           push: true
           build-args: |
-            GH_READ_TOKEN=${{ secrets.GH_READ_TOKEN }}
-            PROFILE=release
+            "GH_READ_TOKEN=${{ secrets.GH_READ_TOKEN }}"
           tags: |
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ github.sha }}
-            ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ env.GITHUB_SHA_SHORT }}
+            ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ env.GITHUB_SHA }}
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:dev-latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
-      # Export wasm artifacts directly from the artifacts stage (no docker cp / no local image)
-      - name: Export wasm artifacts (no local image)
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile
-          target: artifacts
-          outputs: type=local,dest=.
-          build-args: |
-            GH_READ_TOKEN=${{ secrets.GH_READ_TOKEN }}
-            PROFILE=release
-            SHORT_SHA=${{ env.GITHUB_SHA_SHORT }}
-          cache-from: type=gha
+      # Copy artifacts to /mnt instead of /home/runner
+      - name: Copy wasm artifacts from the image
+        run: |
+          CONTAINER_ID=$(docker create ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ env.GITHUB_SHA }})
+          mkdir -p /mnt/wasm
+          docker cp "${CONTAINER_ID}:/home/cere/cere-runtime-artifacts/cere_runtime.compact.compressed.wasm" "/mnt/wasm/${{ env.CERE_RUNTIME }}"
+          docker cp "${CONTAINER_ID}:/home/cere/cere-dev-runtime-artifacts/cere_dev_runtime.compact.compressed.wasm" "/mnt/wasm/${{ env.CERE_DEV_RUNTIME }}"
 
-      # Upload wasm artifacts
       - name: Upload cere-runtime wasm artifact
         uses: actions/upload-artifact@v4
         with:
-          name: "cere_runtime.compact.compressed.${{ env.GITHUB_SHA_SHORT }}.wasm"
-          path: "./cere_runtime.compact.compressed.${{ env.GITHUB_SHA_SHORT }}.wasm"
+          name: "cere_runtime.compact.compressed.${{ env.GITHUB_SHA }}.wasm"
+          path: "/mnt/wasm/${{ env.CERE_RUNTIME }}"
 
       - name: Upload cere-dev-runtime wasm artifact
         uses: actions/upload-artifact@v4
         with:
-          name: "cere_dev_runtime.compact.compressed.${{ env.GITHUB_SHA_SHORT }}.wasm"
-          path: "./cere_dev_runtime.compact.compressed.${{ env.GITHUB_SHA_SHORT }}.wasm"
-
-      # Optional final cleanup
-      - name: Final prune
-        run: |
-          docker system df
-          docker system prune -af --volumes || true
-          df -h
+          name: "cere_dev_runtime.compact.compressed.${{ env.GITHUB_SHA }}.wasm"
+          path: "/mnt/wasm/${{ env.CERE_DEV_RUNTIME }}"
 
   trigger-e2e-tests:
     runs-on: ubuntu-latest
