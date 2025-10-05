@@ -14,7 +14,7 @@ env:
 
 jobs:
   build:
-    runs-on: cere-network-xlarge
+    runs-on: cere-network-large-disk
     concurrency: dev
     permissions:
       contents: read
@@ -50,7 +50,6 @@ jobs:
           echo "CERE_RUNTIME=cere_runtime.compact.compressed.${GITHUB_SHA:0:7}.wasm" >> ${GITHUB_ENV}
           echo "CERE_DEV_RUNTIME=cere_dev_runtime.compact.compressed.${GITHUB_SHA:0:7}.wasm" >> ${GITHUB_ENV}
 
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -65,8 +64,7 @@ jobs:
           override: true
           target: wasm32-unknown-unknown
           components: rust-src
-      
-      # Build and push docker image to ECR (cache stored on /mnt)
+
       - name: Build and push docker image to ECR
         uses: docker/build-push-action@v5
         with:
@@ -79,26 +77,24 @@ jobs:
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ env.GITHUB_SHA }}
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:dev-latest
 
-
-      # Copy artifacts to /mnt instead of /home/runner
       - name: Copy wasm artifacts from the image
         run: |
           CONTAINER_ID=$(docker create ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ env.GITHUB_SHA }})
-          mkdir -p /mnt/wasm
-          docker cp "${CONTAINER_ID}:/home/cere/cere-runtime-artifacts/cere_runtime.compact.compressed.wasm" "/mnt/wasm/${{ env.CERE_RUNTIME }}"
-          docker cp "${CONTAINER_ID}:/home/cere/cere-dev-runtime-artifacts/cere_dev_runtime.compact.compressed.wasm" "/mnt/wasm/${{ env.CERE_DEV_RUNTIME }}"
+
+          docker cp "${CONTAINER_ID}:/home/cere/cere-runtime-artifacts/cere_runtime.compact.compressed.wasm" "./${{ env.CERE_RUNTIME }}"
+          docker cp "${CONTAINER_ID}:/home/cere/cere-dev-runtime-artifacts/cere_dev_runtime.compact.compressed.wasm" "./${{ env.CERE_DEV_RUNTIME }}"
 
       - name: Upload cere-runtime wasm artifact
         uses: actions/upload-artifact@v4
         with:
           name: "cere_runtime.compact.compressed.${{ env.GITHUB_SHA }}.wasm"
-          path: "/mnt/wasm/${{ env.CERE_RUNTIME }}"
+          path: "./${{ env.CERE_RUNTIME }}"
 
       - name: Upload cere-dev-runtime wasm artifact
         uses: actions/upload-artifact@v4
         with:
           name: "cere_dev_runtime.compact.compressed.${{ env.GITHUB_SHA }}.wasm"
-          path: "/mnt/wasm/${{ env.CERE_DEV_RUNTIME }}"
+          path: "./${{ env.CERE_DEV_RUNTIME }}"
 
   trigger-e2e-tests:
     runs-on: ubuntu-latest
