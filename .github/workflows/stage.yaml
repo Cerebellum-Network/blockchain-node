@@ -13,7 +13,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: cere-network-large-disk
     concurrency: dev
     permissions:
       contents: read
