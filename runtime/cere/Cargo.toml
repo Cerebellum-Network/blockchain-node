@@ -105,6 +105,7 @@ pallet-erc20 = { workspace = true }
 pallet-erc721 = { workspace = true }
 pallet-fee-handler = { workspace = true }
 pallet-origins = { workspace = true }
+pallet-pool-withdrawal-fix = { workspace = true }
 pallet-referenda = { workspace = true }
 pallet-whitelist = { workspace = true }
 
@@ -204,6 +205,7 @@ std = [
   "pallet-whitelist/std",
   "pallet-preimage/std",
   "pallet-origins/std",
+  "pallet-pool-withdrawal-fix/std",
   "pallet-hyperbridge/std",
   "ismp/std",
   "pallet-ismp/std",
@@ -267,6 +269,7 @@ runtime-benchmarks = [
   "pallet-preimage/runtime-benchmarks",
   "pallet-ddc-clusters-gov/runtime-benchmarks",
   "pallet-origins/runtime-benchmarks",
+  "pallet-pool-withdrawal-fix/runtime-benchmarks",
   "pallet-token-gateway/runtime-benchmarks",
   "pallet-migrations/runtime-benchmarks",
   "pallet-delegated-staking/runtime-benchmarks",
@@ -323,6 +326,7 @@ try-runtime = [
   "pallet-whitelist/try-runtime",
   "pallet-preimage/try-runtime",
   "pallet-origins/try-runtime",
+  "pallet-pool-withdrawal-fix/try-runtime",
   "pallet-ddc-clusters-gov/try-runtime",
   "pallet-ismp/try-runtime",
   "pallet-hyperbridge/try-runtime",

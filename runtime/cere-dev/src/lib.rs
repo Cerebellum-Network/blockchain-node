@@ -162,7 +162,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73151,
+	spec_version: 73152,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 25,
@@ -664,11 +664,19 @@ impl pallet_staking::Config for Runtime {
 	type MaxUnlockingChunks = ConstU32<32>;
 	type MaxControllersInDeprecationBatch = MaxControllersInDeprecationBatch;
 	type HistoryDepth = frame_support::traits::ConstU32<84>;
-	type EventListeners = NominationPools;
+	type EventListeners = (NominationPools, DelegatedStaking);
 	type WeightInfo = pallet_staking::weights::SubstrateWeight<Runtime>;
 	type BenchmarkingConfig = StakingBenchmarkingConfig;
 	type NominationsQuota = pallet_staking::FixedNominationsQuota<{ MaxNominations::get() }>;
 	type Filter = Nothing;
+}
+
+impl pallet_pool_withdrawal_fix::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type DelegationPalletConnector = DelegatedStaking;
+	type GovernanceOrigin = EnsureRoot<AccountId>;
+	type WeightInfo = ();
 }
 
 impl pallet_fast_unstake::Config for Runtime {
@@ -1636,6 +1644,9 @@ mod runtime {
 	pub type MultiBlockMigrations = pallet_migrations;
 	#[runtime::pallet_index(52)]
 	pub type DelegatedStaking = pallet_delegated_staking;
+
+	#[runtime::pallet_index(53)]
+	pub type PoolWithdrawalFix = pallet_pool_withdrawal_fix::Pallet<Runtime>;
 }
 
 /// The address format for describing accounts.
