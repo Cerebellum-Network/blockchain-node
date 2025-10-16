@@ -1,8 +1,7 @@
-use frame_support::parameter_types;
+use frame_support::{parameter_types, weights::WeightToFee};
 use frame_system::EnsureRoot;
 use ismp::{error::Error, host::StateMachine, module::IsmpModule, router::IsmpRouter};
 use ismp_grandpa::consensus::GrandpaConsensusClient;
-use frame_support::weights::WeightToFee;
 use pallet_token_gateway::types::EvmToSubstrate;
 use sp_core::H160;
 
