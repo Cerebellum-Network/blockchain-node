@@ -1561,6 +1561,17 @@ impl pallet_pool_withdrawal_fix::Config for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const MaxDacCodeSize: u32 = 1024 * 1024; // 1MB
+}
+
+impl pallet_dac_registry::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type GovernanceOrigin = EnsureRoot<AccountId>;
+	type MaxCodeSize = MaxDacCodeSize;
+	type WeightInfo = pallet_dac_registry::weights::SubstrateWeight<Runtime>;
+}
+
 #[frame_support::runtime]
 mod runtime {
 	#[runtime::runtime]
@@ -1745,6 +1756,9 @@ mod runtime {
 
 	#[runtime::pallet_index(54)]
 	pub type PoolWithdrawalFix = pallet_pool_withdrawal_fix::Pallet<Runtime>;
+
+	#[runtime::pallet_index(55)]
+	pub type DacRegistry = pallet_dac_registry::Pallet<Runtime>;
 }
 
 /// The address format for describing accounts.
