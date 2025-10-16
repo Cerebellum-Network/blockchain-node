@@ -10,7 +10,7 @@ repository.workspace = true
 
 [dependencies]
 # 3rd-party dependencies
-futures = { workspace = true }
+futures.workspace = true
 
 # Substrate dependencies
 ddc-primitives = { workspace = true, default-features = true }

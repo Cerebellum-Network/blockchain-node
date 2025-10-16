@@ -10,19 +10,19 @@ repository.workspace = true
 
 [dependencies]
 # 3rd-party dependencies
-codec = { workspace = true }
-scale-info = { workspace = true }
-serde = { workspace = true }
+codec.workspace = true
+scale-info.workspace = true
+serde.workspace = true
 
 # Substrate dependencies
 frame-benchmarking = { workspace = true, optional = true }
-frame-support = { workspace = true }
-frame-system = { workspace = true }
-sp-runtime = { workspace = true }
-sp-std = { workspace = true }
+frame-support.workspace = true
+frame-system.workspace = true
+sp-runtime.workspace = true
+sp-std.workspace = true
 
 # Cere dependencies
-ddc-primitives = { workspace = true }
+ddc-primitives.workspace = true
 
 [dev-dependencies]
 pallet-balances = { workspace = true, default-features = true }

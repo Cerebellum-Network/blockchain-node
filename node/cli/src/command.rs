@@ -84,6 +84,7 @@ pub fn run() -> sc_cli::Result<()> {
 
 	match &cli.subcommand {
 		Some(Subcommand::Key(cmd)) => cmd.run(&cli),
+		#[allow(deprecated)]
 		Some(Subcommand::BuildSpec(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
 			runner.sync_run(|config| cmd.run(config.chain_spec, config.network))
@@ -94,6 +95,10 @@ pub fn run() -> sc_cli::Result<()> {
 				let (client, _, import_queue, task_manager) = cere_service::new_chain_ops(&config)?;
 				Ok((cmd.run(client, import_queue), task_manager))
 			})
+		},
+		Some(Subcommand::ExportChainSpec(cmd)) => {
+			let chain_spec = cli.load_spec(&cmd.chain)?;
+			cmd.run(chain_spec)
 		},
 		Some(Subcommand::ExportBlocks(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
@@ -169,7 +174,11 @@ pub fn run() -> sc_cli::Result<()> {
 					let (client, backend, _, _) = cere_service::new_chain_ops(&config)?;
 					let db = backend.expose_db();
 					let storage = backend.expose_storage();
-					unwrap_client!(client, cmd.run(config, client.clone(), db, storage))
+					let shared_cache = backend.expose_shared_trie_cache();
+					unwrap_client!(
+						client,
+						cmd.run(config, client.clone(), db, storage, shared_cache)
+					)
 				}),
 				BenchmarkCmd::Overhead(_cmd) => {
 					print!("BenchmarkCmd::Overhead is not supported");
