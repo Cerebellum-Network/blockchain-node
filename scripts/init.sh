@@ -4,9 +4,9 @@ set -e
 
 echo "*** Initializing WASM build environment"
 
-rustup install 1.84.0
+rustup install 1.90.0
 
-rustup target add wasm32-unknown-unknown --toolchain 1.84.0
+rustup target add wasm32-unknown-unknown --toolchain 1.90.0
 
 rustup component add rust-src
 
