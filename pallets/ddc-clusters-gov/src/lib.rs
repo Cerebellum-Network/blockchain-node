@@ -376,6 +376,7 @@ pub mod pallet {
 					.max(<T as pallet::Config>::WeightInfo::close_disapproved(m))
 			}
 		)]
+		#[allow(clippy::useless_conversion)]
 		pub fn close_proposal(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -580,6 +581,7 @@ pub mod pallet {
 		}
 
 		/// Close a vote that is either approved, disapproved or whose voting period has ended.
+		#[allow(clippy::useless_conversion)]
 		fn do_close(cluster_id: ClusterId, caller_id: T::AccountId) -> DispatchResultWithPostInfo {
 			let voting =
 				ClusterProposalVoting::<T>::get(cluster_id).ok_or(Error::<T>::ProposalMissing)?;

@@ -249,7 +249,7 @@ pub fn cere_dev_genesis(
 		"techComm": {
 			"members": endowed_accounts
 				.iter()
-				.take((endowed_accounts.len() + 1) / 2)
+				.take(endowed_accounts.len().div_ceil(2))
 				.cloned()
 				.collect::<Vec<_>>(),
 		},
