@@ -1,12 +1,12 @@
 [package]
 name = "pallet-dac-registry"
 version = "0.1.0"
-edition = "2021"
 authors = ["Cere Network"]
-description = "DAC Registry Pallet for managing WASM modules"
+edition = "2021"
 homepage = "https://cere.network"
 license = "Apache-2.0"
 repository = "https://github.com/cere-network/cere-blockchain"
+description = "DAC Registry Pallet for managing WASM modules"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -17,7 +17,7 @@ scale-info = { version = "2.11.3", default-features = false, features = ["derive
 serde = { version = "1.0.210", default-features = false, features = ["derive"] }
 
 # Substrate
-frame-benchmarking = { version = "40.0.0", default-features = false, optional = true}
+frame-benchmarking = { version = "40.0.0", default-features = false, optional = true }
 frame-support = { version = "40.1.0", default-features = false }
 frame-system = { version = "40.1.0", default-features = false }
 sp-api = { version = "36.0.1", default-features = false }
@@ -32,15 +32,15 @@ default = ["std"]
 runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks", "frame-benchmarking/std"]
 try-runtime = ["frame-support/try-runtime"]
 std = [
-	"codec/std",
-	"scale-info/std",
-	"serde/std",
-	"frame-support/std",
-	"frame-system/std",
-	"sp-api/std",
-	"sp-core/std",
-	"sp-io/std",
-	"sp-runtime/std",
-	"sp-std/std",
-	"sp-weights/std",
+  "codec/std",
+  "scale-info/std",
+  "serde/std",
+  "frame-support/std",
+  "frame-system/std",
+  "sp-api/std",
+  "sp-core/std",
+  "sp-io/std",
+  "sp-runtime/std",
+  "sp-std/std",
+  "sp-weights/std",
 ]
