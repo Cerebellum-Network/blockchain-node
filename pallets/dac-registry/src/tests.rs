@@ -4,10 +4,7 @@
 
 use super::*;
 use crate::mock::*;
-use frame_support::{
-	assert_ok, assert_noop,
-	traits::OnInitialize,
-};
+use frame_support::{assert_noop, assert_ok, traits::OnInitialize};
 use sp_core::H256;
 use sp_runtime::DispatchError;
 
@@ -106,13 +103,7 @@ fn test_register_code_validation() {
 
 		// Test invalid activation block (in the past)
 		assert_noop!(
-			DacRegistry::register_code(
-				RuntimeOrigin::root(),
-				code.clone(),
-				api_version,
-				semver,
-				0
-			),
+			DacRegistry::register_code(RuntimeOrigin::root(), code.clone(), api_version, semver, 0),
 			Error::<Test>::InvalidActivationBlock
 		);
 	});
@@ -212,49 +203,25 @@ fn test_update_meta_validation() {
 		// Test updating non-existent code
 		let fake_hash = H256::from_slice(&[1u8; 32]);
 		assert_noop!(
-			DacRegistry::update_meta(
-				RuntimeOrigin::root(),
-				fake_hash,
-				(2, 0),
-				(2, 0, 0),
-				20
-			),
+			DacRegistry::update_meta(RuntimeOrigin::root(), fake_hash, (2, 0), (2, 0, 0), 20),
 			Error::<Test>::CodeNotFound
 		);
 
 		// Test invalid API version
 		assert_noop!(
-			DacRegistry::update_meta(
-				RuntimeOrigin::root(),
-				code_hash,
-				(0, 0),
-				(2, 0, 0),
-				20
-			),
+			DacRegistry::update_meta(RuntimeOrigin::root(), code_hash, (0, 0), (2, 0, 0), 20),
 			Error::<Test>::InvalidApiVersion
 		);
 
 		// Test invalid semantic version
 		assert_noop!(
-			DacRegistry::update_meta(
-				RuntimeOrigin::root(),
-				code_hash,
-				(2, 0),
-				(0, 0, 0),
-				20
-			),
+			DacRegistry::update_meta(RuntimeOrigin::root(), code_hash, (2, 0), (0, 0, 0), 20),
 			Error::<Test>::InvalidSemVer
 		);
 
 		// Test invalid activation block
 		assert_noop!(
-			DacRegistry::update_meta(
-				RuntimeOrigin::root(),
-				code_hash,
-				(2, 0),
-				(2, 0, 0),
-				0
-			),
+			DacRegistry::update_meta(RuntimeOrigin::root(), code_hash, (2, 0), (2, 0, 0), 0),
 			Error::<Test>::InvalidActivationBlock
 		);
 	});
@@ -280,10 +247,7 @@ fn test_deregister_code_success() {
 		let code_hash = test_utils::create_test_code_hash();
 
 		// Deregister code
-		assert_ok!(DacRegistry::deregister_code(
-			RuntimeOrigin::root(),
-			code_hash
-		));
+		assert_ok!(DacRegistry::deregister_code(RuntimeOrigin::root(), code_hash));
 
 		// Check deregistered flag
 		assert!(DacRegistry::deregistered(code_hash));
@@ -302,10 +266,7 @@ fn test_deregister_code_validation() {
 		// Test deregistering non-existent code
 		let fake_hash = H256::from_slice(&[1u8; 32]);
 		assert_noop!(
-			DacRegistry::deregister_code(
-				RuntimeOrigin::root(),
-				fake_hash
-			),
+			DacRegistry::deregister_code(RuntimeOrigin::root(), fake_hash),
 			Error::<Test>::CodeNotFound
 		);
 	});
@@ -331,17 +292,11 @@ fn test_deregister_code_duplicate() {
 		let code_hash = test_utils::create_test_code_hash();
 
 		// Deregister code first time
-		assert_ok!(DacRegistry::deregister_code(
-			RuntimeOrigin::root(),
-			code_hash
-		));
+		assert_ok!(DacRegistry::deregister_code(RuntimeOrigin::root(), code_hash));
 
 		// Try to deregister again
 		assert_noop!(
-			DacRegistry::deregister_code(
-				RuntimeOrigin::root(),
-				code_hash
-			),
+			DacRegistry::deregister_code(RuntimeOrigin::root(), code_hash),
 			Error::<Test>::CodeDeregistered
 		);
 	});
@@ -367,20 +322,11 @@ fn test_update_meta_after_deregister() {
 		let code_hash = test_utils::create_test_code_hash();
 
 		// Deregister code
-		assert_ok!(DacRegistry::deregister_code(
-			RuntimeOrigin::root(),
-			code_hash
-		));
+		assert_ok!(DacRegistry::deregister_code(RuntimeOrigin::root(), code_hash));
 
 		// Try to update metadata after deregister
 		assert_noop!(
-			DacRegistry::update_meta(
-				RuntimeOrigin::root(),
-				code_hash,
-				(2, 0),
-				(2, 0, 0),
-				20
-			),
+			DacRegistry::update_meta(RuntimeOrigin::root(), code_hash, (2, 0), (2, 0, 0), 20),
 			Error::<Test>::CodeDeregistered
 		);
 	});
@@ -455,7 +401,7 @@ fn test_events() {
 	new_test_ext().execute_with(|| {
 		// Set block number to 1 so events are registered
 		System::set_block_number(1);
-		
+
 		let code = test_utils::create_test_code();
 		let api_version = (1, 0);
 		let semver = (1, 0, 0);
@@ -473,14 +419,12 @@ fn test_events() {
 		let code_hash = test_utils::create_test_code_hash();
 
 		// Check CodeRegistered event
-		System::assert_has_event(RuntimeEvent::DacRegistry(
-			Event::CodeRegistered {
-				code_hash,
-				api_version,
-				semver,
-				length: code.len() as u32,
-			}
-		));
+		System::assert_has_event(RuntimeEvent::DacRegistry(Event::CodeRegistered {
+			code_hash,
+			api_version,
+			semver,
+			length: code.len() as u32,
+		}));
 
 		// Update metadata and check event
 		assert_ok!(DacRegistry::update_meta(
@@ -492,24 +436,17 @@ fn test_events() {
 		));
 
 		// Check CodeMetaUpdated event
-		System::assert_has_event(RuntimeEvent::DacRegistry(
-			Event::CodeMetaUpdated {
-				code_hash,
-				api_version: (2, 0),
-				semver: (2, 0, 0),
-				allowed_from: 20,
-			}
-		));
+		System::assert_has_event(RuntimeEvent::DacRegistry(Event::CodeMetaUpdated {
+			code_hash,
+			api_version: (2, 0),
+			semver: (2, 0, 0),
+			allowed_from: 20,
+		}));
 
 		// Deregister code and check event
-		assert_ok!(DacRegistry::deregister_code(
-			RuntimeOrigin::root(),
-			code_hash
-		));
+		assert_ok!(DacRegistry::deregister_code(RuntimeOrigin::root(), code_hash));
 
 		// Check CodeDeregistered event
-		System::assert_has_event(RuntimeEvent::DacRegistry(
-			Event::CodeDeregistered { code_hash }
-		));
+		System::assert_has_event(RuntimeEvent::DacRegistry(Event::CodeDeregistered { code_hash }));
 	});
 }

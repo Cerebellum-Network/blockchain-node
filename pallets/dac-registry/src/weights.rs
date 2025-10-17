@@ -46,14 +46,10 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		let base_weight = 45_000u64;
 		let per_byte_weight = 80u64;
 		let size_weight = code_len as u64 * per_byte_weight;
-		
+
 		// Add small overhead for very large codes
-		let overhead = if code_len > 100_000 {
-			(code_len as u64 - 100_000) / 1000 * 10
-		} else {
-			0
-		};
-		
+		let overhead = if code_len > 100_000 { (code_len as u64 - 100_000) / 1000 * 10 } else { 0 };
+
 		Weight::from_parts(base_weight + size_weight + overhead, 0)
 	}
 
@@ -79,13 +75,13 @@ mod tests {
 		// Test that weights are reasonable using the default implementation
 		let small_code_weight = <() as WeightInfo>::register_code(1024);
 		let large_code_weight = <() as WeightInfo>::register_code(1_000_000);
-		
+
 		assert!(small_code_weight.ref_time() > 0);
 		assert!(large_code_weight.ref_time() > small_code_weight.ref_time());
-		
+
 		let update_weight = <() as WeightInfo>::update_meta();
 		let deregister_weight = <() as WeightInfo>::deregister_code();
-		
+
 		assert!(update_weight.ref_time() > 0);
 		assert!(deregister_weight.ref_time() > 0);
 	}

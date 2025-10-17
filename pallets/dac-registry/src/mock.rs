@@ -17,7 +17,7 @@ use sp_runtime::{
 type Block = frame_system::mocking::MockBlock<Test>;
 
 construct_runtime!(
-	pub enum Test 
+	pub enum Test
 	{
 		System: frame_system,
 		DacRegistry: pallet_dac_registry,

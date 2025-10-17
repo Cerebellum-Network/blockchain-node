@@ -21,12 +21,12 @@ mod benchmarking;
 
 #[frame_support::pallet]
 pub mod pallet {
-use frame_support::pallet_prelude::*;
-use frame_system::pallet_prelude::*;
-use sp_core::H256;
-use sp_std::vec::Vec;
-use sp_runtime::SaturatedConversion;
-use crate::weights::WeightInfo;
+	use crate::weights::WeightInfo;
+	use frame_support::pallet_prelude::*;
+	use frame_system::pallet_prelude::*;
+	use sp_core::H256;
+	use sp_runtime::SaturatedConversion;
+	use sp_std::vec::Vec;
 
 	/// Type alias for code hash
 	pub type CodeHash = H256;
@@ -73,35 +73,19 @@ use crate::weights::WeightInfo;
 	/// Storage for DAC code metadata by hash
 	#[pallet::storage]
 	#[pallet::getter(fn code_by_hash)]
-	pub type CodeByHash<T: Config> = StorageMap<
-		_,
-		Blake2_128Concat,
-		CodeHash,
-		CodeMeta,
-		OptionQuery,
-	>;
+	pub type CodeByHash<T: Config> =
+		StorageMap<_, Blake2_128Concat, CodeHash, CodeMeta, OptionQuery>;
 
 	/// Storage for WASM code by hash
 	#[pallet::storage]
 	#[pallet::getter(fn wasm_code)]
-	pub type WasmCode<T: Config> = StorageMap<
-		_,
-		Blake2_128Concat,
-		CodeHash,
-		BoundedVec<u8, T::MaxCodeSize>,
-		OptionQuery,
-	>;
+	pub type WasmCode<T: Config> =
+		StorageMap<_, Blake2_128Concat, CodeHash, BoundedVec<u8, T::MaxCodeSize>, OptionQuery>;
 
 	/// Storage for deregistered code hashes
 	#[pallet::storage]
 	#[pallet::getter(fn deregistered)]
-	pub type Deregistered<T: Config> = StorageMap<
-		_,
-		Blake2_128Concat,
-		CodeHash,
-		bool,
-		ValueQuery,
-	>;
+	pub type Deregistered<T: Config> = StorageMap<_, Blake2_128Concat, CodeHash, bool, ValueQuery>;
 
 	/// Pallets use events to inform users when important changes are made.
 	#[pallet::event]
@@ -109,12 +93,7 @@ use crate::weights::WeightInfo;
 	pub enum Event<T: Config> {
 		/// A new DAC version was successfully registered.
 		/// [code_hash, api_version, semver, length]
-		CodeRegistered {
-			code_hash: CodeHash,
-			api_version: ApiVersion,
-			semver: SemVer,
-			length: u32,
-		},
+		CodeRegistered { code_hash: CodeHash, api_version: ApiVersion, semver: SemVer, length: u32 },
 		/// Metadata of a DAC version was updated.
 		/// [code_hash, api_version, semver, allowed_from]
 		CodeMetaUpdated {
@@ -125,9 +104,7 @@ use crate::weights::WeightInfo;
 		},
 		/// DAC version marked as inactive or deprecated.
 		/// [code_hash]
-		CodeDeregistered {
-			code_hash: CodeHash,
-		},
+		CodeDeregistered { code_hash: CodeHash },
 	}
 
 	/// Errors that can occur in this pallet.
@@ -187,7 +164,10 @@ use crate::weights::WeightInfo;
 			ensure!(semver.0 > 0 || semver.1 > 0 || semver.2 > 0, Error::<T>::InvalidSemVer);
 
 			// Validate activation block
-			ensure!(allowed_from > frame_system::Pallet::<T>::block_number(), Error::<T>::InvalidActivationBlock);
+			ensure!(
+				allowed_from > frame_system::Pallet::<T>::block_number(),
+				Error::<T>::InvalidActivationBlock
+			);
 
 			// Compute code hash
 			let code_hash = sp_io::hashing::blake2_256(&code);
@@ -258,7 +238,10 @@ use crate::weights::WeightInfo;
 			ensure!(semver.0 > 0 || semver.1 > 0 || semver.2 > 0, Error::<T>::InvalidSemVer);
 
 			// Validate activation block
-			ensure!(allowed_from > frame_system::Pallet::<T>::block_number(), Error::<T>::InvalidActivationBlock);
+			ensure!(
+				allowed_from > frame_system::Pallet::<T>::block_number(),
+				Error::<T>::InvalidActivationBlock
+			);
 
 			// Create new metadata
 			let new_meta = CodeMeta {
@@ -292,10 +275,7 @@ use crate::weights::WeightInfo;
 		/// - `code_hash`: Hash of the code to deregister
 		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::deregister_code())]
-		pub fn deregister_code(
-			origin: OriginFor<T>,
-			code_hash: CodeHash,
-		) -> DispatchResult {
+		pub fn deregister_code(origin: OriginFor<T>, code_hash: CodeHash) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
 			// Check if code exists
@@ -353,4 +333,3 @@ use crate::weights::WeightInfo;
 		}
 	}
 }
-

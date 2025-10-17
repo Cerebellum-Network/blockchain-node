@@ -6,8 +6,8 @@ use super::*;
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
 use sp_core::Get;
-use sp_runtime::traits::Hash;
 use sp_core::H256;
+use sp_runtime::traits::Hash;
 
 /// Helper function to create test WASM code of a given size
 fn create_test_wasm_code(size: u32) -> Vec<u8> {
@@ -16,13 +16,13 @@ fn create_test_wasm_code(size: u32) -> Vec<u8> {
 		0x00, 0x61, 0x73, 0x6d, // WASM magic number
 		0x01, 0x00, 0x00, 0x00, // Version 1
 	];
-	
+
 	// Add padding to reach the desired size
 	let padding_size = size.saturating_sub(code.len() as u32);
 	for _ in 0..padding_size {
 		code.push(0x00);
 	}
-	
+
 	code
 }
 
@@ -43,10 +43,10 @@ benchmarks! {
 		let semver = (1, 0, 0);
 		let allowed_from = 0u32.into();
 		let code_hash = H256::from_slice(&<T as frame_system::Config>::Hashing::hash(&wasm_code).as_ref());
-		
+
 		// Register the code first
 		Pallet::<T>::register_code(RawOrigin::Root.into(), wasm_code, api_version, semver, allowed_from)?;
-		
+
 		// Create new metadata for update
 		let new_api_version = (2, 0);
 		let new_semver = (1, 1, 0);
@@ -61,7 +61,7 @@ benchmarks! {
 		let semver = (1, 0, 0);
 		let allowed_from = 0u32.into();
 		let code_hash = H256::from_slice(&<T as frame_system::Config>::Hashing::hash(&wasm_code).as_ref());
-		
+
 		// Register the code first
 		Pallet::<T>::register_code(RawOrigin::Root.into(), wasm_code, api_version, semver, allowed_from)?;
 	}: _(RawOrigin::Root, code_hash)
@@ -75,7 +75,7 @@ benchmarks! {
 		let semver = (1, 0, 0);
 		let allowed_from = 0u32.into();
 		let code_hash = H256::from_slice(&<T as frame_system::Config>::Hashing::hash(&wasm_code).as_ref());
-		
+
 		// Register the code first
 		Pallet::<T>::register_code(RawOrigin::Root.into(), wasm_code, api_version, semver, allowed_from)?;
 	}: {
@@ -90,7 +90,7 @@ benchmarks! {
 		let semver = (1, 0, 0);
 		let allowed_from = 0u32.into();
 		let code_hash = H256::from_slice(&<T as frame_system::Config>::Hashing::hash(&wasm_code).as_ref());
-		
+
 		// Register the code first
 		Pallet::<T>::register_code(RawOrigin::Root.into(), wasm_code, api_version, semver, allowed_from)?;
 	}: {
@@ -105,7 +105,7 @@ benchmarks! {
 		let semver = (1, 0, 0);
 		let allowed_from = 0u32.into();
 		let code_hash = H256::from_slice(&<T as frame_system::Config>::Hashing::hash(&wasm_code).as_ref());
-		
+
 		// Register the code first
 		Pallet::<T>::register_code(RawOrigin::Root.into(), wasm_code, api_version, semver, allowed_from)?;
 	}: {
