@@ -110,6 +110,7 @@ pub struct SubmissionDeposit<AccountId> {
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_support::PalletId;
+	use sp_std::vec;
 
 	use super::*;
 
