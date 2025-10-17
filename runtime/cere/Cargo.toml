@@ -95,6 +95,7 @@ cere-runtime-common = { workspace = true }
 ddc-primitives = { workspace = true }
 pallet-chainbridge = { workspace = true }
 pallet-conviction-voting = { workspace = true }
+pallet-dac-registry = { workspace = true }
 pallet-ddc-clusters = { workspace = true }
 pallet-ddc-clusters-gov = { workspace = true }
 pallet-ddc-customers = { workspace = true }
@@ -109,7 +110,6 @@ pallet-origins = { workspace = true }
 pallet-pool-withdrawal-fix = { workspace = true }
 pallet-referenda = { workspace = true }
 pallet-whitelist = { workspace = true }
-pallet-dac-registry = { workspace = true }
 
 # Hyperbridge Depedencies
 anyhow = { workspace = true }
