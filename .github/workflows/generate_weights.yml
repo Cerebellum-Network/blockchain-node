@@ -80,8 +80,8 @@ jobs:
           curl https://sh.rustup.rs -sSf | bash -s -- -y
           source \$HOME/.cargo/env
           
-          rustup install 1.82.0
-          rustup default 1.82.0
+          rustup install 1.90.0
+          rustup default 1.90.0
           rustup component add clippy rustfmt rust-src
           rustup target add wasm32-unknown-unknown
           
