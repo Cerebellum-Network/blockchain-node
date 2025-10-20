@@ -204,13 +204,13 @@ pallet-ddc-verification = { git = "https://github.com/Cerebellum-Network/ddc-ver
 pallet-ddc-payouts = { git = "https://github.com/Cerebellum-Network/ddc-payouts.git", branch = "dev", default-features = false }
 
 # Hyperbridge
-ismp = { default-features = false, version = "1.1.0" }
-ismp-grandpa = { default-features = false, version = "2503.0.0" }
-pallet-hyperbridge = { default-features = false, version = "2503.0.0" }
-pallet-ismp = { default-features = false, version = "2503.0.0" }
-pallet-ismp-rpc = { default-features = false, version = "2503.0.0" }
-pallet-ismp-runtime-api = { default-features = false, version = "2503.0.0" }
-pallet-token-gateway = { default-features = false, version = "2503.0.0" }
+ismp = { default-features = false, version = "2506.1.0" }
+ismp-grandpa = { default-features = false, version = "2506.1.0" }
+pallet-hyperbridge = { default-features = false, version = "2506.1.0" }
+pallet-ismp = { default-features = false, version = "2506.1.0" }
+pallet-ismp-rpc = { default-features = false, version = "2506.1.0" }
+pallet-ismp-runtime-api = { default-features = false, version = "2506.1.0" }
+pallet-token-gateway = { default-features = false, version = "2506.1.0" }
 
 [profile.release]
 panic = "unwind"
