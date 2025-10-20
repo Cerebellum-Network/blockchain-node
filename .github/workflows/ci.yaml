@@ -193,7 +193,7 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
       - name: Install linux dependencies
-        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler make
+        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler make pkg-config
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
