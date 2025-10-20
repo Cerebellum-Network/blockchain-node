@@ -13,23 +13,23 @@ targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
 # 3rd-party dependencies
-codec = { workspace = true }
-scale-info = { workspace = true }
+codec.workspace = true
+scale-info.workspace = true
 
 # Substrate dependencies
 frame-benchmarking = { workspace = true, optional = true }
-frame-support = { workspace = true }
-frame-system = { workspace = true }
-pallet-balances = { workspace = true }
-sp-arithmetic = { workspace = true }
-sp-core = { workspace = true }
-sp-io = { workspace = true }
-sp-runtime = { workspace = true }
-sp-std = { workspace = true }
+frame-support.workspace = true
+frame-system.workspace = true
+pallet-balances.workspace = true
+sp-arithmetic.workspace = true
+sp-core.workspace = true
+sp-io.workspace = true
+sp-runtime.workspace = true
+sp-std.workspace = true
 
 # Cere dependencies
-pallet-chainbridge = { workspace = true }
-pallet-erc721 = { workspace = true }
+pallet-chainbridge.workspace = true
+pallet-erc721.workspace = true
 
 [features]
 default = ["std"]
