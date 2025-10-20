@@ -211,7 +211,9 @@ jobs:
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
-          version: '0.22.0'
+          # Tarpaulin 0.22.0 cannot parse Cargo metadata with edition 2024.
+          # Upgrade to a version that supports edition 2024.
+          version: '0.31.1'
           args: '--verbose --locked --no-fail-fast --workspace --features runtime-benchmarks --out "Xml" -- --skip mock_clusters_gov::__construct_runtime_integrity_test::runtime_integrity_tests'
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
