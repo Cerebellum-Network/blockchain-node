@@ -1792,7 +1792,6 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Tx
 // 		MaxPoolsToMigrate,
 // 	>,
 // );
-
 type Migrations = pallet_ddc_clusters::migrations::v4::MigrateToV4<Runtime>;
 
 parameter_types! {

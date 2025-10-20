@@ -590,13 +590,13 @@ pub fn cere_thirdparty_genesis(
 			"maxMembersPerPool": MAX_MEMBERS_PER_POOL,
 			"maxMembers": MAX_MEMBERS,
 		},
-		"techComm": {
-			"members": endowed_accounts
-				.iter()
-				.take((endowed_accounts.len() + 1) / 2)
-				.cloned()
-				.collect::<Vec<_>>(),
-		},
+			"techComm": {
+				"members": endowed_accounts
+					.iter()
+					.take(endowed_accounts.len().div_ceil(2))
+					.cloned()
+					.collect::<Vec<_>>(),
+			},
 		"ddcVerification": {
 			"validators": []
 		}
