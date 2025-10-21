@@ -12,20 +12,19 @@ description = "DAC Registry Pallet for managing WASM modules"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "3.6.12", default-features = false, features = ["derive", "max-encoded-len"] }
-scale-info = { version = "2.11.3", default-features = false, features = ["derive"] }
-serde = { version = "1.0.210", default-features = false, features = ["derive"] }
+codec.workspace = true
+scale-info.workspace = true
+serde.workspace = true
 
 # Substrate
-frame-benchmarking = { version = "40.0.0", default-features = false, optional = true }
-frame-support = { version = "40.1.0", default-features = false }
-frame-system = { version = "40.1.0", default-features = false }
-sp-api = { version = "36.0.1", default-features = false }
-sp-core = { version = "36.1.0", default-features = false }
-sp-io = { version = "40.0.1", default-features = false }
-sp-runtime = { version = "41.1.0", default-features = false }
-sp-std = { version = "14.0.0", default-features = false }
-sp-weights = { version = "31.1.0", default-features = false }
+frame-benchmarking = { workspace = true, optional = true }
+frame-support.workspace = true
+frame-system.workspace = true
+sp-api.workspace = true
+sp-core.workspace = true
+sp-io.workspace = true
+sp-runtime.workspace = true
+sp-std.workspace = true
 
 [features]
 default = ["std"]
@@ -42,5 +41,4 @@ std = [
   "sp-io/std",
   "sp-runtime/std",
   "sp-std/std",
-  "sp-weights/std",
 ]

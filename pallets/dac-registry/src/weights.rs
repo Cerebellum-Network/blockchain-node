@@ -3,7 +3,7 @@
 //! This file contains weight calculations based on benchmarking results.
 //! The weights are calculated to provide accurate gas estimation for extrinsics.
 
-use sp_weights::Weight;
+use frame_support::weights::Weight;
 
 /// Weight functions needed for pallet_dac_registry.
 pub trait WeightInfo {
