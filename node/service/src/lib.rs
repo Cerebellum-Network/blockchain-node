@@ -59,6 +59,7 @@ where
 	telemetry: Option<Telemetry>,
 }
 
+#[allow(clippy::result_large_err)]
 fn new_partial_basics<RuntimeApi>(
 	config: &Configuration,
 ) -> Result<Basics<RuntimeApi>, ServiceError>
@@ -107,7 +108,7 @@ where
 	Ok(Basics { task_manager, client, backend, keystore_container, telemetry })
 }
 
-#[allow(clippy::type_complexity)]
+#[allow(clippy::type_complexity, clippy::result_large_err)]
 fn new_partial<RuntimeApi>(
 	config: &Configuration,
 	Basics { task_manager, backend, client, keystore_container, telemetry }: Basics<RuntimeApi>,
@@ -254,6 +255,7 @@ where
 	})
 }
 
+#[allow(clippy::result_large_err)]
 pub fn build_full<N: NetworkBackend<Block, <Block as BlockT>::Hash>>(
 	config: Configuration,
 	disable_hardware_benchmarks: bool,
@@ -299,6 +301,7 @@ impl<C> NewFull<C> {
 	}
 }
 
+#[allow(clippy::result_large_err)]
 pub fn new_full<RuntimeApi, N: NetworkBackend<Block, <Block as BlockT>::Hash>>(
 	config: Configuration,
 	disable_hardware_benchmarks: bool,
@@ -442,7 +445,7 @@ where
 
 	(with_startup_data)(&block_import, &babe_link);
 
-	if let sc_service::config::Role::Authority { .. } = &role {
+	if let sc_service::config::Role::Authority = &role {
 		let proposer = sc_basic_authorship::ProposerFactory::new(
 			task_manager.spawn_handle(),
 			client.clone(),
@@ -519,6 +522,7 @@ where
 				Box::pin(dht_event_stream),
 				authority_discovery_role,
 				prometheus_registry.clone(),
+				task_manager.spawn_handle(),
 			);
 
 		task_manager.spawn_handle().spawn(
@@ -608,7 +612,7 @@ macro_rules! chain_ops {
 	}};
 }
 
-#[allow(clippy::type_complexity)]
+#[allow(clippy::type_complexity, clippy::result_large_err)]
 pub fn new_chain_ops(
 	config: &Configuration,
 ) -> Result<
@@ -653,6 +657,7 @@ impl IdentifyVariant for Box<dyn sc_service::ChainSpec> {
 	}
 }
 
+#[allow(clippy::result_large_err)]
 pub fn revert_backend(
 	client: Arc<Client>,
 	backend: Arc<FullBackend>,

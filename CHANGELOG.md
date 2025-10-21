@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [C,D] Update to Polkadot-Stable2503 crate version
 
+## [7.3.3]
+
+- [C,D] Update to Polkadot-Stable2503 crate version
+
 ## [7.3.2]
 
 - [C,D] Update to Polkadot-2412 crate version

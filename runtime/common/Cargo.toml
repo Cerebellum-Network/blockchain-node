@@ -9,22 +9,22 @@ readme.workspace = true
 repository.workspace = true
 
 [dependencies]
-codec = { workspace = true }
+codec.workspace = true
 log = { workspace = true, default-features = false }
 
-ddc-primitives = { workspace = true }
-frame-support = { workspace = true }
-frame-system = { workspace = true }
-pallet-contracts = { workspace = true }
-pallet-referenda = { workspace = true }
-pallet-session = { workspace = true }
-sp-api = { workspace = true }
-sp-arithmetic = { workspace = true }
-sp-core = { workspace = true }
-sp-io = { workspace = true }
-sp-runtime = { workspace = true }
-sp-staking = { workspace = true }
-sp-std = { workspace = true }
+ddc-primitives.workspace = true
+frame-support.workspace = true
+frame-system.workspace = true
+pallet-contracts.workspace = true
+pallet-referenda.workspace = true
+pallet-session.workspace = true
+sp-api.workspace = true
+sp-arithmetic.workspace = true
+sp-core.workspace = true
+sp-io.workspace = true
+sp-runtime.workspace = true
+sp-staking.workspace = true
+sp-std.workspace = true
 
 [features]
 default = ["std"]
