@@ -35,7 +35,7 @@ use ddc_primitives::{
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterNodeKind, ClusterNodeState,
 	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
-	ClusterProtocolParams, ClusterStatus, EhdEra, NodePubKey, NodeType,
+	ClusterProtocolParams, ClusterStatus, EhdEra, NodePubKey, NodeType, InspectionDryRunParams,
 };
 use frame_support::{
 	assert_ok,
@@ -107,6 +107,7 @@ pub mod pallet {
 		ClusterUnbonded { cluster_id: ClusterId },
 		ClusterNodeValidated { cluster_id: ClusterId, node_pub_key: NodePubKey, succeeded: bool },
 		ClusterEraPaid { cluster_id: ClusterId, era_id: EhdEra },
+		DryRunParamsSet,
 	}
 
 	#[pallet::error]
@@ -166,6 +167,11 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type ClustersNodesStats<T: Config> =
 		StorageMap<_, Twox64Concat, ClusterId, ClusterNodesStats>;
+
+
+	#[pallet::storage]
+	pub type DryRunParams<T: Config> =
+		StorageValue<Value = InspectionDryRunParams, QueryKind = OptionQuery>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
@@ -428,9 +434,21 @@ pub mod pallet {
 				.map_err(Into::<Error<T>>::into)?;
 			ensure!(is_authorized, Error::<T>::NodeIsNotAuthorized);
 
-			Self::do_join_cluster(cluster, node_pub_key)
-		}
+		Self::do_join_cluster(cluster, node_pub_key)
 	}
+
+	#[pallet::call_index(6)]
+	#[pallet::weight(T::DbWeight::get().writes(1))]
+	pub fn set_dry_run_params(
+		origin: OriginFor<T>,
+		params: InspectionDryRunParams,
+	) -> DispatchResult {
+		let _who = ensure_signed(origin)?;
+		DryRunParams::<T>::put(params);
+		Self::deposit_event(Event::DryRunParamsSet);
+		Ok(())
+	}
+}
 
 	impl<T: Config> Pallet<T> {
 		fn do_create_cluster(
@@ -1012,6 +1030,11 @@ pub mod pallet {
 			}
 			Ok(clusters_ids)
 		}
+
+	fn get_inspection_dry_run_params(_cluster_id: &ClusterId) -> Option<InspectionDryRunParams> {
+		DryRunParams::<T>::get()
+	}
+
 	}
 
 	impl<T: Config> ClusterCreator<T::AccountId, BlockNumberFor<T>, BalanceOf<T>> for Pallet<T>

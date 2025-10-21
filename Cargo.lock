@@ -2139,7 +2139,7 @@ version = "7.3.3"
 dependencies = [
  "cere-dev-runtime",
  "cere-runtime",
- "ddc-primitives",
+ "ddc-primitives 7.3.2",
  "frame-benchmarking",
  "frame-system",
  "frame-system-rpc-runtime-api",
@@ -2175,7 +2175,7 @@ version = "7.3.3"
 dependencies = [
  "anyhow",
  "cere-runtime-common",
- "ddc-primitives",
+ "ddc-primitives 7.3.2",
  "frame-benchmarking",
  "frame-election-provider-support",
  "frame-executive",
@@ -2281,7 +2281,7 @@ dependencies = [
 name = "cere-rpc"
 version = "7.3.3"
 dependencies = [
- "ddc-primitives",
+ "ddc-primitives 7.3.2",
  "jsonrpsee",
  "pallet-ismp-rpc",
  "pallet-ismp-runtime-api",
@@ -2315,7 +2315,7 @@ version = "7.3.3"
 dependencies = [
  "anyhow",
  "cere-runtime-common",
- "ddc-primitives",
+ "ddc-primitives 7.3.2",
  "frame-benchmarking",
  "frame-election-provider-support",
  "frame-executive",
@@ -2421,7 +2421,7 @@ dependencies = [
 name = "cere-runtime-common"
 version = "7.3.3"
 dependencies = [
- "ddc-primitives",
+ "ddc-primitives 7.3.2",
  "frame-support",
  "frame-system",
  "log",
@@ -2447,7 +2447,7 @@ dependencies = [
  "cere-rpc",
  "cere-runtime",
  "cere-runtime-common",
- "ddc-primitives",
+ "ddc-primitives 7.3.2",
  "frame-benchmarking-cli",
  "futures 0.3.31",
  "jsonrpsee",
@@ -3994,7 +3994,7 @@ name = "customer-deposit"
 version = "5.1.0"
 dependencies = [
  "base64ct",
- "ddc-primitives",
+ "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev)",
  "ink",
  "sp-runtime",
 ]
@@ -4208,13 +4208,37 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev#7a658b1a7182f366a9637bf83dfd6baafbe6e288"
 dependencies = [
  "blake2 0.10.6",
- "ddc-primitives",
+ "ddc-primitives 7.3.2",
  "frame-support",
  "frame-system",
  "hex",
+ "log",
+ "parity-scale-codec",
+ "polkadot-ckb-merkle-mountain-range 0.7.0",
+ "prost 0.13.5",
+ "prost-build",
+ "scale-info",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "sp-application-crypto",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "ddc-primitives"
+version = "7.3.2"
+dependencies = [
+ "blake2 0.10.6",
+ "frame-support",
+ "frame-system",
+ "hex",
+ "ink",
  "log",
  "parity-scale-codec",
  "polkadot-ckb-merkle-mountain-range 0.7.0",
@@ -9556,7 +9580,7 @@ dependencies = [
 name = "pallet-ddc-clusters"
 version = "7.3.3"
 dependencies = [
- "ddc-primitives",
+ "ddc-primitives 7.3.2",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -9582,7 +9606,7 @@ dependencies = [
 name = "pallet-ddc-clusters-gov"
 version = "7.3.3"
 dependencies = [
- "ddc-primitives",
+ "ddc-primitives 7.3.2",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -9617,7 +9641,7 @@ dependencies = [
 name = "pallet-ddc-customers"
 version = "7.3.3"
 dependencies = [
- "ddc-primitives",
+ "ddc-primitives 7.3.2",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -9644,7 +9668,7 @@ dependencies = [
 name = "pallet-ddc-nodes"
 version = "7.3.3"
 dependencies = [
- "ddc-primitives",
+ "ddc-primitives 7.3.2",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -9666,12 +9690,11 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#e795f29412481eb1403d66ddcf21cee428dcd811"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
  "ddc-api",
- "ddc-primitives",
+ "ddc-primitives 7.3.2",
  "frame-benchmarking",
  "frame-election-provider-support",
  "frame-support",
@@ -9698,7 +9721,7 @@ dependencies = [
 name = "pallet-ddc-staking"
 version = "7.3.3"
 dependencies = [
- "ddc-primitives",
+ "ddc-primitives 7.3.2",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -9725,13 +9748,12 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#73e295944df75b4eb6894058aa77bbad9bf40efc"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
  "byte-unit",
  "ddc-api",
- "ddc-primitives",
+ "ddc-primitives 7.3.2",
  "frame-benchmarking",
  "frame-election-provider-support",
  "frame-support",
@@ -9962,7 +9984,7 @@ dependencies = [
 name = "pallet-fee-handler"
 version = "7.3.3"
 dependencies = [
- "ddc-primitives",
+ "ddc-primitives 7.3.2",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
