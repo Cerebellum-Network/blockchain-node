@@ -12,15 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [7.3.5]
 
+- [C,D] Update to Polkadot-Stable2506 crate version
+
+## [7.3.5]
+
 - [C,D] Fix Nomination Pool withdrawal issue
 
 ## [7.3.4]
 
 - [C,D] Enable smart contracts
-
-## [7.3.3]
-
-- [C,D] Update to Polkadot-Stable2503 crate version
 
 ## [7.3.3]
 
