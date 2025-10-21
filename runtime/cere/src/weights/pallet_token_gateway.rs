@@ -108,4 +108,7 @@ impl<T: frame_system::Config> pallet_token_gateway::WeightInfo for SubstrateWeig
             .saturating_add(Weight::from_parts(1_723_090_u64, 0).saturating_mul(x as u64))
             .saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(x as u64)))
     }
+    fn register_asset_locally(_x: u32) -> Weight {
+        Weight::zero()
+    }
 }
