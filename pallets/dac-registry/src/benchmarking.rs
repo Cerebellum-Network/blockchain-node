@@ -6,9 +6,9 @@ use frame_system::RawOrigin;
 use sp_core::Get;
 use sp_core::H256;
 use sp_runtime::traits::Hash;
+use sp_std::iter;
 use sp_std::vec;
 use sp_std::vec::Vec;
-use sp_std::iter;
 
 /// Helper function to create test WASM code of a given size
 fn create_test_wasm_code(size: u32) -> Vec<u8> {
