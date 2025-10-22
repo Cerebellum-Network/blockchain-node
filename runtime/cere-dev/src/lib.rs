@@ -173,7 +173,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73170,
+	spec_version: 73173,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 26,
@@ -1426,11 +1426,12 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type WSignature = Signature;
 	type UnsignedPriority = ConstU64<500_000_000>;
 	type FeeHandler = FeeHandler;
+	type ForcePayoutOrigin = pallet_ddc_payouts::EnsureRootOrClusterManagerForForcePayout<Runtime>;
 
 	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
 	const DISABLE_PAYOUTS_CUTOFF: bool = false;
-	const OCW_INTERVAL: u16 = 5; // every 5th block
+	const OCW_INTERVAL: u16 = 1; // every 5th block
 }
 
 parameter_types! {
@@ -1530,7 +1531,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	type InspRedundancyFactor = TenPercentOfValidators;
 	type InspBackupsFactor = TenPercentOfValidators;
 
-	const OCW_INTERVAL: u16 = 10; // every 10th block
+	const OCW_INTERVAL: u16 = 1; // every 10th block
 	const TCA_INSPECTION_STEP: u64 = 0;
 	const MIN_INSP_REDUNDANCY_FACTOR: u8 = 3;
 	const MIN_INSP_BACKUPS_FACTOR: u8 = 1;

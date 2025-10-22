@@ -168,11 +168,6 @@ pub mod pallet {
 	pub type ClustersNodesStats<T: Config> =
 		StorageMap<_, Twox64Concat, ClusterId, ClusterNodesStats>;
 
-
-	#[pallet::storage]
-	pub type DryRunParams<T: Config> =
-		StorageValue<Value = InspectionDryRunParams, QueryKind = OptionQuery>;
-
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub clusters: Vec<Cluster<T::AccountId>>,
@@ -212,6 +207,7 @@ pub mod pallet {
 						erasure_coding_required: cluster.props.erasure_coding_required,
 						erasure_coding_total: cluster.props.erasure_coding_total,
 						replication_total: cluster.props.replication_total,
+						inspection_dry_run_params: cluster.props.inspection_dry_run_params.clone(),
 					},
 					self.clusters_protocol_params
 						.iter()
@@ -437,17 +433,6 @@ pub mod pallet {
 		Self::do_join_cluster(cluster, node_pub_key)
 	}
 
-	#[pallet::call_index(6)]
-	#[pallet::weight(T::DbWeight::get().writes(1))]
-	pub fn set_dry_run_params(
-		origin: OriginFor<T>,
-		params: InspectionDryRunParams,
-	) -> DispatchResult {
-		let _who = ensure_signed(origin)?;
-		DryRunParams::<T>::put(params);
-		Self::deposit_event(Event::DryRunParamsSet);
-		Ok(())
-	}
 }
 
 	impl<T: Config> Pallet<T> {
@@ -928,6 +913,7 @@ pub mod pallet {
 			Self::do_end_unbond_cluster(cluster_id)
 		}
 	}
+
 	impl<T: Config> ClusterValidator for Pallet<T> {
 		fn set_last_paid_era(cluster_id: &ClusterId, era_id: EhdEra) -> Result<(), DispatchError> {
 			let mut cluster =
@@ -1018,6 +1004,9 @@ pub mod pallet {
 			node_pub_key: &NodePubKey,
 			succeeded: bool,
 		) -> Result<(), DispatchError> {
+
+
+
 			Self::do_validate_node(*cluster_id, node_pub_key.clone(), succeeded)
 		}
 
@@ -1031,8 +1020,9 @@ pub mod pallet {
 			Ok(clusters_ids)
 		}
 
-	fn get_inspection_dry_run_params(_cluster_id: &ClusterId) -> Option<InspectionDryRunParams> {
-		DryRunParams::<T>::get()
+	fn get_inspection_dry_run_params(cluster_id: &ClusterId) -> Result<Option<InspectionDryRunParams>, DispatchError> {
+		let cluster = Clusters::<T>::try_get(*cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+		Ok(cluster.props.inspection_dry_run_params.clone())
 	}
 
 	}
