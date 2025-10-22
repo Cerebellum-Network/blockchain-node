@@ -107,7 +107,6 @@ pub mod pallet {
 		ClusterUnbonded { cluster_id: ClusterId },
 		ClusterNodeValidated { cluster_id: ClusterId, node_pub_key: NodePubKey, succeeded: bool },
 		ClusterEraPaid { cluster_id: ClusterId, era_id: EhdEra },
-		DryRunParamsSet,
 	}
 
 	#[pallet::error]
