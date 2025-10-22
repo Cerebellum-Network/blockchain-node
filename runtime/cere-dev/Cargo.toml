@@ -97,6 +97,7 @@ sp-version.workspace = true
 cere-runtime-common.workspace = true
 ddc-primitives.workspace = true
 pallet-chainbridge.workspace = true
+pallet-dac-registry.workspace = true
 pallet-ddc-clusters.workspace = true
 pallet-ddc-clusters-gov.workspace = true
 pallet-ddc-customers.workspace = true
@@ -221,6 +222,7 @@ std = [
   "pallet-migrations/std",
   "pallet-fee-handler/std",
   "pallet-delegated-staking/std",
+  "pallet-dac-registry/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
@@ -279,6 +281,7 @@ runtime-benchmarks = [
   "pallet-migrations/runtime-benchmarks",
   "pallet-fee-handler/runtime-benchmarks",
   "pallet-delegated-staking/runtime-benchmarks",
+  "pallet-dac-registry/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-executive/try-runtime",
@@ -341,6 +344,7 @@ try-runtime = [
   "pallet-token-gateway/try-runtime",
   "pallet-migrations/try-runtime",
   "pallet-delegated-staking/try-runtime",
+  "pallet-dac-registry/try-runtime",
 ]
 
 # Enable the metadata hash generation in the wasm builder.

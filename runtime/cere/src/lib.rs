@@ -163,7 +163,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73170,
+	spec_version: 73171,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 26,
@@ -1561,6 +1561,17 @@ impl pallet_pool_withdrawal_fix::Config for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const MaxDacCodeSize: u32 = 2 * 1024 * 1024; // 2MB
+}
+
+impl pallet_dac_registry::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type GovernanceOrigin = EnsureRoot<AccountId>;
+	type MaxCodeSize = MaxDacCodeSize;
+	type WeightInfo = pallet_dac_registry::weights::SubstrateWeight<Runtime>;
+}
+
 #[frame_support::runtime]
 mod runtime {
 	#[runtime::runtime]
@@ -1745,6 +1756,9 @@ mod runtime {
 
 	#[runtime::pallet_index(54)]
 	pub type PoolWithdrawalFix = pallet_pool_withdrawal_fix::Pallet<Runtime>;
+
+	#[runtime::pallet_index(55)]
+	pub type DacRegistry = pallet_dac_registry::Pallet<Runtime>;
 }
 
 /// The address format for describing accounts.

@@ -2200,6 +2200,7 @@ dependencies = [
  "pallet-collective",
  "pallet-contracts",
  "pallet-conviction-voting",
+ "pallet-dac-registry",
  "pallet-ddc-clusters",
  "pallet-ddc-clusters-gov",
  "pallet-ddc-customers",
@@ -2340,6 +2341,7 @@ dependencies = [
  "pallet-collective",
  "pallet-contracts",
  "pallet-conviction-voting",
+ "pallet-dac-registry",
  "pallet-ddc-clusters",
  "pallet-ddc-clusters-gov",
  "pallet-ddc-customers",
@@ -9550,6 +9552,23 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-runtime",
+]
+
+[[package]]
+name = "pallet-dac-registry"
+version = "0.1.0"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-api",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
