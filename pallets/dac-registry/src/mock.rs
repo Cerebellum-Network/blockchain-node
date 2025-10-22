@@ -1,7 +1,5 @@
 //! Mock runtime for testing the DAC Registry pallet
 
-#![cfg(test)]
-
 use crate as pallet_dac_registry;
 use frame_support::{
 	construct_runtime, parameter_types,
@@ -80,6 +78,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 }
 
 // Mock governance origin for testing
+#[allow(dead_code)]
 pub struct MockGovernanceOrigin;
 
 impl frame_support::traits::EnsureOrigin<RuntimeOrigin> for MockGovernanceOrigin {
@@ -111,6 +110,7 @@ pub mod test_utils {
 		H256::from_slice(&hash)
 	}
 
+	#[allow(dead_code)]
 	pub fn create_test_metadata() -> pallet_dac_registry::CodeMeta {
 		pallet_dac_registry::CodeMeta {
 			api_version: (1, 0),

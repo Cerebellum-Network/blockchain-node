@@ -1,7 +1,5 @@
 //! Tests for the DAC Registry pallet
 
-#![cfg(test)]
-
 use super::*;
 use crate::mock::*;
 use frame_support::{assert_noop, assert_ok, traits::OnInitialize};
