@@ -1562,7 +1562,7 @@ impl pallet_pool_withdrawal_fix::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MaxDacCodeSize: u32 = 1024 * 1024; // 1MB
+	pub const MaxDacCodeSize: u32 = 2 * 1024 * 1024; // 2MB
 }
 
 impl pallet_dac_registry::Config for Runtime {
