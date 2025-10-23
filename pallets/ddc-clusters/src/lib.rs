@@ -123,7 +123,6 @@ pub mod pallet {
 		NodeIsNotAuthorized,
 		NodeHasNoActivatedStake,
 		NodeStakeIsInvalid,
-		/// Cluster candidate should not plan to chill.
 		NodeChillingIsProhibited,
 		NodeAuthContractCallFailed,
 		NodeAuthContractDeployFailed,
