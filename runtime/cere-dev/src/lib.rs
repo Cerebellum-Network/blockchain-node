@@ -1807,7 +1807,7 @@ parameter_types! {
 	pub const MaxPoolsToMigrate: u32 = 250;
 }
 
-type Migrations = (pallet_ddc_clusters::migrations::v5::MigrateToV5<Runtime>);
+type Migrations = pallet_ddc_clusters::migrations::v5::MigrateToV5<Runtime>;
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
