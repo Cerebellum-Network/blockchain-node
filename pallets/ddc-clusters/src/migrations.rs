@@ -1,9 +1,8 @@
+use ddc_primitives::InspectionDryRunParams;
 use frame_support::{storage_alias, traits::OnRuntimeUpgrade};
 use log::info;
 use serde::{Deserialize, Serialize};
 use sp_runtime::{Perquintill, Saturating};
-use ddc_primitives::InspectionDryRunParams;
-
 
 use super::*;
 
@@ -154,7 +153,6 @@ pub mod v1 {
 			Ok(())
 		}
 	}
-
 }
 
 pub mod v2 {
@@ -808,5 +806,4 @@ pub mod v5 {
 			Ok(())
 		}
 	}
-
 }

@@ -35,7 +35,7 @@ use ddc_primitives::{
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterNodeKind, ClusterNodeState,
 	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
-	ClusterProtocolParams, ClusterStatus, EhdEra, NodePubKey, NodeType, InspectionDryRunParams,
+	ClusterProtocolParams, ClusterStatus, EhdEra, InspectionDryRunParams, NodePubKey, NodeType,
 };
 use frame_support::{
 	assert_ok,
@@ -428,10 +428,9 @@ pub mod pallet {
 				.map_err(Into::<Error<T>>::into)?;
 			ensure!(is_authorized, Error::<T>::NodeIsNotAuthorized);
 
-		Self::do_join_cluster(cluster, node_pub_key)
+			Self::do_join_cluster(cluster, node_pub_key)
+		}
 	}
-
-}
 
 	impl<T: Config> Pallet<T> {
 		fn do_create_cluster(
@@ -1002,9 +1001,6 @@ pub mod pallet {
 			node_pub_key: &NodePubKey,
 			succeeded: bool,
 		) -> Result<(), DispatchError> {
-
-
-
 			Self::do_validate_node(*cluster_id, node_pub_key.clone(), succeeded)
 		}
 
@@ -1018,11 +1014,13 @@ pub mod pallet {
 			Ok(clusters_ids)
 		}
 
-	fn get_inspection_dry_run_params(cluster_id: &ClusterId) -> Result<Option<InspectionDryRunParams>, DispatchError> {
-		let cluster = Clusters::<T>::try_get(*cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
-		Ok(cluster.props.inspection_dry_run_params.clone())
-	}
-
+		fn get_inspection_dry_run_params(
+			cluster_id: &ClusterId,
+		) -> Result<Option<InspectionDryRunParams>, DispatchError> {
+			let cluster =
+				Clusters::<T>::try_get(*cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			Ok(cluster.props.inspection_dry_run_params.clone())
+		}
 	}
 
 	impl<T: Config> ClusterCreator<T::AccountId, BlockNumberFor<T>, BalanceOf<T>> for Pallet<T>
