@@ -47,7 +47,8 @@ fn create_cluster_works() {
 				node_provider_auth_contract: Some(auth_contract.clone()),
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
-				replication_total: 3
+				replication_total: 3,
+				inspection_dry_run_params: None,
 			},
 			cluster_protocol_params.clone()
 		));
@@ -110,7 +111,8 @@ fn create_cluster_works() {
 					node_provider_auth_contract: Some(auth_contract),
 					erasure_coding_required: 4,
 					erasure_coding_total: 6,
-					replication_total: 3
+					replication_total: 3,
+					inspection_dry_run_params: None,
 				},
 				cluster_protocol_params
 			),
@@ -168,7 +170,8 @@ fn add_join_and_delete_node_works() {
 				node_provider_auth_contract: None,
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
-				replication_total: 3
+				replication_total: 3,
+				inspection_dry_run_params: None,
 			},
 			ClusterProtocolParams {
 				treasury_share: Perquintill::from_float(0.05),
@@ -203,7 +206,8 @@ fn add_join_and_delete_node_works() {
 				node_provider_auth_contract: Some(cluster_manager_id.clone()),
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
-				replication_total: 3
+				replication_total: 3,
+				inspection_dry_run_params: None,
 			},
 		));
 
@@ -272,7 +276,8 @@ fn add_join_and_delete_node_works() {
 				node_provider_auth_contract: Some(contract_id),
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
-				replication_total: 3
+				replication_total: 3,
+				inspection_dry_run_params: None,
 			},
 		));
 
@@ -471,7 +476,8 @@ fn set_cluster_params_works() {
 					node_provider_auth_contract: Some(auth_contract_1.clone()),
 					erasure_coding_required: 4,
 					erasure_coding_total: 6,
-					replication_total: 3
+					replication_total: 3,
+					inspection_dry_run_params: None,
 				},
 			),
 			Error::<Test>::ClusterDoesNotExist
@@ -486,7 +492,8 @@ fn set_cluster_params_works() {
 				node_provider_auth_contract: Some(auth_contract_1),
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
-				replication_total: 3
+				replication_total: 3,
+				inspection_dry_run_params: None,
 			},
 			ClusterProtocolParams {
 				treasury_share: Perquintill::from_float(0.05),
@@ -511,7 +518,8 @@ fn set_cluster_params_works() {
 					node_provider_auth_contract: Some(auth_contract_2.clone()),
 					erasure_coding_required: 4,
 					erasure_coding_total: 6,
-					replication_total: 3
+					replication_total: 3,
+					inspection_dry_run_params: None,
 				},
 			),
 			Error::<Test>::OnlyClusterManager
@@ -525,7 +533,8 @@ fn set_cluster_params_works() {
 					node_provider_auth_contract: Some(auth_contract_2.clone()),
 					erasure_coding_required: 1,
 					erasure_coding_total: 6,
-					replication_total: 3
+					replication_total: 3,
+					inspection_dry_run_params: None,
 				},
 			),
 			Error::<Test>::ErasureCodingRequiredDidNotMeetMinimum
@@ -539,7 +548,8 @@ fn set_cluster_params_works() {
 					node_provider_auth_contract: Some(auth_contract_2.clone()),
 					erasure_coding_required: 4,
 					erasure_coding_total: 1,
-					replication_total: 3
+					replication_total: 3,
+					inspection_dry_run_params: None,
 				},
 			),
 			Error::<Test>::ErasureCodingTotalNotMeetMinimum
@@ -553,7 +563,8 @@ fn set_cluster_params_works() {
 					node_provider_auth_contract: Some(auth_contract_2.clone()),
 					erasure_coding_required: 4,
 					erasure_coding_total: 6,
-					replication_total: 1
+					replication_total: 1,
+					inspection_dry_run_params: None,
 				},
 			),
 			Error::<Test>::ReplicationTotalDidNotMeetMinimum
@@ -566,7 +577,8 @@ fn set_cluster_params_works() {
 				node_provider_auth_contract: Some(auth_contract_2.clone()),
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
-				replication_total: 3
+				replication_total: 3,
+				inspection_dry_run_params: None,
 			},
 		));
 
@@ -609,7 +621,8 @@ fn set_last_validated_era_works() {
 				node_provider_auth_contract: Some(auth_contract_1),
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
-				replication_total: 3
+				replication_total: 3,
+				inspection_dry_run_params: None,
 			},
 			ClusterProtocolParams {
 				treasury_share: Perquintill::from_float(0.05),
@@ -671,7 +684,8 @@ fn cluster_visitor_works() {
 				node_provider_auth_contract: Some(auth_contract),
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
-				replication_total: 3
+				replication_total: 3,
+				inspection_dry_run_params: None,
 			},
 			cluster_protocol_params
 		));
@@ -811,7 +825,8 @@ fn cluster_creator_works() {
 				node_provider_auth_contract: Some(auth_contract),
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
-				replication_total: 3
+				replication_total: 3,
+				inspection_dry_run_params: None,
 			},
 			cluster_protocol_params,
 		));

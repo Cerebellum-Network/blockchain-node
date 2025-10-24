@@ -4,7 +4,7 @@ use ddc_primitives::{
 	traits::cluster::{ClusterCreator, ClusterManager, ClusterProtocol, ClusterQuery},
 	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterNodeKind, ClusterNodeState,
 	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
-	ClusterProtocolParams, ClusterStatus, NodePubKey, NodeType,
+	ClusterProtocolParams, ClusterStatus, NodePubKey, NodeType, InspectionDryRunParams,
 };
 use frame_support::{
 	construct_runtime, derive_impl, parameter_types,
@@ -332,6 +332,10 @@ impl ClusterManager<AccountId, BlockNumber> for TestClusterManager {
 	}
 
 	fn get_clusters(_status: ClusterStatus) -> Result<Vec<ClusterId>, DispatchError> {
+		unimplemented!()
+	}
+
+	fn get_inspection_dry_run_params(_cluster_id: &ClusterId) -> Result<Option<InspectionDryRunParams>, DispatchError> {
 		unimplemented!()
 	}
 }
