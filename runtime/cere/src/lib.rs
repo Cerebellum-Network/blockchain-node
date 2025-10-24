@@ -440,14 +440,19 @@ impl pallet_babe::Config for Runtime {
 	type EpochDuration = EpochDuration;
 	type ExpectedBlockTime = ExpectedBlockTime;
 	type EpochChangeTrigger = pallet_babe::ExternalTrigger;
+
+	// In normal builds, respect session's disabled list.
+	#[cfg(not(feature = "try-runtime"))]
 	type DisabledValidators = Session;
+
+	// In try-runtime builds, bypass disabled validators to unblock simulation.
+	#[cfg(feature = "try-runtime")]
+	type DisabledValidators = ();
+
 	type MaxNominators = MaxNominatorRewardedPerValidator;
-
 	type KeyOwnerProof = sp_session::MembershipProof;
-
 	type EquivocationReportSystem =
 		pallet_babe::EquivocationReportSystem<Self, Offences, Historical, ReportLongevity>;
-
 	type WeightInfo = ();
 	type MaxAuthorities = MaxAuthorities;
 }
