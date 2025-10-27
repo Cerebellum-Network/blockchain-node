@@ -217,7 +217,7 @@ jobs:
           cargo tarpaulin --verbose --locked --no-fail-fast --workspace \
             --features runtime-benchmarks --out "Xml" -- \
             --skip mock_clusters_gov::__construct_runtime_integrity_test::runtime_integrity_tests \
-            --skip pallet_ddc_payouts::pallet::Call::force_set_paid_era
+            --skip pallet_ddc_payouts::__construct_runtime_integrity_test::runtime_integrity_tests
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
