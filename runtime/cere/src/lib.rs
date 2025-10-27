@@ -163,10 +163,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73170,
+	spec_version: 73172,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 26,
+	transaction_version: 27,
 	system_version: 0,
 };
 
@@ -1384,6 +1384,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
 	type UnsignedPriority = ConstU64<500_000_000>;
 	type FeeHandler = FeeHandler;
+	type ForcePayoutOrigin = pallet_ddc_payouts::EnsureRootForForcePayout<AccountId>;
 
 	#[cfg(feature = "runtime-benchmarks")]
 	type CustomerDepositor = DdcCustomers;
@@ -1785,14 +1786,18 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, TxExtension>;
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, TxExtension>;
 // const IDENTITY_MIGRATION_KEY_LIMIT: u64 = u64::MAX; // for `pallet_identity` migration below
 
-/// Migrations for FRAME pallets, unreleased to MAINNET
+// /// Migrations for FRAME pallets, unreleased to MAINNET
 // type Migrations = (
 // 	pallet_nomination_pools::migration::unversioned::DelegationStakeMigration<
 // 		Runtime,
 // 		MaxPoolsToMigrate,
 // 	>,
 // );
-type Migrations = pallet_ddc_clusters::migrations::v4::MigrateToV4<Runtime>;
+
+type Migrations = (
+	pallet_ddc_clusters::migrations::v4::MigrateToV4<Runtime>,
+	pallet_ddc_clusters::migrations::v5::MigrateToV5<Runtime>,
+);
 
 parameter_types! {
 	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
