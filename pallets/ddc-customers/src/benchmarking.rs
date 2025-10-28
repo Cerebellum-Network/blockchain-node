@@ -53,6 +53,7 @@ mod benchmarks {
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
 				replication_total: 3,
+				inspection_dry_run_params: None,
 			},
 			cluster_protocol_params,
 		);

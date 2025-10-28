@@ -175,6 +175,7 @@ benchmarks! {
 				erasure_coding_required: 0,
 				erasure_coding_total: 0,
 				replication_total: 0,
+				inspection_dry_run_params: None,
 			},
 			ClusterProtocolParams {
 				treasury_share: Perquintill::default(),
@@ -216,6 +217,7 @@ benchmarks! {
 				erasure_coding_required: 0,
 				erasure_coding_total: 0,
 				replication_total: 0,
+				inspection_dry_run_params: None,
 			},
 			ClusterProtocolParams {
 				treasury_share: Perquintill::default(),
@@ -257,6 +259,7 @@ benchmarks! {
 				erasure_coding_required: 0,
 				erasure_coding_total: 0,
 				replication_total: 0,
+				inspection_dry_run_params: None,
 			},
 			ClusterProtocolParams {
 				treasury_share: Perquintill::default(),

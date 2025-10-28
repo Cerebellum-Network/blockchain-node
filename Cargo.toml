@@ -198,10 +198,10 @@ pallet-pool-withdrawal-fix = { path = "pallets/pool-withdrawal-fix", default-fea
 pallet-fee-handler = { path = "pallets/fee-handler", default-features = false }
 
 # Cere External Dependencies
-ddc-primitives = { git = "https://github.com/Cerebellum-Network/ddc-primitives.git", branch = "staging", default-features = false }
-ddc-api = { git = "https://github.com/Cerebellum-Network/ddc-api.git", branch = "staging", default-features = false }
-pallet-ddc-verification = { git = "https://github.com/Cerebellum-Network/ddc-verification.git", branch = "staging", default-features = false }
-pallet-ddc-payouts = { git = "https://github.com/Cerebellum-Network/ddc-payouts.git", branch = "staging", default-features = false }
+ddc-primitives = { git = "https://github.com/Cerebellum-Network/ddc-primitives.git", branch = "staging-dry-run", default-features = false }
+ddc-api = { git = "https://github.com/Cerebellum-Network/ddc-api.git", branch = "staging-dry-run", default-features = false }
+pallet-ddc-verification = { git = "https://github.com/Cerebellum-Network/ddc-verification.git", branch = "staging-dry-run", default-features = false }
+pallet-ddc-payouts = { git = "https://github.com/Cerebellum-Network/ddc-payouts.git", branch = "staging-dry-run", default-features = false }
 
 # Hyperbridge
 ismp = { default-features = false, version = "2506.1.0" }
