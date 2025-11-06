@@ -1557,7 +1557,7 @@ parameter_types! {
 impl pallet_migrations::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	#[cfg(not(feature = "runtime-benchmarks"))]
-	 type Migrations = ();
+	type Migrations = ();
 	//type Migrations = pallet_ddc_customers::migrations::v5_mbm::LazyMigrationV4ToV5<Runtime>; // enable after migrating Cluster Gov Params
 	#[cfg(feature = "runtime-benchmarks")]
 	type Migrations = pallet_migrations::mock_helpers::MockedMigrations;
