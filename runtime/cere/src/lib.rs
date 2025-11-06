@@ -1557,8 +1557,8 @@ parameter_types! {
 impl pallet_migrations::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	#[cfg(not(feature = "runtime-benchmarks"))]
-	// type Migrations = ();
-	type Migrations = pallet_ddc_customers::migrations::v5_mbm::LazyMigrationV4ToV5<Runtime>; // enable after migrating Cluster Gov Params
+	 type Migrations = ();
+	//type Migrations = pallet_ddc_customers::migrations::v5_mbm::LazyMigrationV4ToV5<Runtime>; // enable after migrating Cluster Gov Params
 	#[cfg(feature = "runtime-benchmarks")]
 	type Migrations = pallet_migrations::mock_helpers::MockedMigrations;
 	type CursorMaxLen = ConstU32<65_536>;
@@ -1823,7 +1823,7 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Tx
 // );
 
 type Migrations = (
-	pallet_ddc_clusters::migrations::v4::MigrateToV4<Runtime>,
+	// pallet_ddc_clusters::migrations::v4::MigrateToV4<Runtime>,
 	pallet_ddc_clusters::migrations::v5::MigrateToV5<Runtime>,
 );
 
@@ -1869,6 +1869,7 @@ pub mod migrations {
 		// `ddc-verification` pallet was never deployed on MAINNET
 		// pallet_ddc_nodes::migrations::v0_v2::MigrateFromV0ToV2<Runtime>,
 		pallet_ddc_clusters::migrations::v4::MigrateToV4<Runtime>,
+		pallet_ddc_clusters::migrations::v5::MigrateToV5<Runtime>,
 	);
 
 	pub type UnreleasedMultiblock =
