@@ -66,6 +66,7 @@ pub fn create_cluster_with_nodes<T: Config>(
 		erasure_coding_required: 0,
 		erasure_coding_total: 0,
 		replication_total: 0,
+		inspection_dry_run_params: None,
 	};
 
 	T::ClusterCreator::create_cluster(
