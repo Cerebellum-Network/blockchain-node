@@ -1465,7 +1465,6 @@ impl pallet_migrations::Config for Runtime {
 }
 
 impl pallet_pool_withdrawal_fix::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type DelegationPalletConnector = DelegatedStaking;
 	type GovernanceOrigin = EnsureRoot<AccountId>;
