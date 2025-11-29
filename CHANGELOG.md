@@ -8,7 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Legend
 
 - [C] Changes is `Cere` Runtime
-- [D] Changes is `Cere Dev` Runtime
+- [D] Changes is `Cere Dev` 
+
+## [7.3.13]
+
+- [C,D] Update Substrate from `stable2503` to `stable2506`.
+
+## [7.3.12]
+
+- [C,D] Fix Nomination Pool withdrawal issue.
 
 ## [7.3.11]
 

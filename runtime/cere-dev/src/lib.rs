@@ -444,13 +444,18 @@ impl pallet_babe::Config for Runtime {
 	type EpochDuration = EpochDuration;
 	type ExpectedBlockTime = ExpectedBlockTime;
 	type EpochChangeTrigger = pallet_babe::ExternalTrigger;
+
+	// In normal builds, respect session's disabled list.
+	#[cfg(not(feature = "try-runtime"))]
 	type DisabledValidators = Session;
 
-	type KeyOwnerProof = sp_session::MembershipProof;
+	// In try-runtime builds, bypass disabled validators to unblock simulation.
+	#[cfg(feature = "try-runtime")]
+	type DisabledValidators = ();
 
+	type KeyOwnerProof = sp_session::MembershipProof;
 	type EquivocationReportSystem =
 		pallet_babe::EquivocationReportSystem<Self, Offences, Historical, ReportLongevity>;
-
 	type WeightInfo = ();
 	type MaxAuthorities = MaxAuthorities;
 	type MaxNominators = MaxNominatorRewardedPerValidator;
@@ -663,12 +668,20 @@ impl pallet_staking::Config for Runtime {
 	type MaxUnlockingChunks = ConstU32<32>;
 	type MaxControllersInDeprecationBatch = MaxControllersInDeprecationBatch;
 	type HistoryDepth = frame_support::traits::ConstU32<84>;
-	type EventListeners = NominationPools;
+	type EventListeners = (NominationPools, DelegatedStaking);
 	type WeightInfo = pallet_staking::weights::SubstrateWeight<Runtime>;
 	type BenchmarkingConfig = StakingBenchmarkingConfig;
 	type NominationsQuota = pallet_staking::FixedNominationsQuota<{ MaxNominations::get() }>;
 	type Filter = Nothing;
 	type MaxValidatorSet = ConstU32<1000>;
+}
+
+impl pallet_pool_withdrawal_fix::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type DelegationPalletConnector = DelegatedStaking;
+	type GovernanceOrigin = EnsureRoot<AccountId>;
+	type WeightInfo = ();
 }
 
 impl pallet_fast_unstake::Config for Runtime {
@@ -1641,6 +1654,9 @@ mod runtime {
 	pub type MultiBlockMigrations = pallet_migrations;
 	#[runtime::pallet_index(52)]
 	pub type DelegatedStaking = pallet_delegated_staking;
+
+	#[runtime::pallet_index(53)]
+	pub type PoolWithdrawalFix = pallet_pool_withdrawal_fix::Pallet<Runtime>;
 }
 
 /// The address format for describing accounts.
