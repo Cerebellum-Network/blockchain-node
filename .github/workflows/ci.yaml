@@ -101,7 +101,7 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
       - name: Install linux dependencies
-        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler make
+        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler make pkg-config
       - name: Install Rust and Use It
         shell: bash
         run: |
@@ -120,9 +120,14 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
       - name: Install cargo-tarpaulin
-        run: cargo install cargo-tarpaulin --locked
-      - name: Run cargo-tarpaulin
+        shell: bash
         run: |
+          . "$HOME/.cargo/env"
+          cargo install cargo-tarpaulin --locked
+      - name: Run cargo-tarpaulin
+        shell: bash
+        run: |
+          . "$HOME/.cargo/env"
           cargo tarpaulin --verbose --locked --no-fail-fast --workspace --features runtime-benchmarks --out Xml -- --skip mock_clusters_gov::__construct_runtime_integrity_test::runtime_integrity_tests
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
