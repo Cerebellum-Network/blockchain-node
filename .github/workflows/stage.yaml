@@ -100,10 +100,12 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v1
 
       - name: Build and push docker image to ECR
+        timeout-minutes: 120
         uses: docker/build-push-action@v4
         with:
           context: .
           push: true
+          platforms: linux/amd64
           build-args: |
             "AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID }}"
             "AWS_SECRET_ACCESS_KEY=${{ env.AWS_SECRET_ACCESS_KEY }}"
