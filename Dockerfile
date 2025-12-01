@@ -53,6 +53,16 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
     scripts/init.sh && \
     cargo build  --$PROFILE  --features on-chain-release-build
 
+# Clean up unnecessary files to save disk space
+# Remove debug builds, incremental compilation artifacts, and other intermediate files
+# Keep only the release binary and WASM runtime artifacts
+RUN rm -rf /cerenetwork/target/debug && \
+    rm -rf /cerenetwork/target/$PROFILE/incremental && \
+    rm -rf /cerenetwork/target/$PROFILE/build && \
+    find /cerenetwork/target/$PROFILE/deps -name "*.rlib" -delete 2>/dev/null || true && \
+    find /cerenetwork/target/$PROFILE/deps -name "*.rmeta" -delete 2>/dev/null || true && \
+    find /cerenetwork/target/$PROFILE/deps -name "*.d" -delete 2>/dev/null || true
+
 # ===== SECOND STAGE ======
 FROM phusion/baseimage:jammy-1.0.1
 LABEL maintainer="team@cere.network"

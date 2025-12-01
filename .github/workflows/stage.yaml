@@ -7,6 +7,7 @@ on:
       - master
       - 'release/**'
       - 'hotfix/**'
+      - 'fixed-release-to-stage'
 
 env:
   PROFILE: release
@@ -52,6 +53,15 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
+
+      - name: Free disk space
+        run: |
+          # Remove unused Docker images, containers, and build cache
+          docker system prune -af --volumes || true
+          # Remove old buildx cache
+          docker buildx prune -af || true
+          # Show available disk space
+          df -h
 
       - name: Login to Amazon ECR
         id: login-ecr
