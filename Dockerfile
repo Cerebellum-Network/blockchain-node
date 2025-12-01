@@ -61,7 +61,13 @@ RUN rm -rf /cerenetwork/target/debug && \
     rm -rf /cerenetwork/target/$PROFILE/build && \
     find /cerenetwork/target/$PROFILE/deps -name "*.rlib" -delete 2>/dev/null || true && \
     find /cerenetwork/target/$PROFILE/deps -name "*.rmeta" -delete 2>/dev/null || true && \
-    find /cerenetwork/target/$PROFILE/deps -name "*.d" -delete 2>/dev/null || true
+    find /cerenetwork/target/$PROFILE/deps -name "*.d" -delete 2>/dev/null || true && \
+    # Clean up Rust toolchain cache if not needed
+    rm -rf ~/.cargo/registry/cache 2>/dev/null || true && \
+    # Clean up apt cache
+    apt-get clean && rm -rf /var/lib/apt/lists/* && \
+    # Clean up temporary files
+    rm -rf /tmp/* /var/tmp/*
 
 # ===== SECOND STAGE ======
 FROM phusion/baseimage:jammy-1.0.1
