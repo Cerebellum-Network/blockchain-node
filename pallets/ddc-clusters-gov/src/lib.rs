@@ -125,6 +125,7 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_referenda::Config {
 		type PalletId: Get<PalletId>;
+		#[allow(deprecated)]
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		type Currency: LockableCurrency<Self::AccountId, Moment = BlockNumberFor<Self>>;
 		type WeightInfo: WeightInfo;
@@ -375,6 +376,7 @@ pub mod pallet {
 					.max(<T as pallet::Config>::WeightInfo::close_disapproved(m))
 			}
 		)]
+		#[allow(clippy::useless_conversion)]
 		pub fn close_proposal(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -579,6 +581,7 @@ pub mod pallet {
 		}
 
 		/// Close a vote that is either approved, disapproved or whose voting period has ended.
+		#[allow(clippy::useless_conversion)]
 		fn do_close(cluster_id: ClusterId, caller_id: T::AccountId) -> DispatchResultWithPostInfo {
 			let voting =
 				ClusterProposalVoting::<T>::get(cluster_id).ok_or(Error::<T>::ProposalMissing)?;

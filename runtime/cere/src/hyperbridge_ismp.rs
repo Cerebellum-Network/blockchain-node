@@ -1,8 +1,7 @@
-use frame_support::parameter_types;
+use frame_support::{parameter_types, weights::WeightToFee};
 use frame_system::EnsureRoot;
 use ismp::{error::Error, host::StateMachine, module::IsmpModule, router::IsmpRouter};
 use ismp_grandpa::consensus::GrandpaConsensusClient;
-use pallet_ismp::fee_handler::WeightFeeHandler;
 use pallet_token_gateway::types::EvmToSubstrate;
 use sp_core::H160;
 
@@ -15,9 +14,16 @@ parameter_types! {
 	pub const HostStateMachine: StateMachine = StateMachine::Substrate(*b"cere"); // your unique chain id here
 }
 
+pub struct IsmpWeightToFee;
+impl WeightToFee for IsmpWeightToFee {
+	type Balance = Balance;
+
+	fn weight_to_fee(weight: &Weight) -> Self::Balance {
+		<Runtime as pallet_transaction_payment::Config>::WeightToFee::weight_to_fee(weight)
+	}
+}
+
 impl pallet_ismp::Config for Runtime {
-	// Configure the runtime event
-	type RuntimeEvent = RuntimeEvent;
 	// Permissioned origin who can create or update consensus clients
 	type AdminOrigin = EnsureRoot<AccountId>;
 	// The state machine identifier for this state machine
@@ -44,11 +50,16 @@ impl pallet_ismp::Config for Runtime {
 	// The default implementation for `()` should suffice
 	type OffchainDB = ();
 	// Weight provider for local modules
-	type FeeHandler = WeightFeeHandler<()>;
+	type FeeHandler = pallet_ismp::fee_handler::WeightFeeHandler<
+		AccountId,
+		Balances,
+		IsmpWeightToFee,
+		TreasuryPalletId,
+		false,
+	>;
 }
 
 impl pallet_hyperbridge::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type IsmpHost = Ismp;
 }
 
@@ -57,19 +68,19 @@ pub struct ModuleRouter;
 
 impl IsmpRouter for ModuleRouter {
 	fn module_for_id(&self, id: Vec<u8>) -> Result<Box<dyn IsmpModule>, anyhow::Error> {
-		return match id.as_slice() {
+		match id.as_slice() {
 			id if TokenGateway::is_token_gateway(id) => Ok(Box::new(TokenGateway::default())),
 			pallet_hyperbridge::PALLET_HYPERBRIDGE_ID =>
 				Ok(Box::new(pallet_hyperbridge::Pallet::<Runtime>::default())),
 			_ => Err(Error::ModuleNotFound(id).into()),
-		};
+		}
 	}
 }
 
 impl ismp_grandpa::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type IsmpHost = Ismp;
 	type WeightInfo = weights::ismp_grandpa::WeightInfo<Runtime>;
+	type RootOrigin = EnsureRoot<AccountId>;
 }
 
 parameter_types! {
@@ -220,8 +231,6 @@ impl EvmToSubstrate<Runtime> for EvmToSubstrateFactory {
 	}
 }
 impl pallet_token_gateway::Config for Runtime {
-	// configure the runtime event
-	type RuntimeEvent = RuntimeEvent;
 	// Configured as Pallet Ismp
 	type Dispatcher = pallet_hyperbridge::Pallet<Runtime>;
 	// Configured as Pallet Assets

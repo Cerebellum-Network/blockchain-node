@@ -35,6 +35,7 @@ pub mod pallet {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + bridge::Config + erc721::Config {
+		#[allow(deprecated)]
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		/// Specifies the origin check provided by the bridge for calls that can only be called by
 		/// the bridge pallet

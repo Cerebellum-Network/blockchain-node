@@ -350,7 +350,7 @@ impl<T: frame_system::Config> SortedListProvider<T::AccountId> for TestValidator
 	}
 	fn unsafe_regenerate(
 		_: impl IntoIterator<Item = T::AccountId>,
-		_: Box<dyn Fn(&T::AccountId) -> Self::Score>,
+		_: Box<dyn Fn(&T::AccountId) -> Option<Self::Score>>,
 	) -> u32 {
 		// nothing to do upon regenerate.
 		0
@@ -358,6 +358,14 @@ impl<T: frame_system::Config> SortedListProvider<T::AccountId> for TestValidator
 
 	fn unsafe_clear() {
 		unimplemented!()
+	}
+
+	fn lock() {
+		// nothing to do on lock.
+	}
+
+	fn unlock() {
+		// nothing to do on unlock.
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]

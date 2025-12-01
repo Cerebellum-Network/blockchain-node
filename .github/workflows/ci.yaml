@@ -44,7 +44,7 @@ jobs:
       - name: Install toolchain and rust-src
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.82.0
+          toolchain: 1.90.0
           override: true
           target: wasm32-unknown-unknown
           components: rust-src
@@ -82,7 +82,7 @@ jobs:
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.82.0
+          toolchain: 1.90.0
           override: true
           target: wasm32-unknown-unknown
           components: rust-src
@@ -101,29 +101,34 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
       - name: Install linux dependencies
-        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler make
+        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler make pkg-config
       - name: Install Rust and Use It
         shell: bash
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           . "$HOME/.cargo/env"
-          rustup toolchain install 1.82.0
-          rustup default 1.82.0
+          rustup toolchain install 1.90.0
+          rustup default 1.90.0
           rustup show
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.82.0
+          toolchain: 1.90.0
           override: true
           target: wasm32-unknown-unknown
           components: rust-src
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
+      - name: Install cargo-tarpaulin
+        shell: bash
+        run: |
+          . "$HOME/.cargo/env"
+          cargo install cargo-tarpaulin --locked
       - name: Run cargo-tarpaulin
-        uses: actions-rs/tarpaulin@v0.1
-        with:
-          version: '0.22.0'
-          args: '--verbose --locked --no-fail-fast --workspace --features runtime-benchmarks --out "Xml" -- --skip mock_clusters_gov::__construct_runtime_integrity_test::runtime_integrity_tests'
+        shell: bash
+        run: |
+          . "$HOME/.cargo/env"
+          cargo tarpaulin --verbose --locked --no-fail-fast --workspace --features runtime-benchmarks --out Xml -- --skip mock_clusters_gov::__construct_runtime_integrity_test::runtime_integrity_tests
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:

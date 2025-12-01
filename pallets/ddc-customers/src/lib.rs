@@ -159,6 +159,7 @@ pub mod pallet {
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 		type Currency: LockableCurrency<Self::AccountId, Moment = BlockNumberFor<Self>>;
+		#[allow(deprecated)]
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		/// Number of eras that staked funds must remain locked for.
 		#[pallet::constant]
@@ -453,6 +454,7 @@ pub mod pallet {
 		/// See also [`Call::unlock_deposit`].
 		#[pallet::call_index(4)]
 		#[pallet::weight(T::WeightInfo::withdraw_unlocked_deposit_kill())]
+		#[allow(clippy::useless_conversion)]
 		pub fn withdraw_unlocked_deposit(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
 			let mut ledger = Ledger::<T>::get(&owner).ok_or(Error::<T>::NotOwner)?;
