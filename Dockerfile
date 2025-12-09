@@ -59,8 +59,7 @@ ARG GH_READ_TOKEN
 
 # Switch to builder user and configure Git for private Cerebellum repos
 USER builder
-RUN git config --global url."https://yahortsaryk:${GH_READ_TOKEN}@github.com/Cerebellum-Network/ddc-verification".insteadOf "https://github.com/Cerebellum-Network/ddc-verification" && \
-    git config --global url."https://yahortsaryk:${GH_READ_TOKEN}@github.com/Cerebellum-Network/ddc-payouts".insteadOf "https://github.com/Cerebellum-Network/ddc-payouts"
+RUN git config --global url."https://${GH_READ_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
     export PATH=$PATH:$HOME/.cargo/bin && \
