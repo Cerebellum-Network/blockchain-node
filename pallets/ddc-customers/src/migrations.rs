@@ -168,6 +168,26 @@ pub mod v2 {
 
 	use super::*;
 
+	#[derive(
+		PartialEq,
+		Eq,
+		Encode,
+		Decode,
+		DecodeWithMemTracking,
+		Debug,
+		TypeInfo,
+		Default,
+		Clone,
+		PartialOrd,
+		Ord,
+	)]
+	pub struct BucketUsage {
+		pub transferred_bytes: u64,
+		pub stored_bytes: i64,
+		pub number_of_puts: u64,
+		pub number_of_gets: u64,
+	}
+
 	#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 	#[scale_info(skip_type_params(T))]
 	pub struct Bucket<AccountId> {

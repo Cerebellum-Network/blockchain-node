@@ -2139,7 +2139,7 @@ version = "7.3.3"
 dependencies = [
  "cere-dev-runtime",
  "cere-runtime",
- "ddc-primitives 7.3.2",
+ "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=feat%2Fdac-compute)",
  "frame-benchmarking",
  "frame-system",
  "frame-system-rpc-runtime-api",
@@ -2175,7 +2175,7 @@ version = "7.3.3"
 dependencies = [
  "anyhow",
  "cere-runtime-common",
- "ddc-primitives 7.3.2",
+ "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=feat%2Fdac-compute)",
  "frame-benchmarking",
  "frame-election-provider-support",
  "frame-executive",
@@ -2281,7 +2281,7 @@ dependencies = [
 name = "cere-rpc"
 version = "7.3.3"
 dependencies = [
- "ddc-primitives 7.3.2",
+ "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=feat%2Fdac-compute)",
  "jsonrpsee",
  "pallet-ismp-rpc",
  "pallet-ismp-runtime-api",
@@ -2315,7 +2315,7 @@ version = "7.3.3"
 dependencies = [
  "anyhow",
  "cere-runtime-common",
- "ddc-primitives 7.3.2",
+ "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=feat%2Fdac-compute)",
  "frame-benchmarking",
  "frame-election-provider-support",
  "frame-executive",
@@ -2421,7 +2421,7 @@ dependencies = [
 name = "cere-runtime-common"
 version = "7.3.3"
 dependencies = [
- "ddc-primitives 7.3.2",
+ "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=feat%2Fdac-compute)",
  "frame-support",
  "frame-system",
  "log",
@@ -2447,7 +2447,7 @@ dependencies = [
  "cere-rpc",
  "cere-runtime",
  "cere-runtime-common",
- "ddc-primitives 7.3.2",
+ "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=feat%2Fdac-compute)",
  "frame-benchmarking-cli",
  "futures 0.3.31",
  "jsonrpsee",
@@ -4208,9 +4208,10 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.2"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=feat%2Fdac-compute#5a746c8c0c8bb2c9b022ec121ccac988beadf6e4"
 dependencies = [
  "blake2 0.10.6",
- "ddc-primitives 7.3.2",
+ "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=feat%2Fdac-compute)",
  "frame-support",
  "frame-system",
  "hex",
@@ -4233,6 +4234,7 @@ dependencies = [
 [[package]]
 name = "ddc-primitives"
 version = "7.3.2"
+source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev#9c891d51524297fe014ff4684783f47855df8b50"
 dependencies = [
  "blake2 0.10.6",
  "frame-support",
@@ -4258,7 +4260,7 @@ dependencies = [
 [[package]]
 name = "ddc-primitives"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev#9c891d51524297fe014ff4684783f47855df8b50"
+source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=feat%2Fdac-compute#e7b84df857bfa6c4dc0c93d7b4fbc45cbb71ec36"
 dependencies = [
  "blake2 0.10.6",
  "frame-support",
@@ -9574,7 +9576,7 @@ dependencies = [
 name = "pallet-ddc-clusters"
 version = "7.3.3"
 dependencies = [
- "ddc-primitives 7.3.2",
+ "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=feat%2Fdac-compute)",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -9600,7 +9602,7 @@ dependencies = [
 name = "pallet-ddc-clusters-gov"
 version = "7.3.3"
 dependencies = [
- "ddc-primitives 7.3.2",
+ "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=feat%2Fdac-compute)",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -9635,7 +9637,7 @@ dependencies = [
 name = "pallet-ddc-customers"
 version = "7.3.3"
 dependencies = [
- "ddc-primitives 7.3.2",
+ "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=feat%2Fdac-compute)",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -9662,7 +9664,7 @@ dependencies = [
 name = "pallet-ddc-nodes"
 version = "7.3.3"
 dependencies = [
- "ddc-primitives 7.3.2",
+ "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=feat%2Fdac-compute)",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -9684,11 +9686,12 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "7.3.2"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Fdac-compute#d06998f298b5ae8f4793fcd43e9300f02b7a4cf1"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
  "ddc-api",
- "ddc-primitives 7.3.2",
+ "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=feat%2Fdac-compute)",
  "frame-benchmarking",
  "frame-election-provider-support",
  "frame-support",
@@ -9715,7 +9718,7 @@ dependencies = [
 name = "pallet-ddc-staking"
 version = "7.3.3"
 dependencies = [
- "ddc-primitives 7.3.2",
+ "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=feat%2Fdac-compute)",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -9742,12 +9745,13 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "7.3.2"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=feat%2Fdac-compute#aa5a38d8b6b8766dae7e87b995d4b6d61dc9b051"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
  "byte-unit",
  "ddc-api",
- "ddc-primitives 7.3.2",
+ "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=feat%2Fdac-compute)",
  "frame-benchmarking",
  "frame-election-provider-support",
  "frame-support",
@@ -9979,7 +9983,7 @@ dependencies = [
 name = "pallet-fee-handler"
 version = "7.3.3"
 dependencies = [
- "ddc-primitives 7.3.2",
+ "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=feat%2Fdac-compute)",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
