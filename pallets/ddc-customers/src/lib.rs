@@ -16,7 +16,7 @@ use ddc_primitives::{
 		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery},
 		customer::{CustomerCharger, CustomerDepositor, CustomerVisitor},
 	},
-	BucketId, BucketParams, BucketUsage, ClusterId,
+	BucketId, BucketParams, ClusterId,
 };
 use frame_support::{
 	parameter_types,
