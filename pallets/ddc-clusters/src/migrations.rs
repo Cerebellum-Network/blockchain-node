@@ -807,3 +807,162 @@ pub mod v5 {
 		}
 	}
 }
+
+pub mod v6 {
+	use super::*;
+	use crate::BalanceOf;
+	use frame_support::{pallet_prelude::*, traits::Get, weights::Weight};
+	use sp_std::marker::PhantomData;
+	#[cfg(feature = "try-runtime")]
+	use sp_std::vec::Vec;
+
+	#[derive(
+		Clone,
+		Encode,
+		Decode,
+		DecodeWithMemTracking,
+		RuntimeDebug,
+		TypeInfo,
+		PartialEq,
+		Default,
+		Serialize,
+		Deserialize,
+	)]
+	#[scale_info(skip_type_params(Balance, BlockNumber, T))]
+	pub struct ClusterProtocolParams<Balance, BlockNumber, AccountId> {
+		pub treasury_share: Perquintill,
+		pub validators_share: Perquintill,
+		pub cluster_reserve_share: Perquintill,
+		pub storage_bond_size: Balance,
+		pub storage_chill_delay: BlockNumber,
+		pub storage_unbonding_delay: BlockNumber,
+		pub cost_per_mb_stored: u128,
+		pub cost_per_mb_streamed: u128,
+		pub cost_per_put_request: u128,
+		pub cost_per_get_request: u128,
+		pub cost_per_gpu_unit: u128,
+		pub cost_per_cpu_unit: u128,
+		pub cost_per_ram_unit: u128,
+		pub customer_deposit_contract: AccountId,
+	}
+
+	#[storage_alias]
+	pub type ClustersGovParams<T: Config> = StorageMap<
+		crate::Pallet<T>,
+		Twox64Concat,
+		ClusterId,
+		ClusterProtocolParams<
+			BalanceOf<T>,
+			BlockNumberFor<T>,
+			<T as frame_system::Config>::AccountId,
+		>,
+	>;
+
+	pub fn migrate_to_v6<T: Config>() -> Weight {
+		let on_chain_version = Pallet::<T>::on_chain_storage_version();
+		let current_version = Pallet::<T>::in_code_storage_version();
+
+		info!(
+			target: LOG_TARGET,
+			"Running migration with current storage version {:?} / onchain {:?}",
+			current_version,
+			on_chain_version
+		);
+
+		if on_chain_version == 5 && current_version == 6 {
+			let mut translated = 0u64;
+			let count = v4::ClustersGovParams::<T>::iter().count();
+			info!(
+				target: LOG_TARGET,
+				" >>> Updating DDC Cluster protocol params storage. Migrating {} cluster protocol params...", count
+			);
+
+			v6::ClustersGovParams::<T>::translate::<
+				v4::ClusterProtocolParams<
+					BalanceOf<T>,
+					BlockNumberFor<T>,
+					<T as frame_system::Config>::AccountId,
+				>,
+				_,
+			>(
+				|cluster_id: ClusterId,
+				 old_cluster_params: v4::ClusterProtocolParams<
+					BalanceOf<T>,
+					BlockNumberFor<T>,
+					<T as frame_system::Config>::AccountId,
+				>| {
+					info!(target: LOG_TARGET, "     Migrating protocol params for cluster {:?} ...", cluster_id);
+					translated.saturating_inc();
+
+					Some(v6::ClusterProtocolParams {
+						treasury_share: old_cluster_params.treasury_share,
+						validators_share: old_cluster_params.validators_share,
+						cluster_reserve_share: old_cluster_params.cluster_reserve_share,
+						storage_bond_size: old_cluster_params.storage_bond_size,
+						storage_chill_delay: old_cluster_params.storage_chill_delay,
+						storage_unbonding_delay: old_cluster_params.storage_unbonding_delay,
+						cost_per_mb_stored: old_cluster_params.unit_per_mb_stored,
+						cost_per_mb_streamed: old_cluster_params.unit_per_mb_streamed,
+						cost_per_put_request: old_cluster_params.unit_per_put_request,
+						cost_per_get_request: old_cluster_params.unit_per_get_request,
+						cost_per_gpu_unit: 0,
+						cost_per_cpu_unit: 0,
+						cost_per_ram_unit: 0,
+						customer_deposit_contract: old_cluster_params.customer_deposit_contract,
+					})
+				},
+			);
+
+			// Update storage version.
+			StorageVersion::new(6).put::<Pallet<T>>();
+			info!(
+				target: LOG_TARGET,
+				"Upgraded {} records, storage to version {:?}",
+				count,
+				current_version
+			);
+
+			T::DbWeight::get().reads_writes(translated + 1, translated + 1)
+		} else {
+			info!(target: LOG_TARGET, " >>> Unused migration!");
+			T::DbWeight::get().reads(1)
+		}
+	}
+
+	pub struct MigrateToV6<T>(PhantomData<T>);
+
+	impl<T: Config> OnRuntimeUpgrade for MigrateToV6<T> {
+		fn on_runtime_upgrade() -> Weight {
+			migrate_to_v6::<T>()
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::DispatchError> {
+			let prev_count = v4::ClustersGovParams::<T>::iter().count();
+
+			Ok((prev_count as u64).encode())
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), sp_runtime::DispatchError> {
+			let prev_count: u64 = Decode::decode(&mut &prev_state[..])
+				.expect("pre_upgrade provides a valid state; qed");
+
+			let post_count = v6::ClustersGovParams::<T>::iter().count() as u64;
+			ensure!(
+				prev_count == post_count,
+				"the cluster protocol params count before and after the migration should be the same"
+			);
+
+			let current_version = Pallet::<T>::in_code_storage_version();
+			let on_chain_version = Pallet::<T>::on_chain_storage_version();
+
+			ensure!(current_version == 6, "must_upgrade");
+			ensure!(
+				current_version == on_chain_version,
+				"after migration, the current_version and on_chain_version should be the same"
+			);
+			Ok(())
+		}
+	}
+}
