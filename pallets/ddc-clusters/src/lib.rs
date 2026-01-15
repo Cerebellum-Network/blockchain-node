@@ -69,7 +69,7 @@ pub mod pallet {
 
 	/// The current storage version.
 	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-		frame_support::traits::StorageVersion::new(5);
+		frame_support::traits::StorageVersion::new(6);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -815,10 +815,13 @@ pub mod pallet {
 			let cluster_protocol_params = ClustersGovParams::<T>::try_get(cluster_id)
 				.map_err(|_| Error::<T>::ClusterProtocolParamsNotSet)?;
 			Ok(ClusterPricingParams {
-				unit_per_mb_stored: cluster_protocol_params.unit_per_mb_stored,
-				unit_per_mb_streamed: cluster_protocol_params.unit_per_mb_streamed,
-				unit_per_put_request: cluster_protocol_params.unit_per_put_request,
-				unit_per_get_request: cluster_protocol_params.unit_per_get_request,
+				cost_per_mb_stored: cluster_protocol_params.cost_per_mb_stored,
+				cost_per_mb_streamed: cluster_protocol_params.cost_per_mb_streamed,
+				cost_per_put_request: cluster_protocol_params.cost_per_put_request,
+				cost_per_get_request: cluster_protocol_params.cost_per_get_request,
+				cost_per_gpu_unit: cluster_protocol_params.cost_per_gpu_unit,
+				cost_per_cpu_unit: cluster_protocol_params.cost_per_cpu_unit,
+				cost_per_ram_unit: cluster_protocol_params.cost_per_ram_unit,
 			})
 		}
 

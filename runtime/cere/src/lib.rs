@@ -163,7 +163,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73175,
+	spec_version: 73176,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 27,
@@ -1797,6 +1797,7 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Tx
 type Migrations = (
 	pallet_ddc_clusters::migrations::v4::MigrateToV4<Runtime>,
 	pallet_ddc_clusters::migrations::v5::MigrateToV5<Runtime>,
+	pallet_ddc_clusters::migrations::v6::MigrateToV6<Runtime>,
 );
 
 parameter_types! {
