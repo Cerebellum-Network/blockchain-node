@@ -190,10 +190,13 @@ impl ClusterProtocol<AccountId, BlockNumber, Balance> for TestClusterProtocol {
 
 	fn get_pricing_params(_cluster_id: &ClusterId) -> Result<ClusterPricingParams, DispatchError> {
 		Ok(ClusterPricingParams {
-			unit_per_mb_stored: 1,
-			unit_per_mb_streamed: 2,
-			unit_per_put_request: 3,
-			unit_per_get_request: 4,
+			cost_per_mb_stored: 1,
+			cost_per_mb_streamed: 2,
+			cost_per_put_request: 3,
+			cost_per_get_request: 4,
+			cost_per_gpu_unit: 0,
+			cost_per_cpu_unit: 0,
+			cost_per_ram_unit: 0,
 		})
 	}
 

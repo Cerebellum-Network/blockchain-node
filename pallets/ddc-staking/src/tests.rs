@@ -27,10 +27,13 @@ fn default_cluster_protocol_params<T: Config>(
 		storage_bond_size: Default::default(),
 		storage_chill_delay: Default::default(),
 		storage_unbonding_delay: Default::default(),
-		unit_per_mb_stored: Default::default(),
-		unit_per_mb_streamed: Default::default(),
-		unit_per_put_request: Default::default(),
-		unit_per_get_request: Default::default(),
+		cost_per_mb_stored: Default::default(),
+		cost_per_mb_streamed: Default::default(),
+		cost_per_put_request: Default::default(),
+		cost_per_get_request: Default::default(),
+		cost_per_gpu_unit: Default::default(),
+		cost_per_cpu_unit: Default::default(),
+		cost_per_ram_unit: Default::default(),
 	}
 }
 
