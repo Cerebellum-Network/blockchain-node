@@ -56,10 +56,8 @@ pub struct BabeInherentDataProviderCreator {
 
 #[async_trait::async_trait]
 impl sp_inherents::CreateInherentDataProviders<Block, ()> for BabeInherentDataProviderCreator {
-	type InherentDataProviders = (
-		sp_consensus_babe::inherents::InherentDataProvider,
-		sp_timestamp::InherentDataProvider,
-	);
+	type InherentDataProviders =
+		(sp_consensus_babe::inherents::InherentDataProvider, sp_timestamp::InherentDataProvider);
 
 	async fn create_inherent_data_providers(
 		&self,
