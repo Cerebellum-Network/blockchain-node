@@ -10,6 +10,7 @@ repository.workspace = true
 
 [dependencies]
 # 3rd-party dependencies
+async-trait.workspace = true
 futures.workspace = true
 jsonrpsee.workspace = true
 rand = { workspace = true, default-features = true }
@@ -39,6 +40,7 @@ sc-transaction-pool.workspace = true
 sc-transaction-pool-api.workspace = true
 sp-api.workspace = true
 sp-authority-discovery.workspace = true
+sp-inherents.workspace = true
 sp-blockchain.workspace = true
 sp-consensus-babe.workspace = true
 sp-consensus-grandpa.workspace = true
