@@ -933,6 +933,8 @@ pub mod v4_mbm {
 			let cluster_owner: T::AccountId = frame_benchmarking::account("account", 1, 0);
 			let customer_deposit_contract =
 				frame_benchmarking::account::<T::AccountId>("customer_deposit_contract", 1, 0);
+
+			// note(yahortsaryk): it's not critical to use upgraded cluster protocol params in the benchmark, because the migration will be performed after the benchmark
 			let cluster_protocol_params: ClusterProtocolParams<
 				BalanceOf<T>,
 				BlockNumberFor<T>,
@@ -944,10 +946,13 @@ pub mod v4_mbm {
 				storage_bond_size: 100u32.into(),
 				storage_chill_delay: 50u32.into(),
 				storage_unbonding_delay: 50u32.into(),
-				unit_per_mb_stored: 10,
-				unit_per_mb_streamed: 10,
-				unit_per_put_request: 10,
-				unit_per_get_request: 10,
+				cost_per_mb_stored: 10,
+				cost_per_mb_streamed: 10,
+				cost_per_put_request: 10,
+				cost_per_get_request: 10,
+				cost_per_gpu_unit: 0,
+				cost_per_cpu_unit: 0,
+				cost_per_ram_unit: 0,
 				customer_deposit_contract,
 			};
 
@@ -1367,6 +1372,7 @@ pub mod v5_mbm {
 			];
 			let contract_address = T::AccountId::decode(&mut &contract_address_bytes[..]).unwrap();
 
+			// note(yahortsaryk): it's not critical to use upgraded cluster protocol params in the benchmark, because the migration will be performed after the benchmark
 			let cluster_protocol_params: ClusterProtocolParams<
 				BalanceOf<T>,
 				BlockNumberFor<T>,
@@ -1378,10 +1384,13 @@ pub mod v5_mbm {
 				storage_bond_size: 100u32.into(),
 				storage_chill_delay: 50u32.into(),
 				storage_unbonding_delay: 50u32.into(),
-				unit_per_mb_stored: 10,
-				unit_per_mb_streamed: 10,
-				unit_per_put_request: 10,
-				unit_per_get_request: 10,
+				cost_per_mb_stored: 10,
+				cost_per_mb_streamed: 10,
+				cost_per_put_request: 10,
+				cost_per_get_request: 10,
+				cost_per_gpu_unit: 0,
+				cost_per_cpu_unit: 0,
+				cost_per_ram_unit: 0,
 				customer_deposit_contract: contract_address.clone(),
 			};
 
