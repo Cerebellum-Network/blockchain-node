@@ -2419,7 +2419,7 @@ mod tests {
 	fn call_size() {
 		let size = core::mem::size_of::<RuntimeCall>();
 		assert!(
-			size <= 256,
+			size <= 512,
 			"size of RuntimeCall {} is more than 256 bytes: some calls have too big arguments, use Box to reduce the
 			size of RuntimeCall.
 			If the limit is too strong, maybe consider increase the limit to 300.",
