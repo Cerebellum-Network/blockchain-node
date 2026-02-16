@@ -31,10 +31,13 @@ fn create_cluster_works() {
 			storage_bond_size: 100,
 			storage_chill_delay: 50,
 			storage_unbonding_delay: 50,
-			unit_per_mb_stored: 10,
-			unit_per_mb_streamed: 10,
-			unit_per_put_request: 10,
-			unit_per_get_request: 10,
+			cost_per_mb_stored: 10,
+			cost_per_mb_streamed: 10,
+			cost_per_put_request: 10,
+			cost_per_get_request: 10,
+			cost_per_gpu_unit: 0,
+			cost_per_cpu_unit: 0,
+			cost_per_ram_unit: 0,
 			customer_deposit_contract,
 		};
 
@@ -85,20 +88,20 @@ fn create_cluster_works() {
 			cluster_protocol_params.storage_unbonding_delay
 		);
 		assert_eq!(
-			created_cluster_protocol_params.unit_per_mb_stored,
-			cluster_protocol_params.unit_per_mb_stored
+			created_cluster_protocol_params.cost_per_mb_stored,
+			cluster_protocol_params.cost_per_mb_stored
 		);
 		assert_eq!(
-			created_cluster_protocol_params.unit_per_mb_streamed,
-			cluster_protocol_params.unit_per_mb_streamed
+			created_cluster_protocol_params.cost_per_mb_streamed,
+			cluster_protocol_params.cost_per_mb_streamed
 		);
 		assert_eq!(
-			created_cluster_protocol_params.unit_per_put_request,
-			cluster_protocol_params.unit_per_put_request
+			created_cluster_protocol_params.cost_per_put_request,
+			cluster_protocol_params.cost_per_put_request
 		);
 		assert_eq!(
-			created_cluster_protocol_params.unit_per_get_request,
-			cluster_protocol_params.unit_per_get_request
+			created_cluster_protocol_params.cost_per_get_request,
+			cluster_protocol_params.cost_per_get_request
 		);
 
 		// Creating cluster with same id should fail
@@ -180,10 +183,13 @@ fn add_join_and_delete_node_works() {
 				storage_bond_size: 100,
 				storage_chill_delay: 50,
 				storage_unbonding_delay: 50,
-				unit_per_mb_stored: 10,
-				unit_per_mb_streamed: 10,
-				unit_per_put_request: 10,
-				unit_per_get_request: 10,
+				cost_per_mb_stored: 10,
+				cost_per_mb_streamed: 10,
+				cost_per_put_request: 10,
+				cost_per_get_request: 10,
+				cost_per_gpu_unit: 0,
+				cost_per_cpu_unit: 0,
+				cost_per_ram_unit: 0,
 				customer_deposit_contract,
 			}
 		));
@@ -502,10 +508,13 @@ fn set_cluster_params_works() {
 				storage_bond_size: 100,
 				storage_chill_delay: 50,
 				storage_unbonding_delay: 50,
-				unit_per_mb_stored: 10,
-				unit_per_mb_streamed: 10,
-				unit_per_put_request: 10,
-				unit_per_get_request: 10,
+				cost_per_mb_stored: 10,
+				cost_per_mb_streamed: 10,
+				cost_per_put_request: 10,
+				cost_per_get_request: 10,
+				cost_per_gpu_unit: 0,
+				cost_per_cpu_unit: 0,
+				cost_per_ram_unit: 0,
 				customer_deposit_contract,
 			}
 		));
@@ -631,10 +640,13 @@ fn set_last_validated_era_works() {
 				storage_bond_size: 100,
 				storage_chill_delay: 50,
 				storage_unbonding_delay: 50,
-				unit_per_mb_stored: 10,
-				unit_per_mb_streamed: 10,
-				unit_per_put_request: 10,
-				unit_per_get_request: 10,
+				cost_per_mb_stored: 10,
+				cost_per_mb_streamed: 10,
+				cost_per_put_request: 10,
+				cost_per_get_request: 10,
+				cost_per_gpu_unit: 0,
+				cost_per_cpu_unit: 0,
+				cost_per_ram_unit: 0,
 				customer_deposit_contract,
 			}
 		));
@@ -668,10 +680,13 @@ fn cluster_visitor_works() {
 			storage_bond_size: 100,
 			storage_chill_delay: 50,
 			storage_unbonding_delay: 50,
-			unit_per_mb_stored: 10,
-			unit_per_mb_streamed: 10,
-			unit_per_put_request: 10,
-			unit_per_get_request: 10,
+			cost_per_mb_stored: 10,
+			cost_per_mb_streamed: 10,
+			cost_per_put_request: 10,
+			cost_per_get_request: 10,
+			cost_per_gpu_unit: 0,
+			cost_per_cpu_unit: 0,
+			cost_per_ram_unit: 0,
 			customer_deposit_contract,
 		};
 
@@ -715,10 +730,13 @@ fn cluster_visitor_works() {
 			)
 			.unwrap(),
 			ClusterPricingParams {
-				unit_per_mb_stored: 10,
-				unit_per_mb_streamed: 10,
-				unit_per_put_request: 10,
-				unit_per_get_request: 10,
+				cost_per_mb_stored: 10,
+				cost_per_mb_streamed: 10,
+				cost_per_put_request: 10,
+				cost_per_get_request: 10,
+				cost_per_gpu_unit: 0,
+				cost_per_cpu_unit: 0,
+				cost_per_ram_unit: 0,
 			}
 		);
 
@@ -806,10 +824,13 @@ fn cluster_creator_works() {
 			storage_bond_size: 100,
 			storage_chill_delay: 50,
 			storage_unbonding_delay: 50,
-			unit_per_mb_stored: 10,
-			unit_per_mb_streamed: 10,
-			unit_per_put_request: 10,
-			unit_per_get_request: 10,
+			cost_per_mb_stored: 10,
+			cost_per_mb_streamed: 10,
+			cost_per_put_request: 10,
+			cost_per_get_request: 10,
+			cost_per_gpu_unit: 0,
+			cost_per_cpu_unit: 0,
+			cost_per_ram_unit: 0,
 			customer_deposit_contract,
 		};
 

@@ -191,10 +191,13 @@
               "storage_bond_size": 0,
               "storage_chill_delay": 0,
               "storage_unbonding_delay": 0,
-              "unit_per_mb_stored": 0,
-              "unit_per_mb_streamed": 0,
-              "unit_per_put_request": 0,
-              "unit_per_get_request": 0,
+              "cost_per_mb_stored": 0,
+              "cost_per_mb_streamed": 0,
+              "cost_per_put_request": 0,
+              "cost_per_get_request": 0,
+              "cost_per_gpu_unit": 0,
+              "cost_per_cpu_unit": 0,
+              "cost_per_ram_unit": 0,
               "customer_deposit_contract": "6Q9XEgZfZwvtb9oQoTv7co7xX4a59JDhZ4FhEixKEQfPBnYp"
             }
           ]
