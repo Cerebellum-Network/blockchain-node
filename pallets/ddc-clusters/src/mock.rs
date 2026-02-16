@@ -277,10 +277,13 @@ impl ExtBuilder {
 			storage_bond_size: 100,
 			storage_chill_delay: 50,
 			storage_unbonding_delay: 50,
-			unit_per_mb_stored: 10,
-			unit_per_mb_streamed: 10,
-			unit_per_put_request: 10,
-			unit_per_get_request: 10,
+			cost_per_mb_stored: 10,
+			cost_per_mb_streamed: 10,
+			cost_per_put_request: 10,
+			cost_per_get_request: 10,
+			cost_per_gpu_unit: 0,
+			cost_per_cpu_unit: 0,
+			cost_per_ram_unit: 0,
 			customer_deposit_contract,
 		};
 
