@@ -1,4 +1,4 @@
-FROM phusion/baseimage:jammy-1.0.1 as builder
+FROM phusion/baseimage:jammy-1.0.1 AS builder
 LABEL maintainer="team@cere.network"
 LABEL description="This is the build stage to create the binary."
 ARG PROFILE=release
@@ -10,8 +10,10 @@ RUN apt-get -qq update && \
       clang \
       cmake \
       git \
+      libclang-dev \
       libpq-dev \
       libssl-dev \
+      llvm \
       pkg-config \
       unzip \
       wget
