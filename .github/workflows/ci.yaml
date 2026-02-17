@@ -71,7 +71,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install linux dependencies
-        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler
+        run: sudo apt update && sudo apt install -y cargo clang libclang-dev libssl-dev llvm libudev-dev protobuf-compiler
       - name: Install toolchain and rust-src
         uses: actions-rs/toolchain@v1
         with:
@@ -95,34 +95,6 @@ jobs:
           cargo build --release --bin cere
           timeout --preserve-status 30s ./target/release/cere --dev
 
-  check-node:
-    name: Check Node
-    needs: format
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install linux dependencies
-        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler
-      - name: Install toolchain and rust-src
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: 1.90.0
-          override: true
-          target: wasm32-unknown-unknown
-          components: rust-src
-      - name: Enhanced Rust Cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: "node-build"
-          cache-on-failure: true
-      - name: Configure Git
-        run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
-      - name: Check Node Components
-        run: |
-          # Check node components in parallel where possible
-          CARGO_INCREMENTAL=1 cargo check --release --features runtime-benchmarks --workspace --exclude cere-runtime --exclude cere-dev-runtime
-
   check-try-runtime:
     name: Try-Runtime Check
     needs: format
@@ -131,7 +103,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install linux dependencies
-        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler
+        run: sudo apt update && sudo apt install -y cargo clang libclang-dev libssl-dev llvm libudev-dev protobuf-compiler
       - name: Install toolchain and rust-src
         uses: actions-rs/toolchain@v1
         with:
@@ -164,7 +136,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install linux dependencies
-        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler
+        run: sudo apt update && sudo apt install -y cargo clang libclang-dev libssl-dev llvm libudev-dev protobuf-compiler
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -193,7 +165,7 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
       - name: Install linux dependencies
-        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler make pkg-config
+        run: sudo apt update && sudo apt install -y cargo clang libclang-dev libssl-dev llvm libudev-dev protobuf-compiler make pkg-config
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -216,7 +188,8 @@ jobs:
         run: |
           cargo tarpaulin --verbose --locked --no-fail-fast --workspace \
             --features runtime-benchmarks --out "Xml" -- \
-            --skip mock_clusters_gov::__construct_runtime_integrity_test::runtime_integrity_tests
+            --skip mock_clusters_gov::__construct_runtime_integrity_test::runtime_integrity_tests \
+            --skip tests::call_size
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:

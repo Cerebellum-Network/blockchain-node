@@ -28,6 +28,7 @@ pub fn config_cluster<T: Config>(
 		erasure_coding_required: 4,
 		erasure_coding_total: 6,
 		replication_total: 3,
+		inspection_dry_run_params: None,
 	};
 	let cluster_protocol_params: ClusterProtocolParams<
 		BalanceOf<T>,
@@ -40,10 +41,13 @@ pub fn config_cluster<T: Config>(
 		storage_bond_size: 100u32.into(),
 		storage_chill_delay: 50u32.into(),
 		storage_unbonding_delay: 50u32.into(),
-		unit_per_mb_stored: 10,
-		unit_per_mb_streamed: 10,
-		unit_per_put_request: 10,
-		unit_per_get_request: 10,
+		cost_per_mb_stored: 10,
+		cost_per_mb_streamed: 10,
+		cost_per_put_request: 10,
+		cost_per_get_request: 10,
+		cost_per_gpu_unit: 0,
+		cost_per_cpu_unit: 0,
+		cost_per_ram_unit: 0,
 		customer_deposit_contract,
 	};
 
@@ -70,6 +74,7 @@ where
 		erasure_coding_required: 4,
 		erasure_coding_total: 6,
 		replication_total: 3,
+		inspection_dry_run_params: None,
 	};
 	let storage_node_params = StorageNodeParams {
 		mode: StorageNodeMode::Storage,
@@ -92,10 +97,13 @@ where
 		storage_bond_size: 100u32.into(),
 		storage_chill_delay: 50u32.into(),
 		storage_unbonding_delay: 50u32.into(),
-		unit_per_mb_stored: 10,
-		unit_per_mb_streamed: 10,
-		unit_per_put_request: 10,
-		unit_per_get_request: 10,
+		cost_per_mb_stored: 10,
+		cost_per_mb_streamed: 10,
+		cost_per_put_request: 10,
+		cost_per_get_request: 10,
+		cost_per_gpu_unit: 0,
+		cost_per_cpu_unit: 0,
+		cost_per_ram_unit: 0,
 		customer_deposit_contract,
 	};
 
@@ -137,6 +145,7 @@ where
 		erasure_coding_required: 4,
 		erasure_coding_total: 6,
 		replication_total: 3,
+		inspection_dry_run_params: None,
 	};
 	// Register auth contract
 	let _ = DdcClusters::<T>::set_cluster_params(

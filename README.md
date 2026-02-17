@@ -20,6 +20,26 @@ Use the following command to build the node without launching it:
 cargo +1.90.0 build --release
 ```
 
+### Docker Build
+
+The Dockerfile supports multi-architecture builds and will automatically detect the target platform (x86_64 or ARM64).
+
+**Prerequisites:** You need a GitHub token with access to private Cerebellum repositories (`ddc-payouts`, `ddc-verification`).
+
+```bash
+# Build for your native architecture
+export GH_READ_TOKEN="your-github-token"
+docker build --build-arg GH_READ_TOKEN=${GH_READ_TOKEN} -t cerebellumnetwork/pos-node:latest .
+
+# Build specifically for ARM64 (Apple Silicon Macs)
+docker build --platform linux/arm64 --build-arg GH_READ_TOKEN=${GH_READ_TOKEN} -t cerebellumnetwork/pos-node:latest-arm64 .
+
+# Build specifically for x86_64 (Intel/AMD)
+docker build --platform linux/amd64 --build-arg GH_READ_TOKEN=${GH_READ_TOKEN} -t cerebellumnetwork/pos-node:latest-amd64 .
+```
+
+> **Note:** Building for a non-native architecture (e.g., x86_64 on Apple Silicon) will use emulation and be significantly slower. Native ARM64 builds are recommended for Apple Silicon Macs to avoid P2P networking issues caused by emulation.
+
 ## Run
 
 ### Single-Node Development Chain

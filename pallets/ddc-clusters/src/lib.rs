@@ -35,7 +35,7 @@ use ddc_primitives::{
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterNodeKind, ClusterNodeState,
 	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
-	ClusterProtocolParams, ClusterStatus, EhdEra, NodePubKey, NodeType,
+	ClusterProtocolParams, ClusterStatus, EhdEra, InspectionDryRunParams, NodePubKey, NodeType,
 };
 use frame_support::{
 	assert_ok,
@@ -69,7 +69,7 @@ pub mod pallet {
 
 	/// The current storage version.
 	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-		frame_support::traits::StorageVersion::new(4);
+		frame_support::traits::StorageVersion::new(6);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -123,7 +123,6 @@ pub mod pallet {
 		NodeIsNotAuthorized,
 		NodeHasNoActivatedStake,
 		NodeStakeIsInvalid,
-		/// Cluster candidate should not plan to chill.
 		NodeChillingIsProhibited,
 		NodeAuthContractCallFailed,
 		NodeAuthContractDeployFailed,
@@ -206,6 +205,7 @@ pub mod pallet {
 						erasure_coding_required: cluster.props.erasure_coding_required,
 						erasure_coding_total: cluster.props.erasure_coding_total,
 						replication_total: cluster.props.replication_total,
+						inspection_dry_run_params: cluster.props.inspection_dry_run_params.clone(),
 					},
 					self.clusters_protocol_params
 						.iter()
@@ -815,10 +815,13 @@ pub mod pallet {
 			let cluster_protocol_params = ClustersGovParams::<T>::try_get(cluster_id)
 				.map_err(|_| Error::<T>::ClusterProtocolParamsNotSet)?;
 			Ok(ClusterPricingParams {
-				unit_per_mb_stored: cluster_protocol_params.unit_per_mb_stored,
-				unit_per_mb_streamed: cluster_protocol_params.unit_per_mb_streamed,
-				unit_per_put_request: cluster_protocol_params.unit_per_put_request,
-				unit_per_get_request: cluster_protocol_params.unit_per_get_request,
+				cost_per_mb_stored: cluster_protocol_params.cost_per_mb_stored,
+				cost_per_mb_streamed: cluster_protocol_params.cost_per_mb_streamed,
+				cost_per_put_request: cluster_protocol_params.cost_per_put_request,
+				cost_per_get_request: cluster_protocol_params.cost_per_get_request,
+				cost_per_gpu_unit: cluster_protocol_params.cost_per_gpu_unit,
+				cost_per_cpu_unit: cluster_protocol_params.cost_per_cpu_unit,
+				cost_per_ram_unit: cluster_protocol_params.cost_per_ram_unit,
 			})
 		}
 
@@ -910,6 +913,7 @@ pub mod pallet {
 			Self::do_end_unbond_cluster(cluster_id)
 		}
 	}
+
 	impl<T: Config> ClusterValidator for Pallet<T> {
 		fn set_last_paid_era(cluster_id: &ClusterId, era_id: EhdEra) -> Result<(), DispatchError> {
 			let mut cluster =
@@ -1011,6 +1015,14 @@ pub mod pallet {
 				}
 			}
 			Ok(clusters_ids)
+		}
+
+		fn get_inspection_dry_run_params(
+			cluster_id: &ClusterId,
+		) -> Result<Option<InspectionDryRunParams>, DispatchError> {
+			let cluster =
+				Clusters::<T>::try_get(*cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			Ok(cluster.props.inspection_dry_run_params.clone())
 		}
 	}
 

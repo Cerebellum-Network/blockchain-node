@@ -54,10 +54,13 @@ pub fn create_cluster_with_nodes<T: Config>(
 		storage_bond_size: bond_size,
 		storage_chill_delay: BlockNumberFor::<T>::from(20_u32),
 		storage_unbonding_delay: BlockNumberFor::<T>::from(20_u32),
-		unit_per_mb_stored: 97656,
-		unit_per_mb_streamed: 48828,
-		unit_per_put_request: 10,
-		unit_per_get_request: 5,
+		cost_per_mb_stored: 97656,
+		cost_per_mb_streamed: 48828,
+		cost_per_put_request: 10,
+		cost_per_get_request: 5,
+		cost_per_gpu_unit: 0,
+		cost_per_cpu_unit: 0,
+		cost_per_ram_unit: 0,
 		customer_deposit_contract,
 	};
 
@@ -66,6 +69,7 @@ pub fn create_cluster_with_nodes<T: Config>(
 		erasure_coding_required: 0,
 		erasure_coding_total: 0,
 		replication_total: 0,
+		inspection_dry_run_params: None,
 	};
 
 	T::ClusterCreator::create_cluster(
@@ -151,10 +155,13 @@ fn default_cluster_protocol_params<T: Config>(
 		storage_bond_size: Default::default(),
 		storage_chill_delay: Default::default(),
 		storage_unbonding_delay: Default::default(),
-		unit_per_mb_stored: Default::default(),
-		unit_per_mb_streamed: Default::default(),
-		unit_per_put_request: Default::default(),
-		unit_per_get_request: Default::default(),
+		cost_per_mb_stored: Default::default(),
+		cost_per_mb_streamed: Default::default(),
+		cost_per_put_request: Default::default(),
+		cost_per_get_request: Default::default(),
+		cost_per_gpu_unit: 0,
+		cost_per_cpu_unit: 0,
+		cost_per_ram_unit: 0,
 	}
 }
 
@@ -557,10 +564,13 @@ benchmarks! {
 		storage_bond_size: 10000_u128.saturated_into::<BalanceOf<T>>(),
 		storage_chill_delay: BlockNumberFor::<T>::from(20_u32),
 		storage_unbonding_delay: BlockNumberFor::<T>::from(20_u32),
-		unit_per_mb_stored: 97656,
-		unit_per_mb_streamed: 48828,
-		unit_per_put_request: 10,
-		unit_per_get_request: 5,
+		cost_per_mb_stored: 97656,
+		cost_per_mb_streamed: 48828,
+		cost_per_put_request: 10,
+		cost_per_get_request: 5,
+		cost_per_gpu_unit: 0,
+		cost_per_cpu_unit: 0,
+		cost_per_ram_unit: 0,
 		customer_deposit_contract,
 	})
 	verify {
