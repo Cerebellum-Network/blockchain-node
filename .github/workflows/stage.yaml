@@ -7,6 +7,7 @@ on:
       - master
       - 'release/**'
       - 'hotfix/**'
+      - 'feat/dac-compute-2512-cifix'
 
 env:
   PROFILE: release
