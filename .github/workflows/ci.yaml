@@ -126,7 +126,7 @@ jobs:
       - name: Check Try-Runtime
         run: |
            try-runtime --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
-           on-runtime-upgrade --disable-idempotency-checks --blocktime 6000 live --uri wss://archive.qanet.cere.network:443
+           on-runtime-upgrade --disable-idempotency-checks --blocktime 6000 live --uri wss://archive.testnet.cere.network:443
 
   clippy:
     name: Run Clippy

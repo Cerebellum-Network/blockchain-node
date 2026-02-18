@@ -1826,8 +1826,8 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Tx
 // );
 
 type Migrations = (
-	pallet_ddc_clusters::migrations::v4::MigrateToV4<Runtime>,
-	pallet_ddc_clusters::migrations::v5::MigrateToV5<Runtime>,
+	// pallet_ddc_clusters::migrations::v4::MigrateToV4<Runtime>,
+	// pallet_ddc_clusters::migrations::v5::MigrateToV5<Runtime>,
 	pallet_ddc_clusters::migrations::v6::MigrateToV6<Runtime>,
 );
 
