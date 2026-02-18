@@ -596,7 +596,8 @@ pub mod v4 {
 			on_chain_version
 		);
 
-		if on_chain_version == 3 && current_version == 4 {
+		// Allow bundled runtime: when in-code is already 5/6, we still need to run 3->4
+		if on_chain_version == 3 && current_version >= 4 {
 			let mut translated = 0u64;
 			let count = v3::ClustersGovParams::<T>::iter().count();
 			info!(
@@ -653,30 +654,35 @@ pub mod v4 {
 
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::DispatchError> {
-			let prev_count = v3::ClustersGovParams::<T>::iter().count();
-
-			Ok((prev_count as u64).encode())
+			let on_chain_version = Pallet::<T>::on_chain_storage_version();
+			let current_version = Pallet::<T>::in_code_storage_version();
+			let will_run = on_chain_version == 3 && current_version >= 4;
+			let prev_count = if will_run {
+				v3::ClustersGovParams::<T>::iter().count() as u64
+			} else {
+				0u64
+			};
+			Ok((will_run, prev_count).encode())
 		}
 
 		#[cfg(feature = "try-runtime")]
 		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), sp_runtime::DispatchError> {
-			let prev_count: u64 = Decode::decode(&mut &prev_state[..])
+			let (will_run, prev_count): (bool, u64) = Decode::decode(&mut &prev_state[..])
 				.expect("pre_upgrade provides a valid state; qed");
 
-			let post_count = v4::ClustersGovParams::<T>::iter().count() as u64;
-			ensure!(
-				prev_count == post_count,
-				"the cluster protocol params count before and after the migration should be the same"
-			);
+			if will_run {
+				let post_count = v4::ClustersGovParams::<T>::iter().count() as u64;
+				ensure!(
+					prev_count == post_count,
+					"the cluster protocol params count before and after the migration should be the same"
+				);
 
-			let current_version = Pallet::<T>::in_code_storage_version();
-			let on_chain_version = Pallet::<T>::on_chain_storage_version();
-
-			ensure!(current_version == 4, "must_upgrade");
-			ensure!(
-				current_version == on_chain_version,
-				"after migration, the current_version and on_chain_version should be the same"
-			);
+				let on_chain_version = Pallet::<T>::on_chain_storage_version();
+				ensure!(
+					on_chain_version == 4,
+					"after migration, the on_chain_version should be 4"
+				);
+			}
 			Ok(())
 		}
 	}
@@ -725,7 +731,8 @@ pub mod v5 {
 			on_chain_version
 		);
 
-		if on_chain_version == 4 && current_version == 5 {
+		// Allow bundled runtime: when in-code is already 6, we still need to run 4->5 then 5->6
+		if on_chain_version == 4 && current_version >= 5 {
 			let mut translated = 0u64;
 			let count = v3::Clusters::<T>::iter().count();
 			info!(
@@ -779,30 +786,35 @@ pub mod v5 {
 
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
-			let prev_count = v3::Clusters::<T>::iter().count();
-
-			Ok((prev_count as u64).encode())
+			let on_chain_version = Pallet::<T>::on_chain_storage_version();
+			let current_version = Pallet::<T>::in_code_storage_version();
+			let will_run = on_chain_version == 4 && current_version >= 5;
+			let prev_count = if will_run {
+				v3::Clusters::<T>::iter().count() as u64
+			} else {
+				0u64
+			};
+			Ok((will_run, prev_count).encode())
 		}
 
 		#[cfg(feature = "try-runtime")]
 		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), DispatchError> {
-			let prev_count: u64 = Decode::decode(&mut &prev_state[..])
+			let (will_run, prev_count): (bool, u64) = Decode::decode(&mut &prev_state[..])
 				.expect("pre_upgrade provides a valid state; qed");
 
-			let post_count = v5::Clusters::<T>::iter().count() as u64;
-			ensure!(
-				prev_count == post_count,
-				"the cluster count before and after the migration should be the same"
-			);
+			if will_run {
+				let post_count = v5::Clusters::<T>::iter().count() as u64;
+				ensure!(
+					prev_count == post_count,
+					"the cluster count before and after the migration should be the same"
+				);
 
-			let current_version = Pallet::<T>::in_code_storage_version();
-			let on_chain_version = Pallet::<T>::on_chain_storage_version();
-
-			frame_support::ensure!(current_version == 5, "must_upgrade v5");
-			ensure!(
-				current_version == on_chain_version,
-				"after migration, the current_version and on_chain_version should be the same"
-			);
+				let on_chain_version = Pallet::<T>::on_chain_storage_version();
+				ensure!(
+					on_chain_version == 5,
+					"after migration, the on_chain_version should be 5"
+				);
+			}
 			Ok(())
 		}
 	}
@@ -869,7 +881,8 @@ pub mod v6 {
 			on_chain_version
 		);
 
-		if on_chain_version == 5 && current_version == 6 {
+		// Allow bundled runtime: when in-code is 6 and chain is 5, run 5->6
+		if on_chain_version == 5 && current_version >= 6 {
 			let mut translated = 0u64;
 			let count = v4::ClustersGovParams::<T>::iter().count();
 			info!(
@@ -938,30 +951,35 @@ pub mod v6 {
 
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::DispatchError> {
-			let prev_count = v4::ClustersGovParams::<T>::iter().count();
-
-			Ok((prev_count as u64).encode())
+			let on_chain_version = Pallet::<T>::on_chain_storage_version();
+			let current_version = Pallet::<T>::in_code_storage_version();
+			let will_run = on_chain_version == 5 && current_version >= 6;
+			let prev_count = if will_run {
+				v4::ClustersGovParams::<T>::iter().count() as u64
+			} else {
+				0u64
+			};
+			Ok((will_run, prev_count).encode())
 		}
 
 		#[cfg(feature = "try-runtime")]
 		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), sp_runtime::DispatchError> {
-			let prev_count: u64 = Decode::decode(&mut &prev_state[..])
+			let (will_run, prev_count): (bool, u64) = Decode::decode(&mut &prev_state[..])
 				.expect("pre_upgrade provides a valid state; qed");
 
-			let post_count = v6::ClustersGovParams::<T>::iter().count() as u64;
-			ensure!(
-				prev_count == post_count,
-				"the cluster protocol params count before and after the migration should be the same"
-			);
+			if will_run {
+				let post_count = v6::ClustersGovParams::<T>::iter().count() as u64;
+				ensure!(
+					prev_count == post_count,
+					"the cluster protocol params count before and after the migration should be the same"
+				);
 
-			let current_version = Pallet::<T>::in_code_storage_version();
-			let on_chain_version = Pallet::<T>::on_chain_storage_version();
-
-			ensure!(current_version == 6, "must_upgrade");
-			ensure!(
-				current_version == on_chain_version,
-				"after migration, the current_version and on_chain_version should be the same"
-			);
+				let on_chain_version = Pallet::<T>::on_chain_storage_version();
+				ensure!(
+					on_chain_version == 6,
+					"after migration, the on_chain_version should be 6"
+				);
+			}
 			Ok(())
 		}
 	}
