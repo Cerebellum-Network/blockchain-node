@@ -99,7 +99,8 @@ jobs:
     name: Try-Runtime Check
     needs: format
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    # Live state fetch + MBM re-fetch can take 2.5h+ (testnet has ~2.45M keys, 39 child trees)
+    timeout-minutes: 240
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
