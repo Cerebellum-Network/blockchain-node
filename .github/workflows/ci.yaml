@@ -99,6 +99,7 @@ jobs:
     name: Try-Runtime Check
     needs: format
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
@@ -125,8 +126,14 @@ jobs:
           CARGO_INCREMENTAL=1 cargo build --release --features try-runtime
       - name: Check Try-Runtime
         run: |
-           try-runtime --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
-           on-runtime-upgrade --disable-idempotency-checks --blocktime 6000 live --uri wss://archive.testnet.cere.network:443
+          # Ping every 5 min so CI does not cancel the job for "no output"
+          (while true; do sleep 300; echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] try-runtime still running..."; done) &
+          PROGRESS_PID=$!
+          try-runtime --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
+            on-runtime-upgrade --disable-idempotency-checks --blocktime 6000 live --uri wss://archive.testnet.cere.network:443
+          EXIT=$?
+          kill $PROGRESS_PID 2>/dev/null || true
+          exit $EXIT
 
   clippy:
     name: Run Clippy
