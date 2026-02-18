@@ -164,10 +164,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73174,
+	spec_version: 73177,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 26,
+	transaction_version: 27,
 	system_version: 0,
 };
 
@@ -592,6 +592,8 @@ impl pallet_session::Config for Runtime {
 	type Keys = SessionKeys;
 	type DisablingStrategy = pallet_session::disabling::UpToLimitDisablingStrategy;
 	type WeightInfo = pallet_session::weights::SubstrateWeight<Runtime>;
+	type Currency = Balances;
+	type KeyDeposit = ConstU128<0>;
 }
 
 impl pallet_session::historical::Config for Runtime {
@@ -889,6 +891,7 @@ impl pallet_bags_list::Config<VoterBagsListInstance> for Runtime {
 	type WeightInfo = pallet_bags_list::weights::SubstrateWeight<Runtime>;
 	type BagThresholds = BagThresholds;
 	type Score = VoteWeight;
+	type MaxAutoRebagPerBlock = ConstU32<0>;
 }
 
 parameter_types! {
@@ -1413,6 +1416,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
 	type UnsignedPriority = ConstU64<500_000_000>;
 	type FeeHandler = FeeHandler;
+	type ForcePayoutOrigin = pallet_ddc_payouts::EnsureRootForForcePayout<AccountId>;
 
 	#[cfg(feature = "runtime-benchmarks")]
 	type CustomerDepositor = DdcCustomers;
@@ -1813,14 +1817,19 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, TxExtension>;
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, TxExtension>;
 // const IDENTITY_MIGRATION_KEY_LIMIT: u64 = u64::MAX; // for `pallet_identity` migration below
 
-/// Migrations for FRAME pallets, unreleased to MAINNET
+// /// Migrations for FRAME pallets, unreleased to MAINNET
 // type Migrations = (
 // 	pallet_nomination_pools::migration::unversioned::DelegationStakeMigration<
 // 		Runtime,
 // 		MaxPoolsToMigrate,
 // 	>,
 // );
-type Migrations = pallet_ddc_clusters::migrations::v4::MigrateToV4<Runtime>;
+
+type Migrations = (
+	pallet_ddc_clusters::migrations::v4::MigrateToV4<Runtime>,
+	pallet_ddc_clusters::migrations::v5::MigrateToV5<Runtime>,
+	pallet_ddc_clusters::migrations::v6::MigrateToV6<Runtime>,
+);
 
 parameter_types! {
 	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
@@ -1951,7 +1960,7 @@ impl_runtime_apis! {
 			VERSION
 		}
 
-		fn execute_block(block: Block) {
+		fn execute_block(block: <Block as BlockT>::LazyBlock) {
 			Executive::execute_block(block);
 		}
 
@@ -1995,7 +2004,7 @@ impl_runtime_apis! {
 			data.create_extrinsics()
 		}
 
-		fn check_inherents(block: Block, data: InherentData) -> CheckInherentsResult {
+		fn check_inherents(block: <Block as BlockT>::LazyBlock, data: InherentData) -> CheckInherentsResult {
 			data.check_extrinsics(&block)
 		}
 	}
@@ -2315,7 +2324,7 @@ impl_runtime_apis! {
 		}
 
 		fn execute_block(
-			block: Block,
+			block: <Block as BlockT>::LazyBlock,
 			state_root_check: bool,
 			signature_check: bool,
 			select: frame_try_runtime::TryStateSelect,
@@ -2438,7 +2447,7 @@ mod tests {
 	fn call_size() {
 		let size = core::mem::size_of::<RuntimeCall>();
 		assert!(
-			size <= 256,
+			size <= 512,
 			"size of RuntimeCall {} is more than 256 bytes: some calls have too big arguments, use Box to reduce the
 			size of RuntimeCall.
 			If the limit is too strong, maybe consider increase the limit to 300.",

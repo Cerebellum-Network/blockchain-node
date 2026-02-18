@@ -31,10 +31,13 @@ fn create_cluster_works() {
 			storage_bond_size: 100,
 			storage_chill_delay: 50,
 			storage_unbonding_delay: 50,
-			unit_per_mb_stored: 10,
-			unit_per_mb_streamed: 10,
-			unit_per_put_request: 10,
-			unit_per_get_request: 10,
+			cost_per_mb_stored: 10,
+			cost_per_mb_streamed: 10,
+			cost_per_put_request: 10,
+			cost_per_get_request: 10,
+			cost_per_gpu_unit: 0,
+			cost_per_cpu_unit: 0,
+			cost_per_ram_unit: 0,
 			customer_deposit_contract,
 		};
 
@@ -47,7 +50,8 @@ fn create_cluster_works() {
 				node_provider_auth_contract: Some(auth_contract.clone()),
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
-				replication_total: 3
+				replication_total: 3,
+				inspection_dry_run_params: None,
 			},
 			cluster_protocol_params.clone()
 		));
@@ -84,20 +88,20 @@ fn create_cluster_works() {
 			cluster_protocol_params.storage_unbonding_delay
 		);
 		assert_eq!(
-			created_cluster_protocol_params.unit_per_mb_stored,
-			cluster_protocol_params.unit_per_mb_stored
+			created_cluster_protocol_params.cost_per_mb_stored,
+			cluster_protocol_params.cost_per_mb_stored
 		);
 		assert_eq!(
-			created_cluster_protocol_params.unit_per_mb_streamed,
-			cluster_protocol_params.unit_per_mb_streamed
+			created_cluster_protocol_params.cost_per_mb_streamed,
+			cluster_protocol_params.cost_per_mb_streamed
 		);
 		assert_eq!(
-			created_cluster_protocol_params.unit_per_put_request,
-			cluster_protocol_params.unit_per_put_request
+			created_cluster_protocol_params.cost_per_put_request,
+			cluster_protocol_params.cost_per_put_request
 		);
 		assert_eq!(
-			created_cluster_protocol_params.unit_per_get_request,
-			cluster_protocol_params.unit_per_get_request
+			created_cluster_protocol_params.cost_per_get_request,
+			cluster_protocol_params.cost_per_get_request
 		);
 
 		// Creating cluster with same id should fail
@@ -110,7 +114,8 @@ fn create_cluster_works() {
 					node_provider_auth_contract: Some(auth_contract),
 					erasure_coding_required: 4,
 					erasure_coding_total: 6,
-					replication_total: 3
+					replication_total: 3,
+					inspection_dry_run_params: None,
 				},
 				cluster_protocol_params
 			),
@@ -168,7 +173,8 @@ fn add_join_and_delete_node_works() {
 				node_provider_auth_contract: None,
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
-				replication_total: 3
+				replication_total: 3,
+				inspection_dry_run_params: None,
 			},
 			ClusterProtocolParams {
 				treasury_share: Perquintill::from_float(0.05),
@@ -177,10 +183,13 @@ fn add_join_and_delete_node_works() {
 				storage_bond_size: 100,
 				storage_chill_delay: 50,
 				storage_unbonding_delay: 50,
-				unit_per_mb_stored: 10,
-				unit_per_mb_streamed: 10,
-				unit_per_put_request: 10,
-				unit_per_get_request: 10,
+				cost_per_mb_stored: 10,
+				cost_per_mb_streamed: 10,
+				cost_per_put_request: 10,
+				cost_per_get_request: 10,
+				cost_per_gpu_unit: 0,
+				cost_per_cpu_unit: 0,
+				cost_per_ram_unit: 0,
 				customer_deposit_contract,
 			}
 		));
@@ -203,7 +212,8 @@ fn add_join_and_delete_node_works() {
 				node_provider_auth_contract: Some(cluster_manager_id.clone()),
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
-				replication_total: 3
+				replication_total: 3,
+				inspection_dry_run_params: None,
 			},
 		));
 
@@ -272,7 +282,8 @@ fn add_join_and_delete_node_works() {
 				node_provider_auth_contract: Some(contract_id),
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
-				replication_total: 3
+				replication_total: 3,
+				inspection_dry_run_params: None,
 			},
 		));
 
@@ -471,7 +482,8 @@ fn set_cluster_params_works() {
 					node_provider_auth_contract: Some(auth_contract_1.clone()),
 					erasure_coding_required: 4,
 					erasure_coding_total: 6,
-					replication_total: 3
+					replication_total: 3,
+					inspection_dry_run_params: None,
 				},
 			),
 			Error::<Test>::ClusterDoesNotExist
@@ -486,7 +498,8 @@ fn set_cluster_params_works() {
 				node_provider_auth_contract: Some(auth_contract_1),
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
-				replication_total: 3
+				replication_total: 3,
+				inspection_dry_run_params: None,
 			},
 			ClusterProtocolParams {
 				treasury_share: Perquintill::from_float(0.05),
@@ -495,10 +508,13 @@ fn set_cluster_params_works() {
 				storage_bond_size: 100,
 				storage_chill_delay: 50,
 				storage_unbonding_delay: 50,
-				unit_per_mb_stored: 10,
-				unit_per_mb_streamed: 10,
-				unit_per_put_request: 10,
-				unit_per_get_request: 10,
+				cost_per_mb_stored: 10,
+				cost_per_mb_streamed: 10,
+				cost_per_put_request: 10,
+				cost_per_get_request: 10,
+				cost_per_gpu_unit: 0,
+				cost_per_cpu_unit: 0,
+				cost_per_ram_unit: 0,
 				customer_deposit_contract,
 			}
 		));
@@ -511,7 +527,8 @@ fn set_cluster_params_works() {
 					node_provider_auth_contract: Some(auth_contract_2.clone()),
 					erasure_coding_required: 4,
 					erasure_coding_total: 6,
-					replication_total: 3
+					replication_total: 3,
+					inspection_dry_run_params: None,
 				},
 			),
 			Error::<Test>::OnlyClusterManager
@@ -525,7 +542,8 @@ fn set_cluster_params_works() {
 					node_provider_auth_contract: Some(auth_contract_2.clone()),
 					erasure_coding_required: 1,
 					erasure_coding_total: 6,
-					replication_total: 3
+					replication_total: 3,
+					inspection_dry_run_params: None,
 				},
 			),
 			Error::<Test>::ErasureCodingRequiredDidNotMeetMinimum
@@ -539,7 +557,8 @@ fn set_cluster_params_works() {
 					node_provider_auth_contract: Some(auth_contract_2.clone()),
 					erasure_coding_required: 4,
 					erasure_coding_total: 1,
-					replication_total: 3
+					replication_total: 3,
+					inspection_dry_run_params: None,
 				},
 			),
 			Error::<Test>::ErasureCodingTotalNotMeetMinimum
@@ -553,7 +572,8 @@ fn set_cluster_params_works() {
 					node_provider_auth_contract: Some(auth_contract_2.clone()),
 					erasure_coding_required: 4,
 					erasure_coding_total: 6,
-					replication_total: 1
+					replication_total: 1,
+					inspection_dry_run_params: None,
 				},
 			),
 			Error::<Test>::ReplicationTotalDidNotMeetMinimum
@@ -566,7 +586,8 @@ fn set_cluster_params_works() {
 				node_provider_auth_contract: Some(auth_contract_2.clone()),
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
-				replication_total: 3
+				replication_total: 3,
+				inspection_dry_run_params: None,
 			},
 		));
 
@@ -609,7 +630,8 @@ fn set_last_validated_era_works() {
 				node_provider_auth_contract: Some(auth_contract_1),
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
-				replication_total: 3
+				replication_total: 3,
+				inspection_dry_run_params: None,
 			},
 			ClusterProtocolParams {
 				treasury_share: Perquintill::from_float(0.05),
@@ -618,10 +640,13 @@ fn set_last_validated_era_works() {
 				storage_bond_size: 100,
 				storage_chill_delay: 50,
 				storage_unbonding_delay: 50,
-				unit_per_mb_stored: 10,
-				unit_per_mb_streamed: 10,
-				unit_per_put_request: 10,
-				unit_per_get_request: 10,
+				cost_per_mb_stored: 10,
+				cost_per_mb_streamed: 10,
+				cost_per_put_request: 10,
+				cost_per_get_request: 10,
+				cost_per_gpu_unit: 0,
+				cost_per_cpu_unit: 0,
+				cost_per_ram_unit: 0,
 				customer_deposit_contract,
 			}
 		));
@@ -655,10 +680,13 @@ fn cluster_visitor_works() {
 			storage_bond_size: 100,
 			storage_chill_delay: 50,
 			storage_unbonding_delay: 50,
-			unit_per_mb_stored: 10,
-			unit_per_mb_streamed: 10,
-			unit_per_put_request: 10,
-			unit_per_get_request: 10,
+			cost_per_mb_stored: 10,
+			cost_per_mb_streamed: 10,
+			cost_per_put_request: 10,
+			cost_per_get_request: 10,
+			cost_per_gpu_unit: 0,
+			cost_per_cpu_unit: 0,
+			cost_per_ram_unit: 0,
 			customer_deposit_contract,
 		};
 
@@ -671,7 +699,8 @@ fn cluster_visitor_works() {
 				node_provider_auth_contract: Some(auth_contract),
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
-				replication_total: 3
+				replication_total: 3,
+				inspection_dry_run_params: None,
 			},
 			cluster_protocol_params
 		));
@@ -701,10 +730,13 @@ fn cluster_visitor_works() {
 			)
 			.unwrap(),
 			ClusterPricingParams {
-				unit_per_mb_stored: 10,
-				unit_per_mb_streamed: 10,
-				unit_per_put_request: 10,
-				unit_per_get_request: 10,
+				cost_per_mb_stored: 10,
+				cost_per_mb_streamed: 10,
+				cost_per_put_request: 10,
+				cost_per_get_request: 10,
+				cost_per_gpu_unit: 0,
+				cost_per_cpu_unit: 0,
+				cost_per_ram_unit: 0,
 			}
 		);
 
@@ -792,10 +824,13 @@ fn cluster_creator_works() {
 			storage_bond_size: 100,
 			storage_chill_delay: 50,
 			storage_unbonding_delay: 50,
-			unit_per_mb_stored: 10,
-			unit_per_mb_streamed: 10,
-			unit_per_put_request: 10,
-			unit_per_get_request: 10,
+			cost_per_mb_stored: 10,
+			cost_per_mb_streamed: 10,
+			cost_per_put_request: 10,
+			cost_per_get_request: 10,
+			cost_per_gpu_unit: 0,
+			cost_per_cpu_unit: 0,
+			cost_per_ram_unit: 0,
 			customer_deposit_contract,
 		};
 
@@ -811,7 +846,8 @@ fn cluster_creator_works() {
 				node_provider_auth_contract: Some(auth_contract),
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
-				replication_total: 3
+				replication_total: 3,
+				inspection_dry_run_params: None,
 			},
 			cluster_protocol_params,
 		));

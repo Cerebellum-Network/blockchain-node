@@ -175,6 +175,7 @@ benchmarks! {
 				erasure_coding_required: 0,
 				erasure_coding_total: 0,
 				replication_total: 0,
+				inspection_dry_run_params: None,
 			},
 			ClusterProtocolParams {
 				treasury_share: Perquintill::default(),
@@ -183,10 +184,13 @@ benchmarks! {
 				storage_bond_size: 100u32.into(),
 				storage_chill_delay: 50u32.into(),
 				storage_unbonding_delay: 50u32.into(),
-				unit_per_mb_stored: 10,
-				unit_per_mb_streamed: 10,
-				unit_per_put_request: 10,
-				unit_per_get_request: 10,
+				cost_per_mb_stored: 10,
+				cost_per_mb_streamed: 10,
+				cost_per_put_request: 10,
+				cost_per_get_request: 10,
+				cost_per_gpu_unit: 0,
+				cost_per_cpu_unit: 0,
+				cost_per_ram_unit: 0,
 				customer_deposit_contract,
 			}
 		)?;
@@ -216,6 +220,7 @@ benchmarks! {
 				erasure_coding_required: 0,
 				erasure_coding_total: 0,
 				replication_total: 0,
+				inspection_dry_run_params: None,
 			},
 			ClusterProtocolParams {
 				treasury_share: Perquintill::default(),
@@ -224,10 +229,13 @@ benchmarks! {
 				storage_bond_size: 100u32.into(),
 				storage_chill_delay: 50u32.into(),
 				storage_unbonding_delay: 50u32.into(),
-				unit_per_mb_stored: 10,
-				unit_per_mb_streamed: 10,
-				unit_per_put_request: 10,
-				unit_per_get_request: 10,
+				cost_per_mb_stored: 10,
+				cost_per_mb_streamed: 10,
+				cost_per_put_request: 10,
+				cost_per_get_request: 10,
+				cost_per_gpu_unit: 0,
+				cost_per_cpu_unit: 0,
+				cost_per_ram_unit: 0,
 				customer_deposit_contract,
 			}
 		)?;
@@ -257,6 +265,7 @@ benchmarks! {
 				erasure_coding_required: 0,
 				erasure_coding_total: 0,
 				replication_total: 0,
+				inspection_dry_run_params: None,
 			},
 			ClusterProtocolParams {
 				treasury_share: Perquintill::default(),
@@ -265,10 +274,13 @@ benchmarks! {
 				storage_bond_size: 100u32.into(),
 				storage_chill_delay: 50u32.into(),
 				storage_unbonding_delay: 50u32.into(),
-				unit_per_mb_stored: 10,
-				unit_per_mb_streamed: 10,
-				unit_per_put_request: 10,
-				unit_per_get_request: 10,
+				cost_per_mb_stored: 10,
+				cost_per_mb_streamed: 10,
+				cost_per_put_request: 10,
+				cost_per_get_request: 10,
+				cost_per_gpu_unit: 0,
+				cost_per_cpu_unit: 0,
+				cost_per_ram_unit: 0,
 				customer_deposit_contract,
 			}
 		)?;

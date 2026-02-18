@@ -1,4 +1,4 @@
-FROM phusion/baseimage:jammy-1.0.1 as builder
+FROM phusion/baseimage:jammy-1.0.1 AS builder
 LABEL maintainer="team@cere.network"
 LABEL description="This is the build stage to create the binary."
 ARG PROFILE=release
@@ -10,19 +10,27 @@ RUN apt-get -qq update && \
       clang \
       cmake \
       git \
+      libclang-dev \
       libpq-dev \
       libssl-dev \
+      llvm \
       pkg-config \
       unzip \
       wget
 
-# Configure sccache
+# Configure sccache (detect architecture)
 ENV SCCACHE_VERSION=0.5.4
-RUN wget -q https://github.com/mozilla/sccache/releases/download/v${SCCACHE_VERSION}/sccache-v${SCCACHE_VERSION}-x86_64-unknown-linux-musl.tar.gz \
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "aarch64" ]; then \
+      SCCACHE_ARCH="aarch64-unknown-linux-musl"; \
+    else \
+      SCCACHE_ARCH="x86_64-unknown-linux-musl"; \
+    fi && \
+    wget -q https://github.com/mozilla/sccache/releases/download/v${SCCACHE_VERSION}/sccache-v${SCCACHE_VERSION}-${SCCACHE_ARCH}.tar.gz \
       -O - | tar -xz \
-    && mv sccache-v${SCCACHE_VERSION}-x86_64-unknown-linux-musl/sccache /usr/local/bin/sccache \
+    && mv sccache-v${SCCACHE_VERSION}-${SCCACHE_ARCH}/sccache /usr/local/bin/sccache \
     && chmod +x /usr/local/bin/sccache \
-    && rm -rf sccache-v${SCCACHE_VERSION}-x86_64-unknown-linux-musl
+    && rm -rf sccache-v${SCCACHE_VERSION}-${SCCACHE_ARCH}
 ENV RUSTC_WRAPPER=/usr/local/bin/sccache
 
 # Create non-privileged user for building
@@ -33,10 +41,16 @@ RUN chown -R builder:builder /cerenetwork
 
 # Installation script is taken from https://grpc.io/docs/protoc-installation/
 ENV PROTOC_VERSION=3.15.8
-RUN PB_REL="https://github.com/protocolbuffers/protobuf/releases" && \
-    curl -sLO $PB_REL/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip && \
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "aarch64" ]; then \
+      PROTOC_ARCH="linux-aarch_64"; \
+    else \
+      PROTOC_ARCH="linux-x86_64"; \
+    fi && \
+    PB_REL="https://github.com/protocolbuffers/protobuf/releases" && \
+    curl -sLO $PB_REL/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-${PROTOC_ARCH}.zip && \
     mkdir -p /usr/local/protoc && \
-    unzip protoc-${PROTOC_VERSION}-linux-x86_64.zip -d /usr/local/protoc && \
+    unzip protoc-${PROTOC_VERSION}-${PROTOC_ARCH}.zip -d /usr/local/protoc && \
     chmod +x /usr/local/protoc/bin/protoc && \
     ln -s /usr/local/protoc/bin/protoc /usr/local/bin/protoc && \
     chmod +x /usr/local/bin/protoc && \
@@ -45,14 +59,15 @@ RUN PB_REL="https://github.com/protocolbuffers/protobuf/releases" && \
 # GitHub token for private repository access (temporary during build)
 ARG GH_READ_TOKEN
 
-# Switch to builder user and configure Git
+# Switch to builder user and configure Git for private Cerebellum repos
 USER builder
 RUN git config --global url."https://${GH_READ_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
     export PATH=$PATH:$HOME/.cargo/bin && \
     scripts/init.sh && \
-    cargo build --locked --$PROFILE --features on-chain-release-build
+    cargo update -p merkleized-metadata && \
+    cargo build --$PROFILE --features on-chain-release-build
 
 # ===== SECOND STAGE ======
 FROM phusion/baseimage:jammy-1.0.1

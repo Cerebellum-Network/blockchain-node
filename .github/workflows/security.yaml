@@ -108,7 +108,7 @@ jobs:
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
-          languages: 'javascript'
+          languages: 'rust'
           config-file: ./.github/codeql/codeql-config.yml
 
       - name: Autobuild

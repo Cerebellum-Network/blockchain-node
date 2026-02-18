@@ -38,7 +38,28 @@ pub mod v0 {
 }
 
 pub mod v1 {
-	use ddc_primitives::NodeUsage;
+
+	#[derive(
+		PartialEq,
+		Eq,
+		Encode,
+		Decode,
+		DecodeWithMemTracking,
+		Debug,
+		TypeInfo,
+		Default,
+		Clone,
+		Serialize,
+		Deserialize,
+		PartialOrd,
+		Ord,
+	)]
+	pub struct NodeUsage {
+		pub transferred_bytes: u64,
+		pub stored_bytes: i64,
+		pub number_of_puts: u64,
+		pub number_of_gets: u64,
+	}
 
 	use super::*;
 

@@ -34,7 +34,8 @@ benchmarks! {
 								node_provider_auth_contract: Some(user.clone()),
 								erasure_coding_required: 4,
 								erasure_coding_total: 6,
-								replication_total: 3
+								replication_total: 3,
+								inspection_dry_run_params: None,
 							};
 		let customer_deposit_contract = account::<T::AccountId>("customer-deposit-contract", 0, 0);
 		let cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>, T::AccountId> = ClusterProtocolParams {
@@ -44,10 +45,13 @@ benchmarks! {
 			storage_bond_size: 100u32.into(),
 			storage_chill_delay: 50u32.into(),
 			storage_unbonding_delay: 50u32.into(),
-			unit_per_mb_stored: 10,
-			unit_per_mb_streamed: 10,
-			unit_per_put_request: 10,
-			unit_per_get_request: 10,
+			cost_per_mb_stored: 10,
+			cost_per_mb_streamed: 10,
+			cost_per_put_request: 10,
+			cost_per_get_request: 10,
+			cost_per_gpu_unit: 0,
+			cost_per_cpu_unit: 0,
+			cost_per_ram_unit: 0,
 			customer_deposit_contract,
 		};
 	}: _(RawOrigin::Signed(user.clone()), cluster_id, user.clone(), cluster_params, cluster_protocol_params)
@@ -113,7 +117,8 @@ benchmarks! {
 									node_provider_auth_contract: Some(user_2.clone()),
 									erasure_coding_required: 4,
 									erasure_coding_total: 6,
-									replication_total: 3
+									replication_total: 3,
+									inspection_dry_run_params: None,
 								};
 	}: _(RawOrigin::Signed(user.clone()), cluster_id, new_cluster_params)
 	verify {
@@ -124,6 +129,7 @@ benchmarks! {
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
 				replication_total: 3,
+				inspection_dry_run_params: None,
 			}
 		);
 	}
