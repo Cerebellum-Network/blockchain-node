@@ -657,11 +657,8 @@ pub mod v4 {
 			let on_chain_version = Pallet::<T>::on_chain_storage_version();
 			let current_version = Pallet::<T>::in_code_storage_version();
 			let will_run = on_chain_version == 3 && current_version >= 4;
-			let prev_count = if will_run {
-				v3::ClustersGovParams::<T>::iter().count() as u64
-			} else {
-				0u64
-			};
+			let prev_count =
+				if will_run { v3::ClustersGovParams::<T>::iter().count() as u64 } else { 0u64 };
 			Ok((will_run, prev_count).encode())
 		}
 
@@ -678,10 +675,7 @@ pub mod v4 {
 				);
 
 				let on_chain_version = Pallet::<T>::on_chain_storage_version();
-				ensure!(
-					on_chain_version == 4,
-					"after migration, the on_chain_version should be 4"
-				);
+				ensure!(on_chain_version == 4, "after migration, the on_chain_version should be 4");
 			}
 			Ok(())
 		}
@@ -789,11 +783,7 @@ pub mod v5 {
 			let on_chain_version = Pallet::<T>::on_chain_storage_version();
 			let current_version = Pallet::<T>::in_code_storage_version();
 			let will_run = on_chain_version == 4 && current_version >= 5;
-			let prev_count = if will_run {
-				v3::Clusters::<T>::iter().count() as u64
-			} else {
-				0u64
-			};
+			let prev_count = if will_run { v3::Clusters::<T>::iter().count() as u64 } else { 0u64 };
 			Ok((will_run, prev_count).encode())
 		}
 
@@ -810,10 +800,7 @@ pub mod v5 {
 				);
 
 				let on_chain_version = Pallet::<T>::on_chain_storage_version();
-				ensure!(
-					on_chain_version == 5,
-					"after migration, the on_chain_version should be 5"
-				);
+				ensure!(on_chain_version == 5, "after migration, the on_chain_version should be 5");
 			}
 			Ok(())
 		}
@@ -954,11 +941,8 @@ pub mod v6 {
 			let on_chain_version = Pallet::<T>::on_chain_storage_version();
 			let current_version = Pallet::<T>::in_code_storage_version();
 			let will_run = on_chain_version == 5 && current_version >= 6;
-			let prev_count = if will_run {
-				v4::ClustersGovParams::<T>::iter().count() as u64
-			} else {
-				0u64
-			};
+			let prev_count =
+				if will_run { v4::ClustersGovParams::<T>::iter().count() as u64 } else { 0u64 };
 			Ok((will_run, prev_count).encode())
 		}
 
@@ -975,10 +959,7 @@ pub mod v6 {
 				);
 
 				let on_chain_version = Pallet::<T>::on_chain_storage_version();
-				ensure!(
-					on_chain_version == 6,
-					"after migration, the on_chain_version should be 6"
-				);
+				ensure!(on_chain_version == 6, "after migration, the on_chain_version should be 6");
 			}
 			Ok(())
 		}
