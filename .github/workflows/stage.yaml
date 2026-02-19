@@ -7,6 +7,7 @@ on:
       - master
       - 'release/**'
       - 'hotfix/**'
+      - 'upgrade-polkadot2512-master'
 
 env:
   PROFILE: release
