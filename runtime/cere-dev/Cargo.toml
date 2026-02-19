@@ -115,7 +115,7 @@ frame-metadata-hash-extension.workspace = true
 ismp.workspace = true
 ismp-grandpa.workspace = true
 pallet-hyperbridge.workspace = true
-pallet-ismp = { workspace = true, features = ["unsigned"] }
+pallet-ismp.workspace = true
 pallet-ismp-runtime-api.workspace = true
 pallet-token-gateway.workspace = true
 sp-mmr-primitives.workspace = true

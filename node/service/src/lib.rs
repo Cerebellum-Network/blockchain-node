@@ -46,6 +46,41 @@ type FullGrandpaBlockImport<RuntimeApi> = sc_consensus_grandpa::GrandpaBlockImpo
 	FullSelectChain,
 >;
 
+/// Concrete type implementing `CreateInherentDataProviders` for BABE,
+/// so that we have a nameable type for `BabeBlockImport`.
+#[derive(Clone)]
+pub struct BabeInherentDataProviderCreator {
+	slot_duration: sp_consensus_babe::SlotDuration,
+}
+
+#[async_trait::async_trait]
+impl sp_inherents::CreateInherentDataProviders<Block, ()> for BabeInherentDataProviderCreator {
+	type InherentDataProviders =
+		(sp_consensus_babe::inherents::InherentDataProvider, sp_timestamp::InherentDataProvider);
+
+	async fn create_inherent_data_providers(
+		&self,
+		_parent: <Block as BlockT>::Hash,
+		_extra_args: (),
+	) -> Result<Self::InherentDataProviders, Box<dyn std::error::Error + Send + Sync>> {
+		let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
+		let slot =
+			sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
+				*timestamp,
+				self.slot_duration,
+			);
+		Ok((slot, timestamp))
+	}
+}
+
+type FullBabeBlockImport<RuntimeApi> = sc_consensus_babe::BabeBlockImport<
+	Block,
+	FullClient<RuntimeApi>,
+	FullGrandpaBlockImport<RuntimeApi>,
+	BabeInherentDataProviderCreator,
+	FullSelectChain,
+>;
+
 struct Basics<RuntimeApi>
 where
 	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
@@ -123,11 +158,7 @@ fn new_partial<RuntimeApi>(
 				sc_rpc::SubscriptionTaskExecutor,
 			) -> Result<jsonrpsee::RpcModule<()>, sc_service::Error>,
 			(
-				sc_consensus_babe::BabeBlockImport<
-					Block,
-					FullClient<RuntimeApi>,
-					FullGrandpaBlockImport<RuntimeApi>,
-				>,
+				FullBabeBlockImport<RuntimeApi>,
 				sc_consensus_grandpa::LinkHalf<Block, FullClient<RuntimeApi>, FullSelectChain>,
 				sc_consensus_babe::BabeLink<Block>,
 			),
@@ -163,35 +194,29 @@ where
 
 	let justification_import = grandpa_block_import.clone();
 
+	let babe_config = sc_consensus_babe::configuration(&*client)?;
+	let slot_duration = babe_config.slot_duration();
+	let cidp = BabeInherentDataProviderCreator { slot_duration };
+
 	let (block_import, babe_link) = sc_consensus_babe::block_import(
-		sc_consensus_babe::configuration(&*client)?,
+		babe_config,
 		grandpa_block_import,
 		client.clone(),
+		cidp,
+		select_chain.clone(),
+		OffchainTransactionPoolFactory::new(transaction_pool.clone()),
 	)?;
 
-	let slot_duration = babe_link.config().slot_duration();
 	let (import_queue, babe_worker_handle) =
 		sc_consensus_babe::import_queue(sc_consensus_babe::ImportQueueParams {
 			link: babe_link.clone(),
 			block_import: block_import.clone(),
 			justification_import: Some(Box::new(justification_import)),
 			client: client.clone(),
-			select_chain: select_chain.clone(),
-			create_inherent_data_providers: move |_, ()| async move {
-				let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
-
-				let slot =
-					sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
-						*timestamp,
-						slot_duration,
-					);
-
-				Ok((slot, timestamp))
-			},
+			slot_duration,
 			spawner: &task_manager.spawn_essential_handle(),
 			registry: config.prometheus_registry(),
 			telemetry: telemetry.as_ref().map(|x| x.handle()),
-			offchain_tx_pool_factory: OffchainTransactionPoolFactory::new(transaction_pool.clone()),
 		})?;
 
 	let import_setup = (block_import, grandpa_link, babe_link);
@@ -305,11 +330,7 @@ pub fn new_full<RuntimeApi, N: NetworkBackend<Block, <Block as BlockT>::Hash>>(
 	config: Configuration,
 	disable_hardware_benchmarks: bool,
 	with_startup_data: impl FnOnce(
-		&sc_consensus_babe::BabeBlockImport<
-			Block,
-			FullClient<RuntimeApi>,
-			FullGrandpaBlockImport<RuntimeApi>,
-		>,
+		&FullBabeBlockImport<RuntimeApi>,
 		&sc_consensus_babe::BabeLink<Block>,
 	),
 ) -> Result<NewFull<Arc<FullClient<RuntimeApi>>>, ServiceError>
@@ -425,6 +446,7 @@ where
 		tx_handler_controller,
 		telemetry: telemetry.as_mut(),
 		sync_service: sync_service.clone(),
+		tracing_execute_block: None,
 	})?;
 
 	if let Some(hwbench) = hwbench {
