@@ -40,7 +40,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install linux dependencies
-        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler
+        run: sudo apt update && sudo apt install -y cargo clang libclang-dev libssl-dev llvm libudev-dev protobuf-compiler
       - name: Install toolchain and rust-src
         uses: actions-rs/toolchain@v1
         with:
@@ -78,7 +78,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install linux dependencies
-        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler
+        run: sudo apt update && sudo apt install -y cargo clang libclang-dev libssl-dev llvm libudev-dev protobuf-compiler
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -101,7 +101,7 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
       - name: Install linux dependencies
-        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler make pkg-config
+        run: sudo apt update && sudo apt install -y cargo clang libclang-dev libssl-dev llvm libudev-dev protobuf-compiler make pkg-config
       - name: Install Rust and Use It
         shell: bash
         run: |
