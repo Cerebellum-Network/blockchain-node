@@ -7,9 +7,8 @@ publish = false
 
 [dependencies]
 base64ct = { version = "=1.6.0" } # the version of `base64ct` should be pinned for ink-related requirements
-ddc-primitives = { git = "https://github.com/Cerebellum-Network/ddc-primitives.git", branch = "dev", default-features = false }
+ddc-primitives = { path = "../../../ddc-primitives", default-features = false }
 ink.workspace = true
-sp-runtime.workspace = true
 
 [lib]
 path = "lib.rs"
