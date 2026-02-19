@@ -478,17 +478,17 @@ pub fn cere_thirdparty_genesis(
 	let mut rng = rand::thread_rng();
 	let stakers = initial_authorities
 		.iter()
-		.map(|x| (x.0.clone(), x.1.clone(), STASH, cere_dev::StakerStatus::Validator))
+		.map(|x| (x.0.clone(), x.1.clone(), STASH, cere::StakerStatus::Validator))
 		.chain(initial_nominators.iter().map(|x| {
 			use rand::{seq::SliceRandom, Rng};
-			let limit = (cere_dev::MaxNominations::get() as usize).min(initial_authorities.len());
+			let limit = (cere::MaxNominations::get() as usize).min(initial_authorities.len());
 			let count = rng.gen::<usize>() % limit;
 			let nominations = initial_authorities
 				.as_slice()
 				.choose_multiple(&mut rng, count)
 				.map(|choice| choice.0.clone())
 				.collect::<Vec<_>>();
-			(x.clone(), x.clone(), STASH, cere_dev::StakerStatus::Nominator(nominations))
+			(x.clone(), x.clone(), STASH, cere::StakerStatus::Nominator(nominations))
 		}))
 		.collect::<Vec<_>>();
 
@@ -510,7 +510,7 @@ pub fn cere_thirdparty_genesis(
 			"balances": endowed_accounts.iter().cloned().map(|x| (x, ENDOWMENT))
 		.collect::<Vec<_>>(),
 			},
-		"indices": cere_dev::IndicesConfig { indices: vec![] },
+		"indices": cere::IndicesConfig { indices: vec![] },
 		"session": {
 			"keys": initial_authorities
 				.iter()
@@ -545,7 +545,7 @@ pub fn cere_thirdparty_genesis(
 			  "maxValidatorCount": null,
 			  "maxNominatorCount": null,
 		},
-		"ddcStaking": cere_dev::DdcStakingConfig {
+		"ddcStaking": cere::DdcStakingConfig {
 			storages: vec![],
 			  clusters: vec![]
 		},
@@ -568,9 +568,9 @@ pub fn cere_thirdparty_genesis(
 		"sudo": { "key": Some(root_key) },
 		"babe": {
 			"authorities": [],
-			"epochConfig": Some(cere_dev::BABE_GENESIS_EPOCH_CONFIG),
+			"epochConfig": Some(cere::BABE_GENESIS_EPOCH_CONFIG),
 		},
-		"imOnline": cere_dev::ImOnlineConfig { keys: vec![] },
+		"imOnline": cere::ImOnlineConfig { keys: vec![] },
 		"authorityDiscovery": {
 			"keys": []
 		},
