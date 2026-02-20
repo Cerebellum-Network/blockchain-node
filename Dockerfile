@@ -34,29 +34,48 @@ RUN PB_REL="https://github.com/protocolbuffers/protobuf/releases" && \
     chmod +x /usr/local/protoc/bin/protoc && \
     ln -s /usr/local/protoc/bin/protoc /usr/local/bin
 
+ARG AWS_ACCESS_KEY_ID
+ARG AWS_SECRET_ACCESS_KEY
+ARG AWS_SESSION_TOKEN
 ARG SCCACHE_REGION=us-west-2
 ARG SCCACHE_BUCKET=cere-blockchain-sccache
-ENV AWS_REGION=$SCCACHE_REGION \
+ENV \
+  AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
+  AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
+  AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN \
+  AWS_REGION=$SCCACHE_REGION \
   SCCACHE_REGION=$SCCACHE_REGION \
   SCCACHE_BUCKET=$SCCACHE_BUCKET \
   SCCACHE_S3_USE_SSL=true
 
-# Install Rust and set default toolchain so PATH and toolchain are correct for all subsequent steps
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain none
-ENV PATH="/root/.cargo/bin:${PATH}"
-RUN rustup install 1.90.0 && \
-    rustup default 1.90.0 && \
-    rustup target add wasm32-unknown-unknown --toolchain 1.90.0 && \
-    rustup component add rust-src --toolchain 1.90.0
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
+    export PATH=$PATH:$HOME/.cargo/bin && \
+    scripts/init.sh && \
+    cargo build  --$PROFILE  --features on-chain-release-build
 
-# Build (AWS credentials for sccache provided via build secrets when available)
-RUN --mount=type=secret,id=AWS_ACCESS_KEY_ID,required=false \
-    --mount=type=secret,id=AWS_SECRET_ACCESS_KEY,required=false \
-    --mount=type=secret,id=AWS_SESSION_TOKEN,required=false \
-    export AWS_ACCESS_KEY_ID=$$(cat /run/secrets/AWS_ACCESS_KEY_ID 2>/dev/null || true) && \
-    export AWS_SECRET_ACCESS_KEY=$$(cat /run/secrets/AWS_SECRET_ACCESS_KEY 2>/dev/null || true) && \
-    export AWS_SESSION_TOKEN=$$(cat /run/secrets/AWS_SESSION_TOKEN 2>/dev/null || true) && \
-    cargo build --$PROFILE --features on-chain-release-build
+# Aggressively clean up unnecessary files to save disk space and prevent runner resource exhaustion
+# Remove debug builds, incremental compilation artifacts, and other intermediate files
+# Keep only the release binary and final WASM runtime artifacts
+RUN rm -rf /cerenetwork/target/debug && \
+    rm -rf /cerenetwork/target/$PROFILE/incremental && \
+    rm -rf /cerenetwork/target/$PROFILE/build && \
+    find /cerenetwork/target/$PROFILE/deps -name "*.rlib" -delete 2>/dev/null || true && \
+    find /cerenetwork/target/$PROFILE/deps -name "*.rmeta" -delete 2>/dev/null || true && \
+    find /cerenetwork/target/$PROFILE/deps -name "*.d" -delete 2>/dev/null || true && \
+    # Aggressively clean up wbuild directories - keep only the final WASM files
+    # This is critical to prevent runner resource exhaustion during COPY operations
+    find /cerenetwork/target/$PROFILE/wbuild/cere-runtime -type f ! -name "cere_runtime.compact.compressed.wasm" -delete 2>/dev/null || true && \
+    find /cerenetwork/target/$PROFILE/wbuild/cere-dev-runtime -type f ! -name "cere_dev_runtime.compact.compressed.wasm" -delete 2>/dev/null || true && \
+    find /cerenetwork/target/$PROFILE/wbuild -type d -empty -delete 2>/dev/null || true && \
+    # Clean up Rust toolchain cache
+    rm -rf ~/.cargo/registry/cache 2>/dev/null || true && \
+    # Clean up apt cache
+    apt-get clean && rm -rf /var/lib/apt/lists/* && \
+    # Clean up temporary files
+    rm -rf /tmp/* /var/tmp/* && \
+    # Verify WASM files exist before proceeding
+    test -f /cerenetwork/target/$PROFILE/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm && \
+    test -f /cerenetwork/target/$PROFILE/wbuild/cere-dev-runtime/cere_dev_runtime.compact.compressed.wasm
 
 # ===== SECOND STAGE ======
 FROM phusion/baseimage:jammy-1.0.1
@@ -64,8 +83,11 @@ LABEL maintainer="team@cere.network"
 LABEL description="This is the optimization to create a small image."
 ARG PROFILE=release
 COPY --from=builder /cerenetwork/target/$PROFILE/cere /usr/local/bin
-COPY --from=builder /cerenetwork/target/$PROFILE/wbuild/cere-runtime /home/cere/cere-runtime-artifacts
-COPY --from=builder /cerenetwork/target/$PROFILE/wbuild/cere-dev-runtime /home/cere/cere-dev-runtime-artifacts
+
+# Copy only the necessary WASM files instead of entire directories for faster builds
+RUN mkdir -p /home/cere/cere-runtime-artifacts /home/cere/cere-dev-runtime-artifacts
+COPY --from=builder /cerenetwork/target/$PROFILE/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm /home/cere/cere-runtime-artifacts/
+COPY --from=builder /cerenetwork/target/$PROFILE/wbuild/cere-dev-runtime/cere_dev_runtime.compact.compressed.wasm /home/cere/cere-dev-runtime-artifacts/
 
 RUN mv /usr/share/ca* /tmp && \
     rm -rf /usr/share/*  && \
