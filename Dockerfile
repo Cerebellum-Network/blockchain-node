@@ -10,6 +10,7 @@ RUN apt-get -qq update && \
       clang \
       cmake \
       git \
+      libclang-dev \
       libpq-dev \
       libssl-dev \
       pkg-config \
