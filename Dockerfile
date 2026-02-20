@@ -1,4 +1,4 @@
-FROM phusion/baseimage:jammy-1.0.1 as builder
+FROM phusion/baseimage:jammy-1.0.1 AS builder
 LABEL maintainer="team@cere.network"
 LABEL description="This is the build stage to create the binary."
 ARG PROFILE=release
@@ -34,24 +34,29 @@ RUN PB_REL="https://github.com/protocolbuffers/protobuf/releases" && \
     chmod +x /usr/local/protoc/bin/protoc && \
     ln -s /usr/local/protoc/bin/protoc /usr/local/bin
 
-ARG AWS_ACCESS_KEY_ID
-ARG AWS_SECRET_ACCESS_KEY
-ARG AWS_SESSION_TOKEN
 ARG SCCACHE_REGION=us-west-2
 ARG SCCACHE_BUCKET=cere-blockchain-sccache
-ENV \
-  AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
-  AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
-  AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN \
-  AWS_REGION=$SCCACHE_REGION \
+ENV AWS_REGION=$SCCACHE_REGION \
   SCCACHE_REGION=$SCCACHE_REGION \
   SCCACHE_BUCKET=$SCCACHE_BUCKET \
   SCCACHE_S3_USE_SSL=true
 
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
-    export PATH=$PATH:$HOME/.cargo/bin && \
-    scripts/init.sh && \
-    cargo build  --$PROFILE  --features on-chain-release-build
+# Install Rust and set default toolchain so PATH and toolchain are correct for all subsequent steps
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain none
+ENV PATH="/root/.cargo/bin:${PATH}"
+RUN rustup install 1.90.0 && \
+    rustup default 1.90.0 && \
+    rustup target add wasm32-unknown-unknown --toolchain 1.90.0 && \
+    rustup component add rust-src --toolchain 1.90.0
+
+# Build (AWS credentials for sccache provided via build secrets when available)
+RUN --mount=type=secret,id=AWS_ACCESS_KEY_ID,required=false \
+    --mount=type=secret,id=AWS_SECRET_ACCESS_KEY,required=false \
+    --mount=type=secret,id=AWS_SESSION_TOKEN,required=false \
+    export AWS_ACCESS_KEY_ID=$$(cat /run/secrets/AWS_ACCESS_KEY_ID 2>/dev/null || true) && \
+    export AWS_SECRET_ACCESS_KEY=$$(cat /run/secrets/AWS_SECRET_ACCESS_KEY 2>/dev/null || true) && \
+    export AWS_SESSION_TOKEN=$$(cat /run/secrets/AWS_SESSION_TOKEN 2>/dev/null || true) && \
+    cargo build --$PROFILE --features on-chain-release-build
 
 # ===== SECOND STAGE ======
 FROM phusion/baseimage:jammy-1.0.1

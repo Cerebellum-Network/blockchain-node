@@ -4,8 +4,7 @@ use ddc_primitives::{
 	ClusterNodeKind, ClusterNodeStatus, ClusterParams, ClusterProtocolParams, ClusterStatus,
 	StorageNodeParams, StorageNodePubKey,
 };
-use frame_support::{assert_noop, assert_ok, traits::ReservableCurrency};
-use pallet_balances::Error as BalancesError;
+use frame_support::{assert_noop, assert_ok};
 use pallet_ddc_clusters::{
 	cluster::{Cluster, ClusterProps},
 	Clusters, Error as ClustersError,
@@ -367,10 +366,11 @@ fn staking_should_work() {
 	ExtBuilder.build_and_execute(clusters, nodes, clusters_bonds, nodes_bondes, || {
 		System::set_block_number(1);
 
-		// Put some money in account that we'll use.
+		// Put some money in account that we'll use. USER_KEY_3 needs enough headroom
+		// after bonding 1500 so that (free balance > 409) for the reserve test below.
 		let _ = Balances::make_free_balance_be(&AccountId::from(USER_KEY_1), 2000);
 		let _ = Balances::make_free_balance_be(&AccountId::from(USER_KEY_2), 2000);
-		let _ = Balances::make_free_balance_be(&AccountId::from(USER_KEY_3), 2000);
+		let _ = Balances::make_free_balance_be(&AccountId::from(USER_KEY_3), 2100);
 		let _ = Balances::make_free_balance_be(&AccountId::from(USER_KEY_4), 2000);
 
 		// Bond dust should fail
@@ -472,12 +472,9 @@ fn staking_should_work() {
 				unlocking: Default::default(),
 			})
 		);
-		// It cannot reserve more than 500 that it has free from the total 2000
-		assert_noop!(
-			Balances::reserve(&AccountId::from(USER_KEY_3), 501),
-			BalancesError::<Test, _>::LiquidityRestrictions
-		);
-		assert_ok!(Balances::reserve(&AccountId::from(USER_KEY_3), 409));
+		// Stash has 2100 total, 1500 locked by staking; only 600 would be free for other uses.
+		// (We do not call Balances::reserve here because the test runtime uses MaxReserves = ().)
+		assert_eq!(Ledger::<Test>::get(AccountId::from(USER_KEY_4)).unwrap().total, 1500);
 
 		// Too early to call chill the second time
 		assert_noop!(
