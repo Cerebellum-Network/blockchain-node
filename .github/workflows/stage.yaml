@@ -7,6 +7,7 @@ on:
       - master
       - 'release/**'
       - 'hotfix/**'
+      - 'upgrade-polkadot2512-master'
 
 env:
   PROFILE: release
@@ -19,6 +20,30 @@ jobs:
       contents: read
       id-token: write
     steps:
+      - name: Free disk space (initial cleanup)
+        run: |
+          echo "=== Disk space before cleanup ==="
+          df -h
+          
+          # Remove Docker resources (most important for disk space)
+          docker system prune -af --volumes || true
+          docker buildx prune -af || true
+          
+          # Clean up system packages and cache
+          sudo apt-get clean || true
+          sudo rm -rf /var/lib/apt/lists/* || true
+          
+          # Clean up temporary files (safe to remove)
+          sudo rm -rf /tmp/* || true
+          sudo rm -rf /var/tmp/* || true
+          
+          # Clean up old logs (keep recent ones)
+          sudo journalctl --vacuum-time=1h || true
+          sudo find /var/log -type f -name "*.log" -mtime +1 -delete 2>/dev/null || true
+          
+          echo "=== Disk space after cleanup ==="
+          df -h
+
       - uses: actions/checkout@v3
 
       - name: Cache cargo registry
@@ -39,7 +64,7 @@ jobs:
           role-session-name: ${{ github.event.repository.name }}
           aws-region: us-west-2
 
-      - name: Confiure environment variables
+      - name: Configure environment variables
         run: |
           echo "GITHUB_SHA=${GITHUB_SHA:0:7}" >> ${GITHUB_ENV}
 
@@ -53,15 +78,34 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
+      - name: Free disk space (before Docker build)
+        run: |
+          echo "=== Disk space before Docker build ==="
+          df -h
+          
+          # Remove unused Docker images, containers, and build cache
+          docker system prune -af --volumes || true
+          # Remove old buildx cache
+          docker buildx prune -af || true
+          
+          # Clean up any temporary files
+          sudo rm -rf /tmp/* || true
+          sudo rm -rf /var/tmp/* || true
+          
+          echo "=== Disk space after cleanup ==="
+          df -h
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
       - name: Build and push docker image to ECR
+        timeout-minutes: 120
         uses: docker/build-push-action@v4
         with:
           context: .
           push: true
+          platforms: linux/amd64
           build-args: |
             "AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID }}"
             "AWS_SECRET_ACCESS_KEY=${{ env.AWS_SECRET_ACCESS_KEY }}"
@@ -74,12 +118,23 @@ jobs:
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ env.GITHUB_SHA }}
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:master-latest
 
+      - name: Clean up after build
+        if: always()
+        run: |
+          echo "=== Disk space after build ==="
+          df -h
+          # Clean up build cache to free space
+          docker buildx prune -f || true
+
       - name: Copy wasm artifacts from the image
         run: |
           CONTAINER_ID=$(docker create ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ env.GITHUB_SHA }})
 
           docker cp "${CONTAINER_ID}:/home/cere/cere-runtime-artifacts/cere_runtime.compact.compressed.wasm" "./${{ env.CERE_RUNTIME }}"
           docker cp "${CONTAINER_ID}:/home/cere/cere-dev-runtime-artifacts/cere_dev_runtime.compact.compressed.wasm" "./${{ env.CERE_DEV_RUNTIME }}"
+          
+          # Clean up the container immediately after copying
+          docker rm "${CONTAINER_ID}" || true
 
       - name: Upload cere-runtime wasm artifact
         uses: actions/upload-artifact@v4

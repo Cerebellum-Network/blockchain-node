@@ -1,4 +1,4 @@
-FROM phusion/baseimage:jammy-1.0.1 as builder
+FROM phusion/baseimage:jammy-1.0.1 AS builder
 LABEL maintainer="team@cere.network"
 LABEL description="This is the build stage to create the binary."
 ARG PROFILE=release
@@ -10,6 +10,7 @@ RUN apt-get -qq update && \
       clang \
       cmake \
       git \
+      libclang-dev \
       libpq-dev \
       libssl-dev \
       pkg-config \
@@ -53,14 +54,41 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
     scripts/init.sh && \
     cargo build  --$PROFILE  --features on-chain-release-build
 
+# Aggressively clean up unnecessary files to save disk space and prevent runner resource exhaustion
+# Remove debug builds, incremental compilation artifacts, and other intermediate files
+# Keep only the release binary and final WASM runtime artifacts
+RUN rm -rf /cerenetwork/target/debug && \
+    rm -rf /cerenetwork/target/$PROFILE/incremental && \
+    rm -rf /cerenetwork/target/$PROFILE/build && \
+    find /cerenetwork/target/$PROFILE/deps -name "*.rlib" -delete 2>/dev/null || true && \
+    find /cerenetwork/target/$PROFILE/deps -name "*.rmeta" -delete 2>/dev/null || true && \
+    find /cerenetwork/target/$PROFILE/deps -name "*.d" -delete 2>/dev/null || true && \
+    # Aggressively clean up wbuild directories - keep only the final WASM files
+    # This is critical to prevent runner resource exhaustion during COPY operations
+    find /cerenetwork/target/$PROFILE/wbuild/cere-runtime -type f ! -name "cere_runtime.compact.compressed.wasm" -delete 2>/dev/null || true && \
+    find /cerenetwork/target/$PROFILE/wbuild/cere-dev-runtime -type f ! -name "cere_dev_runtime.compact.compressed.wasm" -delete 2>/dev/null || true && \
+    find /cerenetwork/target/$PROFILE/wbuild -type d -empty -delete 2>/dev/null || true && \
+    # Clean up Rust toolchain cache
+    rm -rf ~/.cargo/registry/cache 2>/dev/null || true && \
+    # Clean up apt cache
+    apt-get clean && rm -rf /var/lib/apt/lists/* && \
+    # Clean up temporary files
+    rm -rf /tmp/* /var/tmp/* && \
+    # Verify WASM files exist before proceeding
+    test -f /cerenetwork/target/$PROFILE/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm && \
+    test -f /cerenetwork/target/$PROFILE/wbuild/cere-dev-runtime/cere_dev_runtime.compact.compressed.wasm
+
 # ===== SECOND STAGE ======
 FROM phusion/baseimage:jammy-1.0.1
 LABEL maintainer="team@cere.network"
 LABEL description="This is the optimization to create a small image."
 ARG PROFILE=release
 COPY --from=builder /cerenetwork/target/$PROFILE/cere /usr/local/bin
-COPY --from=builder /cerenetwork/target/$PROFILE/wbuild/cere-runtime /home/cere/cere-runtime-artifacts
-COPY --from=builder /cerenetwork/target/$PROFILE/wbuild/cere-dev-runtime /home/cere/cere-dev-runtime-artifacts
+
+# Copy only the necessary WASM files instead of entire directories for faster builds
+RUN mkdir -p /home/cere/cere-runtime-artifacts /home/cere/cere-dev-runtime-artifacts
+COPY --from=builder /cerenetwork/target/$PROFILE/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm /home/cere/cere-runtime-artifacts/
+COPY --from=builder /cerenetwork/target/$PROFILE/wbuild/cere-dev-runtime/cere_dev_runtime.compact.compressed.wasm /home/cere/cere-dev-runtime-artifacts/
 
 RUN mv /usr/share/ca* /tmp && \
     rm -rf /usr/share/*  && \
