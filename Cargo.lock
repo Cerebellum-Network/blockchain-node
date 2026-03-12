@@ -4380,7 +4380,7 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev#775a6c3baacc74770df913aab76cd8d107cda4b9"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev#ed76ebc3c84bedb67fbb51416c7309c628ec5b05"
 dependencies = [
  "blake2 0.10.6",
  "ddc-primitives",
@@ -4406,7 +4406,7 @@ dependencies = [
 [[package]]
 name = "ddc-primitives"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev#a0d5371ae499dbb99aae97cdfe1cad86f75df8a8"
+source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev#6da8a8f5c89fd58865b1bf7272f3ac185b77871c"
 dependencies = [
  "blake2 0.10.6",
  "frame-support",
@@ -4974,7 +4974,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -6483,7 +6483,7 @@ dependencies = [
  "hyper 1.8.1",
  "libc",
  "pin-project-lite 0.2.16",
- "socket2 0.5.10",
+ "socket2 0.6.2",
  "tokio 1.49.0",
  "tower-service",
  "tracing",
@@ -7055,7 +7055,7 @@ checksum = "3640c1c38b8e4e43584d8df18be5fc6b0aa314ce6ebf51b53313d4306cca8e46"
 dependencies = [
  "hermit-abi",
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -9917,7 +9917,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#8da5d828639cb1ea83f2e2637855657b3bafb98f"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#417aece049848cdbbce0ec84bd899370de2eb59d"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
@@ -9934,6 +9934,7 @@ dependencies = [
  "pallet-contracts",
  "parity-scale-codec",
  "polkadot-ckb-merkle-mountain-range 0.7.0",
+ "prost 0.13.5",
  "scale-info",
  "serde",
  "serde_json",
@@ -9976,7 +9977,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#df6b217ba53e602b50274a6960a40fce9746de84"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#577cbbed15f40018ce1471b4aa76f1fdb418e7cc"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
@@ -14184,7 +14185,7 @@ version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be769465445e8c1474e9c5dac2018218498557af32d9ed057325ec9a41ae81bf"
 dependencies = [
- "heck 0.4.1",
+ "heck 0.5.0",
  "itertools 0.14.0",
  "log",
  "multimap",
@@ -14204,7 +14205,7 @@ version = "0.14.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "343d3bd7056eda839b03204e68deff7d1b13aba7af2b2fd16890697274262ee7"
 dependencies = [
- "heck 0.4.1",
+ "heck 0.5.0",
  "itertools 0.14.0",
  "log",
  "multimap",
@@ -14354,7 +14355,7 @@ dependencies = [
  "quinn-udp",
  "rustc-hash 2.1.1",
  "rustls",
- "socket2 0.5.10",
+ "socket2 0.6.2",
  "thiserror 2.0.18",
  "tokio 1.49.0",
  "tracing",
@@ -14391,9 +14392,9 @@ dependencies = [
  "cfg_aliases 0.2.1",
  "libc",
  "once_cell",
- "socket2 0.5.10",
+ "socket2 0.6.2",
  "tracing",
- "windows-sys 0.52.0",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -15245,7 +15246,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.4.15",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -15258,7 +15259,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.11.0",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -15316,7 +15317,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs 0.26.11",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -19396,7 +19397,7 @@ dependencies = [
  "getrandom 0.4.1",
  "once_cell",
  "rustix 1.1.3",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -21083,7 +21084,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.48.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
