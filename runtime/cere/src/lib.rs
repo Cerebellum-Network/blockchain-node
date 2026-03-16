@@ -1400,7 +1400,6 @@ impl pallet_ddc_payouts::Config for Runtime {
 
 	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
-	const DISABLE_PAYOUTS_CUTOFF: bool = false;
 	const OCW_INTERVAL: u16 = 5; // every 5th block
 }
 
