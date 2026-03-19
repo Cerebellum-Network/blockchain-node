@@ -1788,7 +1788,7 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, TxExtension>;
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, TxExtension>;
 // const IDENTITY_MIGRATION_KEY_LIMIT: u64 = u64::MAX; // for `pallet_identity` migration below
 
-// /// Migrations for FRAME pallets, unreleased to MAINNET
+// Migrations for FRAME pallets, unreleased to MAINNET
 // type Migrations = (
 // 	pallet_nomination_pools::migration::unversioned::DelegationStakeMigration<
 // 		Runtime,
@@ -1796,11 +1796,7 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Tx
 // 	>,
 // );
 
-type Migrations = (
-	pallet_ddc_clusters::migrations::v4::MigrateToV4<Runtime>,
-	pallet_ddc_clusters::migrations::v5::MigrateToV5<Runtime>,
-	pallet_ddc_clusters::migrations::v6::MigrateToV6<Runtime>,
-);
+type Migrations = ();
 
 parameter_types! {
 	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
@@ -1844,6 +1840,8 @@ pub mod migrations {
 		// `ddc-verification` pallet was never deployed on MAINNET
 		// pallet_ddc_nodes::migrations::v0_v2::MigrateFromV0ToV2<Runtime>,
 		pallet_ddc_clusters::migrations::v4::MigrateToV4<Runtime>,
+		pallet_ddc_clusters::migrations::v5::MigrateToV5<Runtime>,
+		pallet_ddc_clusters::migrations::v6::MigrateToV6<Runtime>,
 	);
 
 	pub type UnreleasedMultiblock =
