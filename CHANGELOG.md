@@ -10,9 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C] Changes is `Cere` Runtime
 - [D] Changes is `Cere Dev` Runtime
 
-## [7.3.3]
+## [7.3.5]
 
-- [C,D] Update to Polkadot-Stable2503 crate version
+- [C,D] Update to Polkadot-Stable2506 crate version
+
+## [7.3.5]
+
+- [C,D] Fix Nomination Pool withdrawal issue
+
+## [7.3.4]
+
+- [C,D] Enable smart contracts
 
 ## [7.3.3]
 
