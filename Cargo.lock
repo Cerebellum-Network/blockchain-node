@@ -2227,7 +2227,7 @@ version = "7.3.4"
 dependencies = [
  "cere-dev-runtime",
  "cere-runtime",
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=staging)",
+ "ddc-primitives",
  "frame-benchmarking",
  "frame-system",
  "frame-system-rpc-runtime-api",
@@ -2263,7 +2263,7 @@ version = "7.3.4"
 dependencies = [
  "anyhow",
  "cere-runtime-common",
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=staging)",
+ "ddc-primitives",
  "frame-benchmarking",
  "frame-election-provider-support",
  "frame-executive",
@@ -2369,7 +2369,7 @@ dependencies = [
 name = "cere-rpc"
 version = "7.3.4"
 dependencies = [
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=staging)",
+ "ddc-primitives",
  "jsonrpsee",
  "pallet-ismp-rpc",
  "pallet-ismp-runtime-api",
@@ -2403,7 +2403,7 @@ version = "7.3.4"
 dependencies = [
  "anyhow",
  "cere-runtime-common",
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=staging)",
+ "ddc-primitives",
  "frame-benchmarking",
  "frame-election-provider-support",
  "frame-executive",
@@ -2509,7 +2509,7 @@ dependencies = [
 name = "cere-runtime-common"
 version = "7.3.4"
 dependencies = [
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=staging)",
+ "ddc-primitives",
  "frame-support",
  "frame-system",
  "log",
@@ -2536,7 +2536,7 @@ dependencies = [
  "cere-rpc",
  "cere-runtime",
  "cere-runtime-common",
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=staging)",
+ "ddc-primitives",
  "frame-benchmarking-cli",
  "futures 0.3.32",
  "jsonrpsee",
@@ -4165,7 +4165,7 @@ name = "customer-deposit"
 version = "5.1.0"
 dependencies = [
  "base64ct",
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev)",
+ "ddc-primitives",
  "ink",
  "sp-runtime",
 ]
@@ -4380,10 +4380,10 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=staging#65a00af6ac2b1a9564d17772d81e9990d17b41ac"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=staging#ad696ebb00810e5dfbc597130615d4e6801195cf"
 dependencies = [
  "blake2 0.10.6",
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=staging)",
+ "ddc-primitives",
  "frame-support",
  "frame-system",
  "hex",
@@ -4406,33 +4406,7 @@ dependencies = [
 [[package]]
 name = "ddc-primitives"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev#a0d5371ae499dbb99aae97cdfe1cad86f75df8a8"
-dependencies = [
- "blake2 0.10.6",
- "frame-support",
- "frame-system",
- "hex",
- "ink",
- "log",
- "parity-scale-codec",
- "polkadot-ckb-merkle-mountain-range 0.7.0",
- "prost 0.13.5",
- "prost-build 0.13.5",
- "scale-info",
- "serde",
- "serde_json",
- "serde_with",
- "sp-application-crypto",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "ddc-primitives"
-version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=staging#14a58b46af4245d9ab0ab81eb220dc76f27bb3c7"
+source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=staging#a54663a7a263eac85b8c6c7dbee802257da3ee33"
 dependencies = [
  "blake2 0.10.6",
  "frame-support",
@@ -9832,7 +9806,7 @@ dependencies = [
 name = "pallet-ddc-clusters"
 version = "7.3.4"
 dependencies = [
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=staging)",
+ "ddc-primitives",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -9858,7 +9832,7 @@ dependencies = [
 name = "pallet-ddc-clusters-gov"
 version = "7.3.4"
 dependencies = [
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=staging)",
+ "ddc-primitives",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -9893,7 +9867,7 @@ dependencies = [
 name = "pallet-ddc-customers"
 version = "7.3.4"
 dependencies = [
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=staging)",
+ "ddc-primitives",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -9920,7 +9894,7 @@ dependencies = [
 name = "pallet-ddc-nodes"
 version = "7.3.4"
 dependencies = [
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=staging)",
+ "ddc-primitives",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -9942,12 +9916,12 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=staging#2b6619eaffc8e30c126a62a746994e0f9a082d60"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=staging#ba96a51e01dea129b7ff7d04f26301a8374427c6"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
  "ddc-api",
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=staging)",
+ "ddc-primitives",
  "frame-benchmarking",
  "frame-election-provider-support",
  "frame-support",
@@ -9959,6 +9933,7 @@ dependencies = [
  "pallet-contracts",
  "parity-scale-codec",
  "polkadot-ckb-merkle-mountain-range 0.7.0",
+ "prost 0.13.5",
  "scale-info",
  "serde",
  "serde_json",
@@ -9968,13 +9943,14 @@ dependencies = [
  "sp-runtime",
  "sp-staking",
  "sp-std",
+ "wasmi 0.40.0",
 ]
 
 [[package]]
 name = "pallet-ddc-staking"
 version = "7.3.4"
 dependencies = [
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=staging)",
+ "ddc-primitives",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -10001,13 +9977,13 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=staging#a4e650813c1c32e59fb164ff46b7093ff393c086"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=staging#8d6ddfd5b3301f4337c46fdd869f95ca5cf72cec"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
  "byte-unit",
  "ddc-api",
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=staging)",
+ "ddc-primitives",
  "frame-benchmarking",
  "frame-election-provider-support",
  "frame-support",
@@ -10260,7 +10236,7 @@ dependencies = [
 name = "pallet-fee-handler"
 version = "7.3.4"
 dependencies = [
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=staging)",
+ "ddc-primitives",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -12054,16 +12030,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4c5cc86750666a3ed20bdaf5ca2a0344f9c67674cae0515bec2da16fbaa47db"
 dependencies = [
  "fixedbitset 0.4.2",
- "indexmap 2.13.0",
-]
-
-[[package]]
-name = "petgraph"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3672b37090dbd86368a4145bc067582552b29c27377cad4e0a306c97f9bd7772"
-dependencies = [
- "fixedbitset 0.5.7",
  "indexmap 2.13.0",
 ]
 
@@ -14224,7 +14190,7 @@ dependencies = [
  "log",
  "multimap",
  "once_cell",
- "petgraph 0.7.1",
+ "petgraph 0.6.5",
  "prettyplease",
  "prost 0.13.5",
  "prost-types 0.13.5",

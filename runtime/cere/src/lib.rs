@@ -164,7 +164,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73177,
+	spec_version: 73180,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 27,
@@ -1429,7 +1429,6 @@ impl pallet_ddc_payouts::Config for Runtime {
 
 	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
-	const DISABLE_PAYOUTS_CUTOFF: bool = false;
 	const OCW_INTERVAL: u16 = 5; // every 5th block
 }
 
@@ -1817,7 +1816,7 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, TxExtension>;
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, TxExtension>;
 // const IDENTITY_MIGRATION_KEY_LIMIT: u64 = u64::MAX; // for `pallet_identity` migration below
 
-// /// Migrations for FRAME pallets, unreleased to MAINNET
+// Migrations for FRAME pallets, unreleased to MAINNET
 // type Migrations = (
 // 	pallet_nomination_pools::migration::unversioned::DelegationStakeMigration<
 // 		Runtime,
@@ -1825,11 +1824,7 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Tx
 // 	>,
 // );
 
-type Migrations = (
-	pallet_ddc_clusters::migrations::v4::MigrateToV4<Runtime>,
-	pallet_ddc_clusters::migrations::v5::MigrateToV5<Runtime>,
-	pallet_ddc_clusters::migrations::v6::MigrateToV6<Runtime>,
-);
+type Migrations = ();
 
 parameter_types! {
 	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
@@ -1873,6 +1868,8 @@ pub mod migrations {
 		// `ddc-verification` pallet was never deployed on MAINNET
 		// pallet_ddc_nodes::migrations::v0_v2::MigrateFromV0ToV2<Runtime>,
 		pallet_ddc_clusters::migrations::v4::MigrateToV4<Runtime>,
+		pallet_ddc_clusters::migrations::v5::MigrateToV5<Runtime>,
+		pallet_ddc_clusters::migrations::v6::MigrateToV6<Runtime>,
 	);
 
 	pub type UnreleasedMultiblock =
