@@ -163,7 +163,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73180,
+	spec_version: 73181,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 27,
@@ -1796,11 +1796,7 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Tx
 // 	>,
 // );
 
-type Migrations = (
-	pallet_ddc_clusters::migrations::v4::MigrateToV4<Runtime>,
-	pallet_ddc_clusters::migrations::v5::MigrateToV5<Runtime>,
-	pallet_ddc_clusters::migrations::v6::MigrateToV6<Runtime>,
-);
+type Migrations = ();
 
 parameter_types! {
 	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
@@ -1844,6 +1840,8 @@ pub mod migrations {
 		// `ddc-verification` pallet was never deployed on MAINNET
 		// pallet_ddc_nodes::migrations::v0_v2::MigrateFromV0ToV2<Runtime>,
 		pallet_ddc_clusters::migrations::v4::MigrateToV4<Runtime>,
+		pallet_ddc_clusters::migrations::v5::MigrateToV5<Runtime>,
+		pallet_ddc_clusters::migrations::v6::MigrateToV6<Runtime>,
 	);
 
 	pub type UnreleasedMultiblock =
