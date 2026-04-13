@@ -135,6 +135,7 @@ use ismp::{
 	host::StateMachine,
 	router::{Request, Response},
 };
+use pallet_contracts::chain_extension::{ChainExtension, Environment, Ext, InitState, RetVal};
 use sp_core::H256;
 mod hyperbridge_ismp;
 mod weights;
@@ -1008,7 +1009,7 @@ impl pallet_contracts::Config for Runtime {
 	type CallStack = [pallet_contracts::Frame<Self>; 5];
 	type WeightPrice = pallet_transaction_payment::Pallet<Self>;
 	type WeightInfo = pallet_contracts::weights::SubstrateWeight<Self>;
-	type ChainExtension = ();
+	type ChainExtension = CereChainExtension;
 	type Schedule = Schedule;
 	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
 	type MaxCodeLen = ConstU32<{ 123 * 1024 }>;
@@ -1108,6 +1109,34 @@ where
 {
 	fn create_bare(call: RuntimeCall) -> UncheckedExtrinsic {
 		UncheckedExtrinsic::new_bare(call)
+	}
+}
+
+#[derive(Default)]
+pub struct CereChainExtension;
+impl ChainExtension<Runtime> for CereChainExtension {
+	fn call<E: Ext>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError> {
+		let func_id = env.func_id();
+		let ext_id = env.ext_id();
+		log::debug!("CereChainExtension called with ext_id: {} func_id: {}", ext_id, func_id);
+		match func_id {
+			1 => {
+				use ddc_primitives::contracts::types::ClusterId as ClusterId20;
+
+				let mut env = env.buf_in_buf_out();
+				let _cluster_id: ClusterId20 = env.read_as_unbounded(env.in_len())?;
+				let payouts_pallet_id = DdcPayouts::pallet_account_id();
+
+				env.write(&payouts_pallet_id.encode(), false, None).map_err(|_| {
+					DispatchError::Other(
+						"ChainExtension failed to call `get_payouts_origin_id` function",
+					)
+				})?;
+
+				Ok(RetVal::Converging(0))
+			},
+			_ => Err(DispatchError::Other("Unsupported function in CereChainExtension")),
+		}
 	}
 }
 
@@ -1371,7 +1400,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
 	type PalletId = PayoutsPalletId;
 	type Currency = Balances;
-	type CustomerBalanceSource = pallet_ddc_payouts::CustomerBalancePallet<Runtime, DdcCustomers>;
+	type CustomerBalanceSource = pallet_ddc_payouts::CustomerBalanceContract<Runtime>;
 	type BucketManager = DdcCustomers;
 	type ClusterProtocol = DdcClusters;
 	type TreasuryVisitor = TreasuryWrapper;
@@ -1519,7 +1548,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	const OCW_INTERVAL: u16 = 10; // every 10th block
 	const TCA_INSPECTION_STEP: u64 = 0;
 	const MIN_INSP_REDUNDANCY_FACTOR: u8 = 3;
-	const MIN_INSP_BACKUPS_FACTOR: u8 = 1;
+	const MIN_INSP_BACKUPS_FACTOR: u8 = 3;
 	const INSP_BACKUP_BLOCK_DELAY: u32 = 25;
 }
 
@@ -1530,9 +1559,8 @@ parameter_types! {
 impl pallet_migrations::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	#[cfg(not(feature = "runtime-benchmarks"))]
-	type Migrations = ();
-	// type Migrations = pallet_ddc_customers::migrations::v5_mbm::LazyMigrationV4ToV5<Runtime>; // enable after migrating Cluster Gov Params
-	// Benchmarks need mocked migrations to guarantee that they succeed.
+	// type Migrations = ();
+	type Migrations = pallet_ddc_customers::migrations::v5_mbm::LazyMigrationV4ToV5<Runtime>; // enable after migrating Cluster Gov Params
 	#[cfg(feature = "runtime-benchmarks")]
 	type Migrations = pallet_migrations::mock_helpers::MockedMigrations;
 	type CursorMaxLen = ConstU32<65_536>;
@@ -1788,7 +1816,7 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, TxExtension>;
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, TxExtension>;
 // const IDENTITY_MIGRATION_KEY_LIMIT: u64 = u64::MAX; // for `pallet_identity` migration below
 
-// /// Migrations for FRAME pallets, unreleased to MAINNET
+// Migrations for FRAME pallets, unreleased to MAINNET
 // type Migrations = (
 // 	pallet_nomination_pools::migration::unversioned::DelegationStakeMigration<
 // 		Runtime,
