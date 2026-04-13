@@ -1559,8 +1559,7 @@ parameter_types! {
 impl pallet_migrations::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	#[cfg(not(feature = "runtime-benchmarks"))]
-	// type Migrations = ();
-	type Migrations = pallet_ddc_customers::migrations::v5_mbm::LazyMigrationV4ToV5<Runtime>; // enable after migrating Cluster Gov Params
+	type Migrations = ();
 	#[cfg(feature = "runtime-benchmarks")]
 	type Migrations = pallet_migrations::mock_helpers::MockedMigrations;
 	type CursorMaxLen = ConstU32<65_536>;
@@ -1872,8 +1871,10 @@ pub mod migrations {
 		pallet_ddc_clusters::migrations::v6::MigrateToV6<Runtime>,
 	);
 
-	pub type UnreleasedMultiblock =
-		(pallet_ddc_customers::migrations::v4_mbm::LazyMigrationV3ToV4<Runtime>,);
+	pub type UnreleasedMultiblock = (
+		pallet_ddc_customers::migrations::v4_mbm::LazyMigrationV3ToV4<Runtime>,
+		pallet_ddc_customers::migrations::v5_mbm::LazyMigrationV4ToV5<Runtime>,
+	);
 }
 
 /// Executive: handles dispatch to the various modules.
