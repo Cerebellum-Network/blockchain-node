@@ -173,7 +173,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73186,
+	spec_version: 73187,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 27,
@@ -1431,7 +1431,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type FeeHandler = FeeHandler;
 	type ForcePayoutOrigin = pallet_ddc_payouts::EnsureRootOrClusterManagerForForcePayout<Runtime>;
 
-	const MAX_PAYOUT_BATCH_SIZE: u16 = 300; // reduced from 500 to fit ink! static buffer (16 KB)
+	const MAX_PAYOUT_BATCH_SIZE: u16 = 100; // reduced from 500 to fit ink! 16 KB static buffer with margin
 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
 	const OCW_INTERVAL: u16 = 1; // every 5th block
 }
