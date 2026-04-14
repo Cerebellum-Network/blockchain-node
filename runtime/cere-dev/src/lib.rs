@@ -173,7 +173,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73184,
+	spec_version: 73185,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 27,
@@ -973,7 +973,11 @@ parameter_types! {
 		.get(DispatchClass::Normal)
 		.max_total
 		.unwrap_or(RuntimeBlockWeights::get().max_block);
-	pub Schedule: pallet_contracts::Schedule<Runtime> = Default::default();
+	pub Schedule: pallet_contracts::Schedule<Runtime> = {
+		let mut schedule = pallet_contracts::Schedule::<Runtime>::default();
+		schedule.limits.payload_len = 64 * 1024; // 64 KB (default 16 KB is too small for large payout batches)
+		schedule
+	};
 	pub const CodeHashLockupDepositPercent: Perbill = Perbill::from_percent(0);
 	pub const MaxDelegateDependencies: u32 = 32;
 }
