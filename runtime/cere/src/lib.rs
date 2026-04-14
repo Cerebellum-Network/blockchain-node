@@ -24,8 +24,7 @@
 use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 use ddc_primitives::{
 	traits::pallet::{GetDdcOrigin, PalletVisitor},
-	AccountIndex, Balance, BlockNumber, Hash, Moment, Nonce, MAX_PAYOUT_BATCH_COUNT,
-	MAX_PAYOUT_BATCH_SIZE,
+	AccountIndex, Balance, BlockNumber, Hash, Moment, Nonce,
 };
 pub use ddc_primitives::{AccountId, Signature};
 use frame_election_provider_support::{
@@ -163,7 +162,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73184,
+	spec_version: 73188,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 27,
@@ -1398,8 +1397,8 @@ impl pallet_ddc_payouts::Config for Runtime {
 	#[cfg(feature = "runtime-benchmarks")]
 	type WSignature = Signature;
 
-	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
-	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
+	const MAX_PAYOUT_BATCH_SIZE: u16 = 100;
+	const MAX_PAYOUT_BATCH_COUNT: u16 = 1000;
 	const OCW_INTERVAL: u16 = 5; // every 5th block
 }
 
