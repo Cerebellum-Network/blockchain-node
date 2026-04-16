@@ -2205,7 +2205,7 @@ dependencies = [
 
 [[package]]
 name = "cere-cli"
-version = "7.3.3"
+version = "8.0.0"
 dependencies = [
  "cere-client",
  "cere-service",
@@ -2223,7 +2223,7 @@ dependencies = [
 
 [[package]]
 name = "cere-client"
-version = "7.3.3"
+version = "8.0.0"
 dependencies = [
  "cere-dev-runtime",
  "cere-runtime",
@@ -2260,7 +2260,7 @@ dependencies = [
 
 [[package]]
 name = "cere-dev-runtime"
-version = "7.3.3"
+version = "8.0.0"
 dependencies = [
  "anyhow",
  "cere-runtime-common",
@@ -2369,7 +2369,7 @@ dependencies = [
 
 [[package]]
 name = "cere-rpc"
-version = "7.3.3"
+version = "8.0.0"
 dependencies = [
  "ddc-primitives",
  "jsonrpsee",
@@ -2401,7 +2401,7 @@ dependencies = [
 
 [[package]]
 name = "cere-runtime"
-version = "7.3.3"
+version = "8.0.0"
 dependencies = [
  "anyhow",
  "cere-runtime-common",
@@ -2510,7 +2510,7 @@ dependencies = [
 
 [[package]]
 name = "cere-runtime-common"
-version = "7.3.3"
+version = "8.0.0"
 dependencies = [
  "ddc-primitives",
  "frame-support",
@@ -2531,7 +2531,7 @@ dependencies = [
 
 [[package]]
 name = "cere-service"
-version = "7.3.3"
+version = "8.0.0"
 dependencies = [
  "async-trait",
  "cere-client",
@@ -4409,7 +4409,7 @@ dependencies = [
 [[package]]
 name = "ddc-dac-host"
 version = "0.1.0"
-source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=dev#b798c7c43f903bb7e14b7f030cfe11f5eebabaf0"
+source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=feat%2Fverification-wasmtime#b798c7c43f903bb7e14b7f030cfe11f5eebabaf0"
 dependencies = [
  "log",
  "sp-core",
@@ -9593,7 +9593,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-chainbridge"
-version = "7.3.3"
+version = "8.0.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -9829,7 +9829,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-clusters"
-version = "7.3.3"
+version = "8.0.0"
 dependencies = [
  "ddc-primitives",
  "frame-benchmarking",
@@ -9855,7 +9855,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-clusters-gov"
-version = "7.3.3"
+version = "8.0.0"
 dependencies = [
  "ddc-primitives",
  "frame-benchmarking",
@@ -9890,7 +9890,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-customers"
-version = "7.3.3"
+version = "8.0.0"
 dependencies = [
  "ddc-primitives",
  "frame-benchmarking",
@@ -9917,7 +9917,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-nodes"
-version = "7.3.3"
+version = "8.0.0"
 dependencies = [
  "ddc-primitives",
  "frame-benchmarking",
@@ -9940,12 +9940,13 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-payouts"
-version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#4629d53fbdbbb2d1224927732271b6621aeba89c"
+version = "8.0.0"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Fverification-wasmtime#a937c8805d6482236867be99087992ed9016ba7d"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
  "ddc-api",
+ "ddc-dac-host",
  "ddc-primitives",
  "frame-benchmarking",
  "frame-election-provider-support",
@@ -9968,12 +9969,11 @@ dependencies = [
  "sp-runtime",
  "sp-staking",
  "sp-std",
- "wasmi 0.40.0",
 ]
 
 [[package]]
 name = "pallet-ddc-staking"
-version = "7.3.3"
+version = "8.0.0"
 dependencies = [
  "ddc-primitives",
  "frame-benchmarking",
@@ -10001,13 +10001,14 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-verification"
-version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#d033f59fcb4e99d381537dd52fea85c16098ea4b"
+version = "8.0.0"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=feat%2Fverification-wasmtime#bab4110a99e3d4c63b8c096fcf35c5aafd593880"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
  "byte-unit",
  "ddc-api",
+ "ddc-dac-host",
  "ddc-primitives",
  "frame-benchmarking",
  "frame-election-provider-support",
@@ -10032,7 +10033,6 @@ dependencies = [
  "sp-runtime",
  "sp-staking",
  "sp-std",
- "wasmi 0.40.0",
 ]
 
 [[package]]
@@ -10204,7 +10204,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-erc20"
-version = "7.3.3"
+version = "8.0.0"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -10223,7 +10223,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-erc721"
-version = "7.3.3"
+version = "8.0.0"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -10259,7 +10259,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-fee-handler"
-version = "7.3.3"
+version = "8.0.0"
 dependencies = [
  "ddc-primitives",
  "frame-benchmarking",
@@ -10807,7 +10807,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-origins"
-version = "7.3.3"
+version = "8.0.0"
 dependencies = [
  "cere-runtime-common",
  "frame-benchmarking",
@@ -10873,7 +10873,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-pool-withdrawal-fix"
-version = "7.3.3"
+version = "8.0.0"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -14210,7 +14210,7 @@ version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be769465445e8c1474e9c5dac2018218498557af32d9ed057325ec9a41ae81bf"
 dependencies = [
- "heck 0.5.0",
+ "heck 0.4.1",
  "itertools 0.14.0",
  "log",
  "multimap",
@@ -14230,7 +14230,7 @@ version = "0.14.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "343d3bd7056eda839b03204e68deff7d1b13aba7af2b2fd16890697274262ee7"
 dependencies = [
- "heck 0.5.0",
+ "heck 0.4.1",
  "itertools 0.14.0",
  "log",
  "multimap",
@@ -21206,7 +21206,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
