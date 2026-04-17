@@ -21,8 +21,7 @@ use sp_storage::{ChildInfo, StorageData, StorageKey};
 pub type FullBackend = sc_service::TFullBackend<Block>;
 
 #[cfg(not(feature = "runtime-benchmarks"))]
-pub type HostFunctions =
-	(sp_io::SubstrateHostFunctions, ddc_dac_host::ddc_dac::HostFunctions);
+pub type HostFunctions = (sp_io::SubstrateHostFunctions, ddc_dac_host::ddc_dac::HostFunctions);
 
 #[cfg(feature = "runtime-benchmarks")]
 pub type HostFunctions = (
