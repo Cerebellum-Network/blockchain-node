@@ -4383,7 +4383,7 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev#49977f479f5b5ff973d8fb06a0b6aa9b561dc386"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=feat%2Fverification-wasmtime#bc4a4b76e2559a948137c80d1db7d6363b542b10"
 dependencies = [
  "blake2 0.10.6",
  "ddc-primitives",
@@ -9941,7 +9941,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.0"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Fverification-wasmtime#57d8f3829c748bdb5364aaa525d2d759febac32c"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Fverification-wasmtime#6e20263637f65d43cbda883c988c05aa9843efb4"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
@@ -10002,7 +10002,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "8.0.0"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=feat%2Fverification-wasmtime#06f6ee1eee1175c0c0db565ab100b91a0d17abd0"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=feat%2Fverification-wasmtime#d90b73601fab56a1c17b1702653b6d20c70ee3d6"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
