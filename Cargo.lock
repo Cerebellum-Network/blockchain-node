@@ -2228,7 +2228,7 @@ dependencies = [
  "cere-dev-runtime",
  "cere-runtime",
  "ddc-dac-host",
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=001-activity-api-redesign)",
+ "ddc-primitives",
  "frame-benchmarking",
  "frame-system",
  "frame-system-rpc-runtime-api",
@@ -2265,7 +2265,7 @@ dependencies = [
  "anyhow",
  "cere-runtime-common",
  "ddc-dac-host",
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=001-activity-api-redesign)",
+ "ddc-primitives",
  "frame-benchmarking",
  "frame-election-provider-support",
  "frame-executive",
@@ -2371,7 +2371,7 @@ dependencies = [
 name = "cere-rpc"
 version = "8.0.0"
 dependencies = [
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=001-activity-api-redesign)",
+ "ddc-primitives",
  "jsonrpsee",
  "pallet-ismp-rpc",
  "pallet-ismp-runtime-api",
@@ -2406,7 +2406,7 @@ dependencies = [
  "anyhow",
  "cere-runtime-common",
  "ddc-dac-host",
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=001-activity-api-redesign)",
+ "ddc-primitives",
  "frame-benchmarking",
  "frame-election-provider-support",
  "frame-executive",
@@ -2512,7 +2512,7 @@ dependencies = [
 name = "cere-runtime-common"
 version = "8.0.0"
 dependencies = [
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=001-activity-api-redesign)",
+ "ddc-primitives",
  "frame-support",
  "frame-system",
  "log",
@@ -2539,7 +2539,7 @@ dependencies = [
  "cere-rpc",
  "cere-runtime",
  "cere-runtime-common",
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=001-activity-api-redesign)",
+ "ddc-primitives",
  "frame-benchmarking-cli",
  "futures 0.3.31",
  "jsonrpsee",
@@ -4168,7 +4168,7 @@ name = "customer-deposit"
 version = "5.1.0"
 dependencies = [
  "base64ct",
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev)",
+ "ddc-primitives",
  "ink",
  "sp-runtime",
 ]
@@ -4383,10 +4383,10 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=001-activity-api-redesign#a82bc818904cd8e270a855ca676b6b72841252e2"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev#8f4b59c6df0df968545a3302bf2fb77ef3b23718"
 dependencies = [
  "blake2 0.10.6",
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=001-activity-api-redesign)",
+ "ddc-primitives",
  "frame-support",
  "frame-system",
  "hex",
@@ -4409,7 +4409,7 @@ dependencies = [
 [[package]]
 name = "ddc-dac-host"
 version = "0.1.0"
-source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=001-activity-api-redesign#f576351eece541c65a3782f9b1d5ea521c2577ce"
+source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=dev#db66d07f124ee0b0c69d8243c4de339d826d0563"
 dependencies = [
  "ddc-api",
  "log",
@@ -4423,33 +4423,7 @@ dependencies = [
 [[package]]
 name = "ddc-primitives"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=001-activity-api-redesign#8542134d4b112d67bd839fa81ec19a1d67c84cda"
-dependencies = [
- "blake2 0.10.6",
- "frame-support",
- "frame-system",
- "hex",
- "ink",
- "log",
- "parity-scale-codec",
- "polkadot-ckb-merkle-mountain-range 0.7.0",
- "prost 0.13.5",
- "prost-build 0.13.5",
- "scale-info",
- "serde",
- "serde_json",
- "serde_with",
- "sp-application-crypto",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "ddc-primitives"
-version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev#6da8a8f5c89fd58865b1bf7272f3ac185b77871c"
+source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev#dde443c9d86e23a8d4c662b2426db85de448efe6"
 dependencies = [
  "blake2 0.10.6",
  "frame-support",
@@ -5026,7 +5000,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -6535,7 +6509,7 @@ dependencies = [
  "hyper 1.8.1",
  "libc",
  "pin-project-lite 0.2.16",
- "socket2 0.5.10",
+ "socket2 0.6.2",
  "tokio 1.49.0",
  "tower-service",
  "tracing",
@@ -7107,7 +7081,7 @@ checksum = "3640c1c38b8e4e43584d8df18be5fc6b0aa314ce6ebf51b53313d4306cca8e46"
 dependencies = [
  "hermit-abi",
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -9859,7 +9833,7 @@ dependencies = [
 name = "pallet-ddc-clusters"
 version = "8.0.0"
 dependencies = [
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=001-activity-api-redesign)",
+ "ddc-primitives",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -9885,7 +9859,7 @@ dependencies = [
 name = "pallet-ddc-clusters-gov"
 version = "8.0.0"
 dependencies = [
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=001-activity-api-redesign)",
+ "ddc-primitives",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -9920,7 +9894,7 @@ dependencies = [
 name = "pallet-ddc-customers"
 version = "8.0.0"
 dependencies = [
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=001-activity-api-redesign)",
+ "ddc-primitives",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -9947,7 +9921,7 @@ dependencies = [
 name = "pallet-ddc-nodes"
 version = "8.0.0"
 dependencies = [
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=001-activity-api-redesign)",
+ "ddc-primitives",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -9969,13 +9943,13 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.0"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=001-activity-api-redesign#d6c313f9c0960fd54defc0058477513a963a0ffc"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#febb70de1fa41b57fe436e2a25b877247dccac47"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
  "ddc-api",
  "ddc-dac-host",
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=001-activity-api-redesign)",
+ "ddc-primitives",
  "frame-benchmarking",
  "frame-election-provider-support",
  "frame-support",
@@ -10003,7 +9977,7 @@ dependencies = [
 name = "pallet-ddc-staking"
 version = "8.0.0"
 dependencies = [
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=001-activity-api-redesign)",
+ "ddc-primitives",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -10030,14 +10004,14 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "8.0.0"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=001-activity-api-redesign#3b70eac0f184f353dc187c4e14587f3bb14b111c"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#e2d68d4f4242038e1e8527cd27eff1ae4c36f579"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
  "byte-unit",
  "ddc-api",
  "ddc-dac-host",
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=001-activity-api-redesign)",
+ "ddc-primitives",
  "frame-benchmarking",
  "frame-election-provider-support",
  "frame-support",
@@ -10289,7 +10263,7 @@ dependencies = [
 name = "pallet-fee-handler"
 version = "8.0.0"
 dependencies = [
- "ddc-primitives 7.3.2 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=001-activity-api-redesign)",
+ "ddc-primitives",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -14238,7 +14212,7 @@ version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be769465445e8c1474e9c5dac2018218498557af32d9ed057325ec9a41ae81bf"
 dependencies = [
- "heck 0.5.0",
+ "heck 0.4.1",
  "itertools 0.14.0",
  "log",
  "multimap",
@@ -14258,7 +14232,7 @@ version = "0.14.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "343d3bd7056eda839b03204e68deff7d1b13aba7af2b2fd16890697274262ee7"
 dependencies = [
- "heck 0.5.0",
+ "heck 0.4.1",
  "itertools 0.14.0",
  "log",
  "multimap",
@@ -14408,7 +14382,7 @@ dependencies = [
  "quinn-udp",
  "rustc-hash 2.1.1",
  "rustls",
- "socket2 0.5.10",
+ "socket2 0.6.2",
  "thiserror 2.0.18",
  "tokio 1.49.0",
  "tracing",
@@ -14445,9 +14419,9 @@ dependencies = [
  "cfg_aliases 0.2.1",
  "libc",
  "once_cell",
- "socket2 0.5.10",
+ "socket2 0.6.2",
  "tracing",
- "windows-sys 0.52.0",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -15299,7 +15273,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.4.15",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -15312,7 +15286,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.11.0",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -15370,7 +15344,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs 0.26.11",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -19450,7 +19424,7 @@ dependencies = [
  "getrandom 0.4.1",
  "once_cell",
  "rustix 1.1.3",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -21234,7 +21208,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.52.0",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
