@@ -4383,7 +4383,7 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev#bfe653c4f04354dce109ff0e0917236f33d50849"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev#8f4b59c6df0df968545a3302bf2fb77ef3b23718"
 dependencies = [
  "blake2 0.10.6",
  "ddc-primitives",
@@ -4409,9 +4409,11 @@ dependencies = [
 [[package]]
 name = "ddc-dac-host"
 version = "0.1.0"
-source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=dev#b798c7c43f903bb7e14b7f030cfe11f5eebabaf0"
+source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=dev#db66d07f124ee0b0c69d8243c4de339d826d0563"
 dependencies = [
+ "ddc-api",
  "log",
+ "prost 0.13.5",
  "sp-core",
  "sp-runtime-interface",
  "sp-std",
@@ -4421,7 +4423,7 @@ dependencies = [
 [[package]]
 name = "ddc-primitives"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev#6da8a8f5c89fd58865b1bf7272f3ac185b77871c"
+source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev#dde443c9d86e23a8d4c662b2426db85de448efe6"
 dependencies = [
  "blake2 0.10.6",
  "frame-support",
@@ -9941,7 +9943,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.0"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#9be66b7f8778247481c917db07f1dbbcc19699c4"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#febb70de1fa41b57fe436e2a25b877247dccac47"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
@@ -10002,7 +10004,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "8.0.0"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#fd01004887072c9f09fe0e800bf3f7f8cbbfe8a5"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#e2d68d4f4242038e1e8527cd27eff1ae4c36f579"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
@@ -21206,7 +21208,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
