@@ -4383,7 +4383,7 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=002-activity-api-fixes#8bb5e9fb49261a600005b9c8ea97a82aa04128a0"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev#48801762039b2c224508e8cbbfb51d7a9b989b09"
 dependencies = [
  "blake2 0.10.6",
  "ddc-primitives",
@@ -4409,7 +4409,7 @@ dependencies = [
 [[package]]
 name = "ddc-dac-host"
 version = "0.1.0"
-source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=002-activity-api-fixes#2c8361431b82749f61aa140759b64b364e5d3eab"
+source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=dev#9ca7715c398bed673f42a786e3215ff850da00b1"
 dependencies = [
  "ddc-api",
  "log",
@@ -4423,7 +4423,7 @@ dependencies = [
 [[package]]
 name = "ddc-primitives"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=002-activity-api-fixes#1beb89f18c2f9b15a46c36fb34234d3804b71eae"
+source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev#3aba0e702e8d39a98fc0b38ea5e3e1e315371e35"
 dependencies = [
  "blake2 0.10.6",
  "frame-support",
@@ -9943,7 +9943,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.0"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=002-activity-api-fixes#3dc6f4d9f8f6f9b8259d605a3e87421b88b1b313"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#d842417e65830d7d6ac8f0cc16de54b3a4c014f3"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
@@ -10004,7 +10004,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "8.0.0"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=002-activity-api-fixes#b1bd2c6519139336c9718b5960eb13c172c611fc"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#c918a7c0282fa22261f59a98bc9dedc590f10838"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
