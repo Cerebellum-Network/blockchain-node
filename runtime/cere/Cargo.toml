@@ -92,6 +92,7 @@ sp-version.workspace = true
 
 # Cere dependencies
 cere-runtime-common.workspace = true
+ddc-dac-host.workspace = true
 ddc-primitives.workspace = true
 pallet-chainbridge.workspace = true
 pallet-conviction-voting.workspace = true
@@ -191,6 +192,7 @@ std = [
   "sp-transaction-pool/std",
   "sp-version/std",
   "sp-io/std",
+  "ddc-dac-host/std",
   "ddc-primitives/std",
   "pallet-child-bounties/std",
   "pallet-ddc-clusters/std",

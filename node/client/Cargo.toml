@@ -13,6 +13,7 @@ repository.workspace = true
 futures.workspace = true
 
 # Substrate dependencies
+ddc-dac-host = { workspace = true, default-features = true }
 ddc-primitives = { workspace = true, default-features = true }
 frame-benchmarking = { workspace = true, default-features = true }
 frame-system = { workspace = true, default-features = true }
