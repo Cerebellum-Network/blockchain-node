@@ -56,6 +56,10 @@ jobs:
         if: steps.gate.outputs.skip == 'false'
         run: echo "today=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
 
+      - name: Install linux dependencies
+        if: steps.gate.outputs.skip == 'false'
+        run: sudo apt update && sudo apt install -y clang libclang-dev libssl-dev protobuf-compiler
+
       - name: Install toolchain
         if: steps.gate.outputs.skip == 'false'
         uses: actions-rs/toolchain@v1
