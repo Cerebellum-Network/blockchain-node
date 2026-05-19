@@ -1,6 +1,11 @@
 name: Refresh Try-Runtime Snapshots
 
 on:
+  # TEMP: remove this push trigger before merging to dev — it's only here to test the workflow on the feature branch
+  push:
+    branches: [feat/try-runtime-snapshot-caching]
+    paths:
+      - '.github/workflows/snapshot-try-runtime.yaml'
   schedule:
     - cron: '0 3 * * *'
   workflow_dispatch:
