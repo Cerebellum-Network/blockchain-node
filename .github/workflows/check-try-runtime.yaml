@@ -1,0 +1,111 @@
+name: Try-Runtime Check
+
+on:
+  pull_request:
+    branches: [dev, staging]
+    paths:
+      - 'runtime/**'
+      - 'pallets/**'
+      - 'node/**'
+      - 'Cargo.lock'
+      - 'Cargo.toml'
+      - '.github/workflows/check-try-runtime.yaml'
+  workflow_dispatch:
+
+concurrency:
+  group: try-runtime-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check-try-runtime:
+    name: Try-Runtime Check
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pick network and runtime
+        id: target
+        run: |
+          if [ "${{ github.base_ref }}" = "staging" ]; then
+            {
+              echo "uri=wss://archive.testnet.cere.network:443"
+              echo "wasm=./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm"
+              echo "package=cere-runtime"
+              echo "network=testnet"
+            } >> "$GITHUB_OUTPUT"
+          else
+            {
+              echo "uri=wss://archive.devnet.cere.network:443"
+              echo "wasm=./target/release/wbuild/cere-dev-runtime/cere_dev_runtime.compact.compressed.wasm"
+              echo "package=cere-dev-runtime"
+              echo "network=devnet"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Date stamp
+        id: date
+        run: echo "today=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Install linux dependencies
+        run: sudo apt update && sudo apt install -y cargo clang libclang-dev libssl-dev llvm libudev-dev protobuf-compiler
+
+      - name: Install toolchain and rust-src
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.90.0
+          override: true
+          target: wasm32-unknown-unknown
+          components: rust-src
+
+      - name: Enhanced Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "runtime-build-${{ steps.target.outputs.package }}"
+          cache-on-failure: true
+
+      - name: Configure Git
+        run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+
+      - name: Cache try-runtime binary
+        id: trycli-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/try-runtime
+          key: try-runtime-cli-v0.8.0-${{ runner.os }}
+
+      - name: Install try-runtime
+        if: steps.trycli-cache.outputs.cache-hit != 'true'
+        run: cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.8.0 --locked
+
+      - name: Restore latest ${{ steps.target.outputs.network }} snapshot
+        id: snap
+        uses: actions/cache/restore@v4
+        with:
+          path: snapshots/${{ steps.target.outputs.network }}.snap
+          key: try-runtime-snap-${{ steps.target.outputs.network }}-${{ steps.date.outputs.today }}
+          restore-keys: |
+            try-runtime-snap-${{ steps.target.outputs.network }}-
+
+      - name: Build runtime for try-runtime
+        run: |
+          CARGO_INCREMENTAL=1 cargo build --release --features try-runtime --package ${{ steps.target.outputs.package }}
+
+      - name: Check Try-Runtime
+        run: |
+          SNAP_PATH=snapshots/${{ steps.target.outputs.network }}.snap
+          if [ -f "$SNAP_PATH" ]; then
+            echo "Using cached snapshot (matched key: ${{ steps.snap.outputs.cache-matched-key }})"
+            try-runtime --runtime ${{ steps.target.outputs.wasm }} \
+              on-runtime-upgrade --disable-idempotency-checks --blocktime 6000 \
+              snap --path "$SNAP_PATH"
+          else
+            echo "No snapshot in cache for ${{ steps.target.outputs.network }} — falling back to live."
+            echo "Run the 'Refresh Try-Runtime Snapshots' workflow to populate the cache."
+            try-runtime --runtime ${{ steps.target.outputs.wasm }} \
+              on-runtime-upgrade --disable-idempotency-checks --blocktime 6000 \
+              live --uri ${{ steps.target.outputs.uri }}
+          fi

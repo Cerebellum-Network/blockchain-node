@@ -1,0 +1,85 @@
+name: Refresh Try-Runtime Snapshots
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      network:
+        description: 'Network to snapshot'
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - devnet
+          - testnet
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    name: Snapshot ${{ matrix.network }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - network: devnet
+            uri: wss://archive.devnet.cere.network:443
+          - network: testnet
+            uri: wss://archive.testnet.cere.network:443
+    steps:
+      - name: Skip non-targeted network
+        id: gate
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] \
+             && [ "${{ inputs.network }}" != "all" ] \
+             && [ "${{ inputs.network }}" != "${{ matrix.network }}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Skipping ${{ matrix.network }} (dispatch targeted ${{ inputs.network }})"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.skip == 'false'
+
+      - name: Date stamp
+        id: date
+        if: steps.gate.outputs.skip == 'false'
+        run: echo "today=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Install toolchain
+        if: steps.gate.outputs.skip == 'false'
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.90.0
+          override: true
+
+      - name: Cache try-runtime binary
+        id: trycli-cache
+        if: steps.gate.outputs.skip == 'false'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/try-runtime
+          key: try-runtime-cli-v0.8.0-${{ runner.os }}
+
+      - name: Install try-runtime
+        if: steps.gate.outputs.skip == 'false' && steps.trycli-cache.outputs.cache-hit != 'true'
+        run: cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.8.0 --locked
+
+      - name: Create snapshot
+        if: steps.gate.outputs.skip == 'false'
+        run: |
+          mkdir -p snapshots
+          try-runtime create-snapshot --uri ${{ matrix.uri }} snapshots/${{ matrix.network }}.snap
+          ls -lh snapshots/
+
+      - name: Save snapshot to cache
+        if: steps.gate.outputs.skip == 'false'
+        uses: actions/cache/save@v4
+        with:
+          path: snapshots/${{ matrix.network }}.snap
+          key: try-runtime-snap-${{ matrix.network }}-${{ steps.date.outputs.today }}
