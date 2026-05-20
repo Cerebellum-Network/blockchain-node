@@ -1,6 +1,11 @@
 name: Try-Runtime Check
 
 on:
+  # TEMP: remove this push trigger + TEST_BASE_REF env before merging — simulates a staging-targeted PR on this branch
+  push:
+    branches: [feat/try-runtime-snapshot-caching]
+    paths:
+      - '.github/workflows/check-try-runtime.yaml'
   pull_request:
     branches: [dev, staging]
     paths:
@@ -11,6 +16,10 @@ on:
       - 'Cargo.toml'
       - '.github/workflows/check-try-runtime.yaml'
   workflow_dispatch:
+
+env:
+  # TEMP: remove before merge — overrides base_ref on push events for testing the staging path
+  TEST_BASE_REF: staging
 
 concurrency:
   group: try-runtime-${{ github.event.pull_request.number || github.ref }}
@@ -30,7 +39,9 @@ jobs:
       - name: Pick network and runtime
         id: target
         run: |
-          if [ "${{ github.base_ref }}" = "staging" ]; then
+          BASE="${{ github.base_ref }}"
+          [ -z "$BASE" ] && BASE="$TEST_BASE_REF"
+          if [ "$BASE" = "staging" ]; then
             {
               echo "uri=wss://archive.testnet.cere.network:443"
               echo "wasm=./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm"
