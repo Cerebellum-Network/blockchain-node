@@ -203,7 +203,7 @@ ddc-primitives = { git = "https://github.com/Cerebellum-Network/ddc-primitives.g
 ddc-api = { git = "https://github.com/Cerebellum-Network/ddc-api.git", branch = "dev", default-features = false }
 ddc-dac-host = { git = "https://github.com/Cerebellum-Network/ddc-dac-host.git", branch = "dev", default-features = false }
 pallet-ddc-verification = { git = "https://github.com/Cerebellum-Network/ddc-verification.git", branch = "dev", default-features = false }
-pallet-ddc-payouts = { git = "https://github.com/Cerebellum-Network/ddc-payouts.git", branch = "004-compute-unit-scale", default-features = false }
+pallet-ddc-payouts = { git = "https://github.com/Cerebellum-Network/ddc-payouts.git", branch = "dev", default-features = false }
 
 # Hyperbridge (polkadot-stable2512)
 ismp = { default-features = false, version = "2512.0.0" }
