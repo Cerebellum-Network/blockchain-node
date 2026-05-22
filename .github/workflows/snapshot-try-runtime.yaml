@@ -1,7 +1,7 @@
 name: Refresh Try-Runtime Snapshots
 
 on:
-  # TEMP: remove this push trigger before merging to dev — it's only here to test the workflow on the feature branch
+  # TEMP: remove this push trigger before merging to dev — only here so we can manually refresh the snapshot during validation
   push:
     branches: [feat/try-runtime-snapshot-caching]
     paths:
