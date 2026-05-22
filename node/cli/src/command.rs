@@ -227,6 +227,7 @@ pub fn run() -> sc_cli::Result<()> {
 				cere_service::build_full::<sc_network::Litep2pNetworkBackend>(
 					config,
 					cli.run.no_hardware_benchmarks,
+					cli.run.ocw_heap_pages,
 				)
 				.map(|full| full.task_manager)
 				.map_err(Error::Service)

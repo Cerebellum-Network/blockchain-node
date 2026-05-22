@@ -97,6 +97,7 @@ where
 #[allow(clippy::result_large_err)]
 fn new_partial_basics<RuntimeApi>(
 	config: &Configuration,
+	ocw_heap_pages: Option<u32>,
 ) -> Result<Basics<RuntimeApi>, ServiceError>
 where
 	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
@@ -113,15 +114,25 @@ where
 		})
 		.transpose()?;
 
-	let heap_pages = config
+	// On-chain heap: keep upstream behaviour (Static{2048} = 128 MB). Runtime
+	// upgrades and sudo via `system.setHeapPages` retain the existing override
+	// path through the `:heappages` storage key.
+	let onchain_heap_pages = config
 		.executor
 		.default_heap_pages
 		.map_or(DEFAULT_HEAP_ALLOC_STRATEGY, |h| HeapAllocStrategy::Static { extra_pages: h as _ });
 
+	// Off-chain (OCW) heap: Dynamic growth up to 8192 pages (512 MB) by default,
+	// overridable per-validator via `--ocw-heap-pages N`. Memory commits on
+	// demand, so steady-state RSS does not change when OCWs are idle.
+	let offchain_heap_pages = HeapAllocStrategy::Dynamic {
+		maximum_pages: Some(ocw_heap_pages.unwrap_or(8192)),
+	};
+
 	let executor = ChainExecutor::builder()
 		.with_execution_method(config.executor.wasm_method)
-		.with_onchain_heap_alloc_strategy(heap_pages)
-		.with_offchain_heap_alloc_strategy(heap_pages)
+		.with_onchain_heap_alloc_strategy(onchain_heap_pages)
+		.with_offchain_heap_alloc_strategy(offchain_heap_pages)
 		.with_max_runtime_instances(config.executor.max_runtime_instances)
 		.with_runtime_cache_size(config.executor.runtime_cache_size)
 		.build();
@@ -284,12 +295,14 @@ where
 pub fn build_full<N: NetworkBackend<Block, <Block as BlockT>::Hash>>(
 	config: Configuration,
 	disable_hardware_benchmarks: bool,
+	ocw_heap_pages: Option<u32>,
 ) -> Result<NewFull<Client>, ServiceError> {
 	#[cfg(feature = "cere-dev-native")]
 	if config.chain_spec.is_cere_dev() {
 		return new_full::<cere_dev_runtime::RuntimeApi, N>(
 			config,
 			disable_hardware_benchmarks,
+			ocw_heap_pages,
 			|_, _| (),
 		)
 		.map(|full| full.with_client(Client::CereDev));
@@ -297,8 +310,13 @@ pub fn build_full<N: NetworkBackend<Block, <Block as BlockT>::Hash>>(
 
 	#[cfg(feature = "cere-native")]
 	{
-		new_full::<cere_runtime::RuntimeApi, N>(config, disable_hardware_benchmarks, |_, _| ())
-			.map(|full| full.with_client(Client::Cere))
+		new_full::<cere_runtime::RuntimeApi, N>(
+			config,
+			disable_hardware_benchmarks,
+			ocw_heap_pages,
+			|_, _| (),
+		)
+		.map(|full| full.with_client(Client::Cere))
 	}
 
 	#[cfg(not(feature = "cere-native"))]
@@ -330,6 +348,7 @@ impl<C> NewFull<C> {
 pub fn new_full<RuntimeApi, N: NetworkBackend<Block, <Block as BlockT>::Hash>>(
 	config: Configuration,
 	disable_hardware_benchmarks: bool,
+	ocw_heap_pages: Option<u32>,
 	with_startup_data: impl FnOnce(
 		&FullBabeBlockImport<RuntimeApi>,
 		&sc_consensus_babe::BabeLink<Block>,
@@ -348,7 +367,7 @@ where
 		None
 	};
 
-	let basics = new_partial_basics::<RuntimeApi>(&config)?;
+	let basics = new_partial_basics::<RuntimeApi>(&config, ocw_heap_pages)?;
 
 	let sc_service::PartialComponents {
 		client,
@@ -626,7 +645,9 @@ impl ExecuteWithClient for RevertConsensus {
 macro_rules! chain_ops {
 	($config:expr; $scope:ident, $variant:ident) => {{
 		let config = $config;
-		let basics = new_partial_basics::<$scope::RuntimeApi>(config)?;
+		// Offline subcommands don't run OCWs; the OCW heap-pages override is
+		// irrelevant here, so we pass None and fall back to the chart default.
+		let basics = new_partial_basics::<$scope::RuntimeApi>(config, None)?;
 
 		let sc_service::PartialComponents { client, backend, import_queue, task_manager, .. } =
 			new_partial::<$scope::RuntimeApi>(&config, basics)?;
