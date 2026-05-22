@@ -111,12 +111,12 @@ jobs:
           if [ -f "$SNAP_PATH" ]; then
             echo "Using cached snapshot (matched key: ${{ steps.snap.outputs.cache-matched-key }})"
             try-runtime --runtime ${{ steps.target.outputs.wasm }} \
-              on-runtime-upgrade --disable-idempotency-checks --blocktime 6000 \
+              on-runtime-upgrade --disable-idempotency-checks --disable-spec-version-check --blocktime 6000 \
               snap --path "$SNAP_PATH"
           else
             echo "No snapshot in cache for ${{ steps.target.outputs.network }} — falling back to live."
             echo "Run the 'Refresh Try-Runtime Snapshots' workflow to populate the cache."
             try-runtime --runtime ${{ steps.target.outputs.wasm }} \
-              on-runtime-upgrade --disable-idempotency-checks --blocktime 6000 \
+              on-runtime-upgrade --disable-idempotency-checks --disable-spec-version-check --blocktime 6000 \
               live --uri ${{ steps.target.outputs.uri }}
           fi
