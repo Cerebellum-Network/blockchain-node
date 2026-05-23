@@ -1,7 +1,7 @@
 name: Try-Runtime Check
 
 on:
-  # TEMP: remove this push trigger + TEST_BASE_REF env before merging — simulates a staging-targeted PR on this branch
+  # TEMP: remove this push trigger + TEST_BASE_REF env before merging — simulates a staging-targeted PR on this branch (rerun with warm cache)
   push:
     branches: [feat/try-runtime-snapshot-caching]
     paths:
