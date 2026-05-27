@@ -172,7 +172,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 80006,
+	spec_version: 80007,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 27,
@@ -1401,19 +1401,23 @@ impl<T: frame_system::Config> PalletVisitor<T> for TreasuryWrapper {
 
 parameter_types! {
 	/// Wasmtime tunables for the dac.wasm executor used by ddc-payouts and
-	/// ddc-verification OCWs. See `ddc_dac_host::DacExecConfig` for field
-	/// semantics. Tuning is runtime-upgrade-only — no node-binary rebuild.
+	/// ddc-verification OCWs. Runtime-upgrade-tunable; see
+	/// `ddc_dac_host::DacExecConfig` for field semantics.
 	///
-	/// Cere-dev defaults: diagnostics ON (coredumps + detailed backtraces
-	/// + DWARF debug info preserved) so the next dac.wasm trap captures
-	/// a forensic-quality snapshot. Per-invoke deadline 60 s, 256 MiB
-	/// linear-memory cap. Override in chain-spec for stricter testing.
+	/// Cere-dev (testnet/devnet) values: same resource ceilings as
+	/// mainnet (5-min per-invoke deadline, 512 MiB linear-memory cap,
+	/// 4 GiB virtual reservation, 4 MiB stack) — sized to handle the
+	/// largest tables observed while staying safe on 8 GiB validator
+	/// hosts. Diagnostics fully ON — coredumps written to
+	/// /data/dac-coredumps/ on trap, detailed backtraces, DWARF debug
+	/// info preserved through Cranelift. The next dac.wasm trap on
+	/// testnet drops a forensic snapshot for `wasmtime explore`.
 	pub DacExecConfigConst: ddc_dac_host::DacExecConfig = ddc_dac_host::DacExecConfig {
-		invoke_deadline_ms: 60_000,
+		invoke_deadline_ms: 300_000,
 		epoch_tick_ms: 250,
 		fuel_per_invoke: None,
-		max_wasm_stack_bytes: 2 * 1024 * 1024,
-		max_memory_bytes: 256 * 1024 * 1024,
+		max_wasm_stack_bytes: 4 * 1024 * 1024,
+		max_memory_bytes: 512 * 1024 * 1024,
 		memory_guard_size: 2 * 1024 * 1024,
 		memory_reservation: 4 * 1024 * 1024 * 1024,
 		memory_init_cow: true,

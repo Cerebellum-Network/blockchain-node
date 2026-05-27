@@ -162,7 +162,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 80006,
+	spec_version: 80007,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 27,
@@ -1367,18 +1367,29 @@ impl<T: frame_system::Config> PalletVisitor<T> for TreasuryWrapper {
 
 parameter_types! {
 	/// Wasmtime tunables for the dac.wasm executor used by ddc-payouts and
-	/// ddc-verification OCWs. Each field can be tuned at runtime-upgrade
-	/// time without rebuilding the node binary; see `ddc_dac_host::DacExecConfig`
-	/// for field semantics.
+	/// ddc-verification OCWs. Each field is runtime-upgrade tunable; see
+	/// `ddc_dac_host::DacExecConfig` for field semantics.
 	///
-	/// Mainnet defaults: diagnostics off (no coredumps, minimal backtrace),
-	/// per-invoke deadline 60 s, 256 MiB linear-memory cap.
+	/// Mainnet values — comfortable headroom over wasmtime defaults
+	/// without committing huge resources on small validator hosts:
+	///   * 5-min per-invoke deadline — only fires on genuine runaway
+	///     loops; healthy single-invoke ops complete in milliseconds.
+	///   * 512 MiB linear-memory hard cap — 2x previous, comfortably
+	///     above proto decode + clone + canonical-hash for the largest
+	///     tables observed (4 MiB proto + structural expansion).
+	///   * 4 GiB virtual reservation — wasmtime-typical, no physical
+	///     RAM until pages are touched. Stays safe on 8 GiB hosts.
+	///   * 4 MiB wasm stack — bounds runaway recursion without
+	///     affecting normal depths.
+	/// Diagnostics off to keep mainnet logs lean and the runtime wasm
+	/// blob small. `coredump_on_trap` etc. can be flipped via runtime
+	/// upgrade if a post-mortem becomes necessary.
 	pub DacExecConfigConst: ddc_dac_host::DacExecConfig = ddc_dac_host::DacExecConfig {
-		invoke_deadline_ms: 60_000,
+		invoke_deadline_ms: 300_000,
 		epoch_tick_ms: 250,
 		fuel_per_invoke: None,
-		max_wasm_stack_bytes: 2 * 1024 * 1024,
-		max_memory_bytes: 256 * 1024 * 1024,
+		max_wasm_stack_bytes: 4 * 1024 * 1024,
+		max_memory_bytes: 512 * 1024 * 1024,
 		memory_guard_size: 2 * 1024 * 1024,
 		memory_reservation: 4 * 1024 * 1024 * 1024,
 		memory_init_cow: true,
