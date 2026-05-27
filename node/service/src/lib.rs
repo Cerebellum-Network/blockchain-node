@@ -125,9 +125,8 @@ where
 	// Off-chain (OCW) heap: Dynamic growth up to 8192 pages (512 MB) by default,
 	// overridable per-validator via `--ocw-heap-pages N`. Memory commits on
 	// demand, so steady-state RSS does not change when OCWs are idle.
-	let offchain_heap_pages = HeapAllocStrategy::Dynamic {
-		maximum_pages: Some(ocw_heap_pages.unwrap_or(8192)),
-	};
+	let offchain_heap_pages =
+		HeapAllocStrategy::Dynamic { maximum_pages: Some(ocw_heap_pages.unwrap_or(8192)) };
 
 	let executor = ChainExecutor::builder()
 		.with_execution_method(config.executor.wasm_method)

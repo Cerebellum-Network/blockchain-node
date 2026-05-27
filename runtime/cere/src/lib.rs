@@ -162,7 +162,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 80006,
+	spec_version: 80007,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 27,
@@ -1365,6 +1365,45 @@ impl<T: frame_system::Config> PalletVisitor<T> for TreasuryWrapper {
 	}
 }
 
+parameter_types! {
+	/// Wasmtime tunables for the dac.wasm executor used by ddc-payouts and
+	/// ddc-verification OCWs. Each field is runtime-upgrade tunable; see
+	/// `ddc_dac_host::DacExecConfig` for field semantics.
+	///
+	/// Comfortable headroom over wasmtime defaults without committing
+	/// huge resources on small validator hosts:
+	///   * 5-min per-invoke deadline — only fires on genuine runaway
+	///     loops; healthy single-invoke ops complete in milliseconds.
+	///   * 512 MiB linear-memory hard cap — 2x previous, comfortably
+	///     above proto decode + clone + canonical-hash for the largest
+	///     tables observed (4 MiB proto + structural expansion).
+	///   * 4 GiB virtual reservation — wasmtime-typical, no physical
+	///     RAM until pages are touched. Stays safe on 8 GiB hosts.
+	///   * 4 MiB wasm stack — bounds runaway recursion without
+	///     affecting normal depths.
+	/// Diagnostics fully ON — on a dac.wasm trap, the host writes a
+	/// WasmCoreDump to /data/dac-coredumps/ for post-mortem analysis
+	/// via `wasmtime explore`, DWARF debug info is preserved through
+	/// Cranelift, and trap backtraces include source-level detail.
+	/// Can be flipped off via runtime upgrade once the system stabilises.
+	pub DacExecConfigConst: ddc_dac_host::DacExecConfig = ddc_dac_host::DacExecConfig {
+		invoke_deadline_ms: 300_000,
+		epoch_tick_ms: 250,
+		fuel_per_invoke: None,
+		max_wasm_stack_bytes: 4 * 1024 * 1024,
+		max_memory_bytes: 512 * 1024 * 1024,
+		memory_guard_size: 2 * 1024 * 1024,
+		memory_reservation: 4 * 1024 * 1024 * 1024,
+		memory_init_cow: true,
+		cranelift_opt_level: ddc_dac_host::CraneliftOptLevel::Speed,
+		parallel_compilation: true,
+		coredump_on_trap: true,
+		wasm_backtrace: true,
+		wasm_backtrace_details: true,
+		debug_info: true,
+	};
+}
+
 impl pallet_ddc_payouts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
@@ -1385,6 +1424,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type ClusterManager = DdcClusters;
 	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
 	type UnsignedPriority = ConstU64<500_000_000>;
+	type DacExecConfig = DacExecConfigConst;
 	type FeeHandler = FeeHandler;
 	type ForcePayoutOrigin = pallet_ddc_payouts::EnsureRootForForcePayout<AccountId>;
 
@@ -1514,6 +1554,7 @@ impl pallet_ddc_verification::Config for Runtime {
 
 	type InspRedundancyFactor = TenPercentOfValidators;
 	type InspBackupsFactor = TenPercentOfValidators;
+	type DacExecConfig = DacExecConfigConst;
 
 	const OCW_INTERVAL: u16 = 10; // every 10th block
 	const TCA_INSPECTION_STEP: u64 = 0;
