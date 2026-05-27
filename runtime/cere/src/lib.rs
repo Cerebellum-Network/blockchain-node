@@ -1395,10 +1395,10 @@ parameter_types! {
 		memory_init_cow: true,
 		cranelift_opt_level: ddc_dac_host::CraneliftOptLevel::Speed,
 		parallel_compilation: true,
-		coredump_on_trap: false,
+		coredump_on_trap: true,
 		wasm_backtrace: true,
-		wasm_backtrace_details: false,
-		debug_info: false,
+		wasm_backtrace_details: true,
+		debug_info: true,
 	};
 }
 
