@@ -1370,8 +1370,8 @@ parameter_types! {
 	/// ddc-verification OCWs. Each field is runtime-upgrade tunable; see
 	/// `ddc_dac_host::DacExecConfig` for field semantics.
 	///
-	/// Mainnet values — comfortable headroom over wasmtime defaults
-	/// without committing huge resources on small validator hosts:
+	/// Comfortable headroom over wasmtime defaults without committing
+	/// huge resources on small validator hosts:
 	///   * 5-min per-invoke deadline — only fires on genuine runaway
 	///     loops; healthy single-invoke ops complete in milliseconds.
 	///   * 512 MiB linear-memory hard cap — 2x previous, comfortably
@@ -1381,9 +1381,11 @@ parameter_types! {
 	///     RAM until pages are touched. Stays safe on 8 GiB hosts.
 	///   * 4 MiB wasm stack — bounds runaway recursion without
 	///     affecting normal depths.
-	/// Diagnostics off to keep mainnet logs lean and the runtime wasm
-	/// blob small. `coredump_on_trap` etc. can be flipped via runtime
-	/// upgrade if a post-mortem becomes necessary.
+	/// Diagnostics fully ON — on a dac.wasm trap, the host writes a
+	/// WasmCoreDump to /data/dac-coredumps/ for post-mortem analysis
+	/// via `wasmtime explore`, DWARF debug info is preserved through
+	/// Cranelift, and trap backtraces include source-level detail.
+	/// Can be flipped off via runtime upgrade once the system stabilises.
 	pub DacExecConfigConst: ddc_dac_host::DacExecConfig = ddc_dac_host::DacExecConfig {
 		invoke_deadline_ms: 300_000,
 		epoch_tick_ms: 250,

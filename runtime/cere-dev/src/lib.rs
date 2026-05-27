@@ -1401,17 +1401,25 @@ impl<T: frame_system::Config> PalletVisitor<T> for TreasuryWrapper {
 
 parameter_types! {
 	/// Wasmtime tunables for the dac.wasm executor used by ddc-payouts and
-	/// ddc-verification OCWs. Runtime-upgrade-tunable; see
+	/// ddc-verification OCWs. Each field is runtime-upgrade tunable; see
 	/// `ddc_dac_host::DacExecConfig` for field semantics.
 	///
-	/// Cere-dev (testnet/devnet) values: same resource ceilings as
-	/// mainnet (5-min per-invoke deadline, 512 MiB linear-memory cap,
-	/// 4 GiB virtual reservation, 4 MiB stack) — sized to handle the
-	/// largest tables observed while staying safe on 8 GiB validator
-	/// hosts. Diagnostics fully ON — coredumps written to
-	/// /data/dac-coredumps/ on trap, detailed backtraces, DWARF debug
-	/// info preserved through Cranelift. The next dac.wasm trap on
-	/// testnet drops a forensic snapshot for `wasmtime explore`.
+	/// Comfortable headroom over wasmtime defaults without committing
+	/// huge resources on small validator hosts:
+	///   * 5-min per-invoke deadline — only fires on genuine runaway
+	///     loops; healthy single-invoke ops complete in milliseconds.
+	///   * 512 MiB linear-memory hard cap — 2x previous, comfortably
+	///     above proto decode + clone + canonical-hash for the largest
+	///     tables observed (4 MiB proto + structural expansion).
+	///   * 4 GiB virtual reservation — wasmtime-typical, no physical
+	///     RAM until pages are touched. Stays safe on 8 GiB hosts.
+	///   * 4 MiB wasm stack — bounds runaway recursion without
+	///     affecting normal depths.
+	/// Diagnostics fully ON — on a dac.wasm trap, the host writes a
+	/// WasmCoreDump to /data/dac-coredumps/ for post-mortem analysis
+	/// via `wasmtime explore`, DWARF debug info is preserved through
+	/// Cranelift, and trap backtraces include source-level detail.
+	/// Can be flipped off via runtime upgrade once the system stabilises.
 	pub DacExecConfigConst: ddc_dac_host::DacExecConfig = ddc_dac_host::DacExecConfig {
 		invoke_deadline_ms: 300_000,
 		epoch_tick_ms: 250,
