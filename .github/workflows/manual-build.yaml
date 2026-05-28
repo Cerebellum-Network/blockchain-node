@@ -51,20 +51,34 @@ jobs:
       matrix:
         platform: ${{ fromJSON(needs.prepare.outputs.platforms) }}
     steps:
-      - name: "Cap buildx cache to free disk"
+      - name: "Reclaim disk on self-hosted runner"
         run: |
           set -x
           df -h /
-          # docker/build-push-action pushes built images directly to the
-          # registry — they're never stored as docker images on the host,
-          # so `docker images ... | xargs rmi` is a no-op. The real
-          # accumulator on a self-hosted runner is the buildx cache,
-          # which grows ~unboundedly across builds (layer reuse).
-          # Cap it at 30 GiB — keeps recent layers for the next build's
-          # fast path, evicts the oldest when the budget is exceeded.
-          docker buildx du || true
-          docker buildx prune --keep-storage 30g --force || true
+          # Print a full breakdown so future failures show exactly
+          # where disk is going.
+          docker system df || true
+          docker volume ls --filter 'name=buildx_buildkit_' || true
+
+          # Drop stopped containers + dangling images + unused networks.
+          docker container prune --force || true
+          docker image prune --force || true
+
+          # Buildkit state volumes from prior `Set up Docker Buildx`
+          # runs accumulate when builders aren't cleanly removed
+          # (post-step skipped on cancelled jobs, etc.). Drop the ones
+          # not currently in use.
+          docker volume ls --filter 'name=buildx_buildkit_' --filter 'dangling=true' -q \
+            | xargs -r docker volume rm || true
+
+          # Across-the-board buildx cache cap (covers any builder still
+          # referenced by another running job).
+          for b in $(docker buildx ls --format '{{.Name}}' 2>/dev/null | tail -n +2 | awk '{print $1}'); do
+            docker buildx prune --builder "$b" --keep-storage 30g --force || true
+          done
+
           df -h /
+          docker system df || true
 
       - name: "Checkout code"
         uses: actions/checkout@v4
