@@ -51,16 +51,19 @@ jobs:
       matrix:
         platform: ${{ fromJSON(needs.prepare.outputs.platforms) }}
     steps:
-      - name: "Prune old ${{ env.PACKAGE_NAME }} images"
+      - name: "Cap buildx cache to free disk"
         run: |
           set -x
           df -h /
-          # Self-hosted runner accumulates ${{ env.PACKAGE_NAME }} images
-          # from prior builds and eventually hits "No space left on
-          # device" mid-build. Drop ONLY images tagged under our
-          # repository — buildx cache, unrelated images on this runner,
-          # running containers, and volumes are all left intact.
-          docker images "${{ env.DOCKERHUB_REPOSITORY }}/${{ env.PACKAGE_NAME }}" -q | sort -u | xargs -r docker rmi -f || true
+          # docker/build-push-action pushes built images directly to the
+          # registry — they're never stored as docker images on the host,
+          # so `docker images ... | xargs rmi` is a no-op. The real
+          # accumulator on a self-hosted runner is the buildx cache,
+          # which grows ~unboundedly across builds (layer reuse).
+          # Cap it at 30 GiB — keeps recent layers for the next build's
+          # fast path, evicts the oldest when the budget is exceeded.
+          docker buildx du || true
+          docker buildx prune --keep-storage 30g --force || true
           df -h /
 
       - name: "Checkout code"
