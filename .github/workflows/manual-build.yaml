@@ -51,6 +51,18 @@ jobs:
       matrix:
         platform: ${{ fromJSON(needs.prepare.outputs.platforms) }}
     steps:
+      - name: "Reclaim disk on self-hosted runner"
+        run: |
+          set -x
+          df -h /
+          # Self-hosted runner accumulates docker images + buildx cache
+          # between builds and eventually hits "No space left on device"
+          # mid-build. Reclaim before each run.
+          docker system prune --all --force --volumes || true
+          docker buildx prune --all --force || true
+          sudo rm -rf /tmp/* 2>/dev/null || true
+          df -h /
+
       - name: "Checkout code"
         uses: actions/checkout@v4
 
