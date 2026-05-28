@@ -51,16 +51,15 @@ jobs:
       matrix:
         platform: ${{ fromJSON(needs.prepare.outputs.platforms) }}
     steps:
-      - name: "Reclaim disk on self-hosted runner"
+      - name: "Prune old docker images"
         run: |
           set -x
           df -h /
-          # Self-hosted runner accumulates docker images + buildx cache
-          # between builds and eventually hits "No space left on device"
-          # mid-build. Reclaim before each run.
-          docker system prune --all --force --volumes || true
-          docker buildx prune --all --force || true
-          sudo rm -rf /tmp/* 2>/dev/null || true
+          # Self-hosted runner accumulates pulled / built docker images
+          # between runs and eventually hits "No space left on device"
+          # mid-build. Drop unused images only — buildx cache, running
+          # containers, and volumes are left intact (no sudo required).
+          docker image prune --all --force || true
           df -h /
 
       - name: "Checkout code"
