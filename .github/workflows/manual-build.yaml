@@ -51,6 +51,18 @@ jobs:
       matrix:
         platform: ${{ fromJSON(needs.prepare.outputs.platforms) }}
     steps:
+      - name: "Prune old pos-node images"
+        run: |
+          set -x
+          df -h /
+          # Self-hosted runner accumulates pos-node images from prior
+          # builds and eventually hits "No space left on device"
+          # mid-build. Drop ONLY images tagged under our repository —
+          # buildx cache, unrelated images on this runner, running
+          # containers, and volumes are all left intact.
+          docker images cerebellumnetwork/pos-node -q | sort -u | xargs -r docker rmi -f || true
+          df -h /
+
       - name: "Checkout code"
         uses: actions/checkout@v4
 
