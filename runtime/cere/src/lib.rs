@@ -162,7 +162,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 80007,
+	spec_version: 80008,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 27,
@@ -1387,7 +1387,7 @@ parameter_types! {
 	/// Cranelift, and trap backtraces include source-level detail.
 	/// Can be flipped off via runtime upgrade once the system stabilises.
 	pub DacExecConfigConst: ddc_dac_host::DacExecConfig = ddc_dac_host::DacExecConfig {
-		invoke_deadline_ms: 300_000,
+		invoke_deadline_ms: 600_000,
 		epoch_tick_ms: 250,
 		fuel_per_invoke: None,
 		max_wasm_stack_bytes: 4 * 1024 * 1024,
