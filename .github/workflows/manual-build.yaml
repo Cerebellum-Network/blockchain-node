@@ -51,17 +51,34 @@ jobs:
       matrix:
         platform: ${{ fromJSON(needs.prepare.outputs.platforms) }}
     steps:
-      - name: "Prune old pos-node images"
+      - name: "Reclaim disk on self-hosted runner"
         run: |
           set -x
           df -h /
-          # Self-hosted runner accumulates pos-node images from prior
-          # builds and eventually hits "No space left on device"
-          # mid-build. Drop ONLY images tagged under our repository —
-          # buildx cache, unrelated images on this runner, running
-          # containers, and volumes are all left intact.
-          docker images cerebellumnetwork/pos-node -q | sort -u | xargs -r docker rmi -f || true
+          # Print a full breakdown so future failures show exactly
+          # where disk is going.
+          docker system df || true
+          docker volume ls --filter 'name=buildx_buildkit_' || true
+
+          # Drop stopped containers + dangling images + unused networks.
+          docker container prune --force || true
+          docker image prune --force || true
+
+          # Buildkit state volumes from prior `Set up Docker Buildx`
+          # runs accumulate when builders aren't cleanly removed
+          # (post-step skipped on cancelled jobs, etc.). Drop the ones
+          # not currently in use.
+          docker volume ls --filter 'name=buildx_buildkit_' --filter 'dangling=true' -q \
+            | xargs -r docker volume rm || true
+
+          # Across-the-board buildx cache cap (covers any builder still
+          # referenced by another running job).
+          for b in $(docker buildx ls --format '{{.Name}}' 2>/dev/null | tail -n +2 | awk '{print $1}'); do
+            docker buildx prune --builder "$b" --keep-storage 30g --force || true
+          done
+
           df -h /
+          docker system df || true
 
       - name: "Checkout code"
         uses: actions/checkout@v4
