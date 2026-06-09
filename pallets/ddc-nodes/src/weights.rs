@@ -21,8 +21,8 @@
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
-use frame_support::{traits::Get, weights::{Weight, constants::RocksDbWeight}};
-use sp_std::marker::PhantomData;
+use polkadot_sdk::frame_support::{traits::Get, weights::{Weight, constants::RocksDbWeight}};
+use polkadot_sdk::sp_std::marker::PhantomData;
 
 /// Weight functions needed for pallet_ddc_nodes.
 pub trait WeightInfo {
@@ -34,7 +34,7 @@ pub trait WeightInfo {
 
 /// Weights for pallet_ddc_nodes using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
-impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
+impl<T: polkadot_sdk::frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: `DdcNodes::StorageNodes` (r:1 w:1)
 	// Proof: `DdcNodes::StorageNodes` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn create_node() -> Weight {

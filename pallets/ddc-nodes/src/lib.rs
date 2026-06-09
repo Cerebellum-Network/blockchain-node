@@ -31,10 +31,10 @@ use ddc_primitives::{
 	traits::{node::NodeManager, staking::StakingVisitor},
 	ClusterId, NodeParams, NodePubKey, StorageNodeParams, StorageNodePubKey,
 };
-use frame_support::pallet_prelude::*;
-use frame_system::pallet_prelude::*;
+use polkadot_sdk::frame_support::pallet_prelude::*;
+use polkadot_sdk::frame_system::pallet_prelude::*;
 pub use pallet::*;
-use sp_std::prelude::*;
+use polkadot_sdk::sp_std::prelude::*;
 pub mod migrations;
 mod node;
 mod storage_node;
@@ -44,14 +44,14 @@ pub use crate::{
 	storage_node::StorageNode,
 };
 
-#[frame_support::pallet]
+#[polkadot_sdk::frame_support::pallet]
 pub mod pallet {
 	use self::node::NodeProps;
 	use super::*;
 
 	/// The current storage version.
-	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-		frame_support::traits::StorageVersion::new(2);
+	const STORAGE_VERSION: polkadot_sdk::frame_support::traits::StorageVersion =
+		polkadot_sdk::frame_support::traits::StorageVersion::new(2);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -59,9 +59,9 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: polkadot_sdk::frame_system::Config {
 		#[allow(deprecated)]
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as polkadot_sdk::frame_system::Config>::RuntimeEvent>;
 		type StakingVisitor: StakingVisitor<Self>;
 		type WeightInfo: WeightInfo;
 	}
@@ -168,7 +168,7 @@ pub mod pallet {
 		}
 	}
 
-	pub trait NodeRepository<T: frame_system::Config> {
+	pub trait NodeRepository<T: polkadot_sdk::frame_system::Config> {
 		fn create(node: Node<T>) -> Result<(), NodeRepositoryError>;
 		fn get(node_pub_key: NodePubKey) -> Result<Node<T>, NodeRepositoryError>;
 		fn update(node: Node<T>) -> Result<(), NodeRepositoryError>;

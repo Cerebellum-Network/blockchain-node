@@ -1,7 +1,7 @@
 use cere_service::IdentifyVariant;
-use frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
-use sc_cli::{Error, SubstrateCli};
-use sc_service::error::Error as ServiceError;
+use polkadot_sdk::frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
+use polkadot_sdk::sc_cli::{Error, SubstrateCli};
+use polkadot_sdk::sc_service::error::Error as ServiceError;
 
 use crate::cli::{Cli, Subcommand};
 
@@ -30,7 +30,7 @@ impl SubstrateCli for Cli {
 		2017
 	}
 
-	fn load_spec(&self, id: &str) -> Result<Box<dyn sc_service::ChainSpec>, String> {
+	fn load_spec(&self, id: &str) -> Result<Box<dyn polkadot_sdk::sc_service::ChainSpec>, String> {
 		Ok(match id {
 			"cere-mainnet" => Box::new(cere_service::chain_spec::cere_mainnet_config()?),
 			"cere-testnet" => Box::new(cere_service::chain_spec::cere_testnet_config()?),
@@ -80,7 +80,7 @@ macro_rules! unwrap_client {
 
 /// Parse and run command line arguments
 #[allow(clippy::result_large_err)]
-pub fn run() -> sc_cli::Result<()> {
+pub fn run() -> polkadot_sdk::sc_cli::Result<()> {
 	let mut cli = Cli::from_args();
 
 	cli.run.base.offchain_worker_params.indexing_enabled = true;
@@ -153,7 +153,7 @@ pub fn run() -> sc_cli::Result<()> {
 						#[cfg(all(feature = "cere-dev-native", not(feature = "cere-native")))]
 						if _chain_spec.is_cere_dev() {
 							runner.sync_run(|config| {
-								_cmd.run_with_spec::<sp_runtime::traits::HashingFor<
+								_cmd.run_with_spec::<polkadot_sdk::sp_runtime::traits::HashingFor<
 									cere_service::cere_dev_runtime::Block,
 								>, ()>(Some(config.chain_spec))
 							})
@@ -224,7 +224,7 @@ pub fn run() -> sc_cli::Result<()> {
 		None => {
 			let runner = cli.create_runner(&cli.run.base)?;
 			runner.run_node_until_exit(|config| async move {
-				cere_service::build_full::<sc_network::Litep2pNetworkBackend>(
+				cere_service::build_full::<polkadot_sdk::sc_network::Litep2pNetworkBackend>(
 					config,
 					cli.run.no_hardware_benchmarks,
 					cli.run.ocw_heap_pages,

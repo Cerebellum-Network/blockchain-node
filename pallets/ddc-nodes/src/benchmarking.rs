@@ -1,9 +1,9 @@
 //! DdcNodes pallet benchmarking.
 
 use ddc_primitives::{StorageNodeMode, StorageNodePubKey};
-use frame_benchmarking::v2::*;
-use frame_system::RawOrigin;
-use sp_std::prelude::*;
+use polkadot_sdk::frame_benchmarking::v2::*;
+use polkadot_sdk::frame_system::RawOrigin;
+use polkadot_sdk::sp_std::prelude::*;
 use testing_utils::*;
 
 use super::*;

@@ -37,17 +37,17 @@ use ddc_primitives::{
 	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
 	ClusterProtocolParams, ClusterStatus, EhdEra, InspectionDryRunParams, NodePubKey, NodeType,
 };
-use frame_support::{
+use polkadot_sdk::frame_support::{
 	assert_ok,
 	pallet_prelude::*,
 	traits::{Currency, LockableCurrency},
 };
-use frame_system::pallet_prelude::*;
+use polkadot_sdk::frame_system::pallet_prelude::*;
 pub use pallet::*;
 use pallet_ddc_nodes::{NodeRepository, NodeTrait};
-use sp_core::crypto::UncheckedFrom;
-use sp_runtime::SaturatedConversion;
-use sp_std::prelude::*;
+use polkadot_sdk::sp_core::crypto::UncheckedFrom;
+use polkadot_sdk::sp_runtime::SaturatedConversion;
+use polkadot_sdk::sp_std::prelude::*;
 
 use crate::{
 	cluster::Cluster,
@@ -59,17 +59,17 @@ mod node_provider_auth;
 
 /// The balance type of this pallet.
 pub type BalanceOf<T> =
-	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+	<<T as Config>::Currency as Currency<<T as polkadot_sdk::frame_system::Config>::AccountId>>::Balance;
 
-#[frame_support::pallet]
+#[polkadot_sdk::frame_support::pallet]
 pub mod pallet {
 	use ddc_primitives::traits::cluster::ClusterManager;
 
 	use super::*;
 
 	/// The current storage version.
-	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-		frame_support::traits::StorageVersion::new(6);
+	const STORAGE_VERSION: polkadot_sdk::frame_support::traits::StorageVersion =
+		polkadot_sdk::frame_support::traits::StorageVersion::new(6);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -77,9 +77,9 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_contracts::Config {
+	pub trait Config: polkadot_sdk::frame_system::Config + polkadot_sdk::pallet_contracts::Config {
 		#[allow(deprecated)]
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as polkadot_sdk::frame_system::Config>::RuntimeEvent>;
 		type NodeRepository: NodeRepository<Self>; // todo: get rid of tight coupling with nodes-pallet
 		type StakingVisitor: StakingVisitor<Self>;
 		type StakerCreator: StakerCreator<Self, BalanceOf<Self>>;
@@ -194,7 +194,7 @@ pub mod pallet {
 		fn build(&self) {
 			for cluster in &self.clusters {
 				assert_ok!(Pallet::<T>::create_cluster(
-					frame_system::Origin::<T>::Signed(cluster.manager_id.clone()).into(),
+					polkadot_sdk::frame_system::Origin::<T>::Signed(cluster.manager_id.clone()).into(),
 					cluster.cluster_id,
 					cluster.reserve_id.clone(),
 					ClusterParams::<T::AccountId> {
@@ -235,7 +235,7 @@ pub mod pallet {
 							ClusterNodeState {
 								kind: kind.clone(),
 								status: status.clone(),
-								added_at: frame_system::Pallet::<T>::block_number(),
+								added_at: polkadot_sdk::frame_system::Pallet::<T>::block_number(),
 							},
 						);
 						match status {
@@ -562,7 +562,7 @@ pub mod pallet {
 				ClusterNodeState {
 					kind: node_kind.clone(),
 					status: ClusterNodeStatus::AwaitsValidation,
-					added_at: frame_system::Pallet::<T>::block_number(),
+					added_at: polkadot_sdk::frame_system::Pallet::<T>::block_number(),
 				},
 			);
 			Self::deposit_event(Event::<T>::ClusterNodeAdded {
@@ -601,7 +601,7 @@ pub mod pallet {
 				ClusterNodeState {
 					kind: ClusterNodeKind::External,
 					status: ClusterNodeStatus::ValidationSucceeded,
-					added_at: frame_system::Pallet::<T>::block_number(),
+					added_at: polkadot_sdk::frame_system::Pallet::<T>::block_number(),
 				},
 			);
 			Self::deposit_event(Event::<T>::ClusterNodeAdded {

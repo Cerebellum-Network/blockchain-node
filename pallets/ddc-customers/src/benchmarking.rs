@@ -1,21 +1,21 @@
 //! DdcCustomers pallet benchmarking.
 
 use ddc_primitives::{BucketParams, ClusterId, ClusterParams, ClusterProtocolParams};
-use frame_support::traits::Currency;
-use sp_runtime::Perquintill;
-use sp_std::prelude::*;
+use polkadot_sdk::frame_support::traits::Currency;
+use polkadot_sdk::sp_runtime::Perquintill;
+use polkadot_sdk::sp_std::prelude::*;
 
 use super::*;
 use crate::Pallet as DdcCustomers;
 
 pub type BalanceOf<T> =
-	<<T as pallet::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+	<<T as pallet::Config>::Currency as Currency<<T as polkadot_sdk::frame_system::Config>::AccountId>>::Balance;
 
-use frame_system::{Pallet as System, RawOrigin};
+use polkadot_sdk::frame_system::{Pallet as System, RawOrigin};
 
 const USER_SEED: u32 = 999666;
 
-use frame_benchmarking::v2::*;
+use polkadot_sdk::frame_benchmarking::v2::*;
 
 #[benchmarks]
 mod benchmarks {

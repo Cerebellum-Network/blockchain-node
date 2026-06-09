@@ -5,15 +5,15 @@ use ddc_primitives::{
 	ClusterId, ClusterParams, ClusterProtocolParams, NodeParams, StorageNodeMode,
 	StorageNodeParams, StorageNodePubKey,
 };
-use frame_benchmarking::account;
+use polkadot_sdk::frame_benchmarking::account;
 #[cfg(feature = "runtime-benchmarks")]
-use frame_support::traits::Currency;
+use polkadot_sdk::frame_support::traits::Currency;
 #[cfg(feature = "runtime-benchmarks")]
-use frame_system::RawOrigin;
+use polkadot_sdk::frame_system::RawOrigin;
 #[cfg(feature = "runtime-benchmarks")]
-use sp_runtime::{traits::StaticLookup, Perquintill};
+use polkadot_sdk::sp_runtime::{traits::StaticLookup, Perquintill};
 #[cfg(feature = "runtime-benchmarks")]
-use sp_std::prelude::*;
+use polkadot_sdk::sp_std::prelude::*;
 
 #[cfg(feature = "runtime-benchmarks")]
 use crate::Pallet as DdcStaking;

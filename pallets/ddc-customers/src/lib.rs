@@ -18,7 +18,7 @@ use ddc_primitives::{
 	},
 	BucketId, BucketParams, ClusterId,
 };
-use frame_support::{
+use polkadot_sdk::frame_support::{
 	parameter_types,
 	traits::{
 		fungible::Inspect, Currency, DefensiveSaturating, ExistenceRequirement,
@@ -26,16 +26,16 @@ use frame_support::{
 	},
 	BoundedVec, Deserialize, PalletId, Serialize,
 };
-use frame_system::pallet_prelude::*;
+use polkadot_sdk::frame_system::pallet_prelude::*;
 pub use pallet::*;
 use scale_info::TypeInfo;
-use sp_io::hashing::blake2_128;
-use sp_runtime::{
+use polkadot_sdk::sp_io::hashing::blake2_128;
+use polkadot_sdk::sp_runtime::{
 	traits::{AccountIdConversion, Saturating, StaticLookup, Zero},
 	RuntimeDebug, SaturatedConversion,
 };
-use sp_std::fmt::Debug;
-use sp_std::prelude::*;
+use polkadot_sdk::sp_std::fmt::Debug;
+use polkadot_sdk::sp_std::prelude::*;
 
 use crate::weights::WeightInfo;
 
@@ -43,11 +43,11 @@ pub mod migrations;
 
 /// The balance type of this pallet.
 pub type BalanceOf<T> =
-	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+	<<T as Config>::Currency as Currency<<T as polkadot_sdk::frame_system::Config>::AccountId>>::Balance;
 
 /// The balance type of contracts pallet.
-pub type ContractsBalanceOf<T> = <<T as pallet_contracts::Config>::Currency as Inspect<
-	<T as frame_system::Config>::AccountId,
+pub type ContractsBalanceOf<T> = <<T as polkadot_sdk::pallet_contracts::Config>::Currency as Inspect<
+	<T as polkadot_sdk::frame_system::Config>::AccountId,
 >>::Balance;
 
 parameter_types! {
@@ -130,16 +130,16 @@ impl<T: Config> CustomerLedger<T> {
 	}
 }
 
-#[frame_support::pallet]
+#[polkadot_sdk::frame_support::pallet]
 pub mod pallet {
-	use frame_support::{pallet_prelude::*, traits::LockableCurrency};
-	use frame_system::pallet_prelude::*;
+	use polkadot_sdk::frame_support::{pallet_prelude::*, traits::LockableCurrency};
+	use polkadot_sdk::frame_system::pallet_prelude::*;
 
 	use super::*;
 
 	/// The current storage version.
-	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-		frame_support::traits::StorageVersion::new(5);
+	const STORAGE_VERSION: polkadot_sdk::frame_support::traits::StorageVersion =
+		polkadot_sdk::frame_support::traits::StorageVersion::new(5);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -147,13 +147,13 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_contracts::Config {
+	pub trait Config: polkadot_sdk::frame_system::Config + polkadot_sdk::pallet_contracts::Config {
 		/// The accounts's pallet id, used for deriving its sovereign account ID.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 		type Currency: LockableCurrency<Self::AccountId, Moment = BlockNumberFor<Self>>;
 		#[allow(deprecated)]
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as polkadot_sdk::frame_system::Config>::RuntimeEvent>;
 		/// Number of eras that staked funds must remain locked for.
 		#[pallet::constant]
 		type UnlockingDelay: Get<BlockNumberFor<Self>>;
@@ -454,7 +454,7 @@ pub mod pallet {
 					ledger.active = Zero::zero();
 				}
 
-				let current_block = <frame_system::Pallet<T>>::block_number();
+				let current_block = <polkadot_sdk::frame_system::Pallet<T>>::block_number();
 				// Note: locking for extra block to allow for accounting
 				// block + configurable value - shouldn't overflow
 				let block = current_block + <T as pallet::Config>::UnlockingDelay::get();
@@ -505,7 +505,7 @@ pub mod pallet {
 			let mut ledger =
 				ClusterLedger::<T>::get(cluster_id, &owner).ok_or(Error::<T>::NotOwner)?;
 			let (owner, old_total) = (owner.clone(), ledger.total);
-			let current_block = <frame_system::Pallet<T>>::block_number();
+			let current_block = <polkadot_sdk::frame_system::Pallet<T>>::block_number();
 			ledger = ledger.consolidate_unlocked(current_block);
 
 			let post_info_weight = if ledger.unlocking.is_empty()
@@ -647,7 +647,7 @@ pub mod pallet {
 		fn kill_owner(owner: &T::AccountId, cluster_id: &ClusterId) -> DispatchResult {
 			<ClusterLedger<T>>::remove(cluster_id, owner);
 
-			frame_system::Pallet::<T>::dec_consumers(owner);
+			polkadot_sdk::frame_system::Pallet::<T>::dec_consumers(owner);
 
 			Ok(())
 		}
@@ -810,7 +810,7 @@ pub mod pallet {
 				Err(Error::<T>::InsufficientDeposit)?
 			}
 
-			frame_system::Pallet::<T>::inc_consumers(&owner).map_err(|_| Error::<T>::BadState)?;
+			polkadot_sdk::frame_system::Pallet::<T>::inc_consumers(&owner).map_err(|_| Error::<T>::BadState)?;
 
 			let owner_balance = <T as pallet::Config>::Currency::free_balance(&owner);
 			let value = value.min(owner_balance);
@@ -904,7 +904,7 @@ pub mod pallet {
 					}
 				}
 
-				frame_system::Pallet::<T>::inc_consumers(&owner)
+				polkadot_sdk::frame_system::Pallet::<T>::inc_consumers(&owner)
 					.map_err(|_| Error::<T>::BadState)?;
 
 				let ledger = CustomerLedger {
@@ -1006,8 +1006,8 @@ pub mod pallet {
 		ContractsBalanceOf<T>: codec::HasCompact,
 		<ContractsBalanceOf<T> as codec::HasCompact>::Type:
 			Clone + Eq + PartialEq + Debug + TypeInfo + Encode,
-		<<T as frame_system::Config>::Lookup as StaticLookup>::Source:
-			From<<T as frame_system::Config>::AccountId>,
+		<<T as polkadot_sdk::frame_system::Config>::Lookup as StaticLookup>::Source:
+			From<<T as polkadot_sdk::frame_system::Config>::AccountId>,
 	{
 		fn deploy_contract(
 			deployer: T::AccountId,
@@ -1018,8 +1018,8 @@ pub mod pallet {
 			data: Vec<u8>,
 			salt: Vec<u8>,
 		) -> DispatchResult {
-			let instantiate_call: pallet_contracts::Call<T> =
-				pallet_contracts::Call::instantiate_with_code {
+			let instantiate_call: polkadot_sdk::pallet_contracts::Call<T> =
+				polkadot_sdk::pallet_contracts::Call::instantiate_with_code {
 					value,
 					gas_limit,
 					storage_deposit_limit: storage_deposit_limit.map(Into::into),
@@ -1029,7 +1029,7 @@ pub mod pallet {
 				};
 
 			let result = instantiate_call
-				.dispatch_bypass_filter(frame_system::RawOrigin::Signed(deployer).into());
+				.dispatch_bypass_filter(polkadot_sdk::frame_system::RawOrigin::Signed(deployer).into());
 
 			match result {
 				Ok(_) => Ok(()),
@@ -1048,7 +1048,7 @@ pub mod pallet {
 			storage_deposit_limit: Option<ContractsBalanceOf<T>>,
 			data: Vec<u8>,
 		) -> DispatchResult {
-			let call_call: pallet_contracts::Call<T> = pallet_contracts::Call::call {
+			let call_call: polkadot_sdk::pallet_contracts::Call<T> = polkadot_sdk::pallet_contracts::Call::call {
 				dest: dest.into(),
 				value,
 				gas_limit,
@@ -1057,7 +1057,7 @@ pub mod pallet {
 			};
 
 			let result =
-				call_call.dispatch_bypass_filter(frame_system::RawOrigin::Signed(caller).into());
+				call_call.dispatch_bypass_filter(polkadot_sdk::frame_system::RawOrigin::Signed(caller).into());
 
 			match result {
 				Ok(_) => Ok(()),

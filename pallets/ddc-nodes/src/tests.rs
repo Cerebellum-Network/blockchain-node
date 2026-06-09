@@ -1,8 +1,8 @@
 //! Tests for the module.
 
 use ddc_primitives::{NodePubKey, StorageNodeMode, StorageNodeParams};
-use frame_support::{assert_noop, assert_ok};
-use sp_runtime::AccountId32;
+use polkadot_sdk::frame_support::{assert_noop, assert_ok};
+use polkadot_sdk::sp_runtime::AccountId32;
 use storage_node::{MaxDomainLen, MaxHostLen};
 
 use super::{mock::*, *};

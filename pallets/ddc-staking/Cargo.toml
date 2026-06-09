@@ -12,16 +12,17 @@ repository.workspace = true
 # 3rd-party dependencies
 codec.workspace = true
 hex-literal.workspace = true
+log.workspace = true
 scale-info.workspace = true
 
-# Substrate dependencies
-frame-benchmarking = { workspace = true, optional = true }
-frame-support.workspace = true
-frame-system.workspace = true
-log.workspace = true
-sp-io.workspace = true
-sp-runtime.workspace = true
-sp-std.workspace = true
+# Substrate / Polkadot SDK
+polkadot-sdk = { workspace = true, features = [
+  "frame-support",
+  "frame-system",
+  "sp-io",
+  "sp-runtime",
+  "sp-std",
+] }
 
 # Cere dependencies
 ddc-primitives.workspace = true
@@ -44,22 +45,15 @@ default = ["std"]
 std = [
   "codec/std",
   "ddc-primitives/std",
-  "frame-support/std",
-  "frame-system/std",
-  "frame-benchmarking/std",
+  "polkadot-sdk/std",
   "scale-info/std",
-  "sp-io/std",
-  "sp-runtime/std",
-  "sp-std/std",
 ]
 runtime-benchmarks = [
   "ddc-primitives/runtime-benchmarks",
-  "frame-benchmarking/runtime-benchmarks",
-  "frame-support/runtime-benchmarks",
-  "frame-system/runtime-benchmarks",
-  "sp-runtime/runtime-benchmarks",
+  "polkadot-sdk/frame-benchmarking",
+  "polkadot-sdk/runtime-benchmarks",
 ]
 
 try-runtime = [
-  "frame-system/try-runtime",
+  "polkadot-sdk/try-runtime",
 ]
