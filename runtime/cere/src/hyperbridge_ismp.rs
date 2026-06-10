@@ -212,8 +212,8 @@ impl IsmpModule for ProxyModule {
 
 	fn on_timeout(&self, timeout: Request) -> Result<Weight, anyhow::Error> {
 		let (from, source) = match &timeout {
-			Request::Post(p) => (&p.from, p.source.clone()),
-			Request::Get(g) => (&g.from, g.source.clone()),
+			Request::Post(p) => (&p.from, p.source),
+			Request::Get(g) => (&g.from, g.source),
 		};
 		if source != HostStateMachine::get() {
 			return Ok(Weight::from_parts(0, 0));
@@ -233,7 +233,7 @@ pub struct Router;
 
 impl IsmpRouter for Router {
 	fn module_for_id(&self, _bytes: Vec<u8>) -> Result<Box<dyn IsmpModule>, anyhow::Error> {
-		Ok(Box::new(ProxyModule::default()))
+		Ok(Box::new(ProxyModule))
 	}
 }
 

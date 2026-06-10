@@ -441,10 +441,7 @@ pub mod pallet {
 				// so the funds are already unlocked for the pallet's balance and need to be
 				// refunded to the original depositor.
 				Err(ref e)
-					if e.error == polkadot_sdk::pallet_referenda::Error::<T>::NoDeposit.into() =>
-				{
-					()
-				},
+					if e.error == polkadot_sdk::pallet_referenda::Error::<T>::NoDeposit.into() => {},
 				Err(e) => return Err(e.error),
 			}
 

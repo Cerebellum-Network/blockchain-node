@@ -107,7 +107,7 @@ use polkadot_sdk::sp_runtime::{
 		StaticLookup, Verify,
 	},
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, DispatchError, DispatchResult, FixedPointNumber, FixedU128, Perbill,
+	ApplyExtrinsicResult, FixedPointNumber, FixedU128, Perbill,
 	Percent, Permill, Perquintill, RuntimeDebug,
 };
 use polkadot_sdk::sp_std::prelude::*;
@@ -1982,7 +1982,7 @@ mod benches {
 		[pallet_collective, TechComm]
 		[pallet_ddc_clusters_gov, DdcClustersGov]
 		[pallet_ddc_payouts, DdcPayouts]
-		[pallet_hyper_fungible_token, TokenGateway]
+		/* [pallet_hyper_fungible_token, TokenGateway] - 2512.0.0 lacks Benchmarking impl */
 		[pallet_migrations, MultiBlockMigrations]
 		[pallet_fee_handler, FeeHandler]
 	);
