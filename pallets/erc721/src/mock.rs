@@ -1,8 +1,10 @@
 #![cfg(test)]
 
+use polkadot_sdk::*;
+
 use polkadot_sdk::frame_support::{derive_impl, ord_parameter_types, parameter_types, weights::Weight};
 use polkadot_sdk::frame_system::{self as system, mocking::MockBlock};
-pub use pallet_balances as balances;
+pub use polkadot_sdk::pallet_balances as balances;
 use pallet_chainbridge as bridge;
 use polkadot_sdk::sp_core::hashing::blake2_128;
 use polkadot_sdk::sp_runtime::{BuildStorage, Perbill};
@@ -16,7 +18,7 @@ parameter_types! {
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
 }
 
-#[derive_impl(polkadot_sdk::frame_system::config_preludes::TestDefaultConfig)]
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl polkadot_sdk::frame_system::Config for Test {
 	type Block = Block;
 	type AccountId = u64;

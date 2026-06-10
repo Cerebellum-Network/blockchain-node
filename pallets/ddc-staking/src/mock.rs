@@ -2,6 +2,8 @@
 
 #![allow(dead_code)]
 
+use polkadot_sdk::*;
+
 use ddc_primitives::{
 	ClusterNodeKind, ClusterNodeStatus, ClusterParams, ClusterProtocolParams, ClusterStatus,
 	NodeParams, NodePubKey, StorageNodeParams, StorageNodePubKey,
@@ -65,7 +67,7 @@ type BalanceOf<T> = <<T as crate::pallet::Config>::Currency as Currency<
 	<T as polkadot_sdk::frame_system::Config>::AccountId,
 >>::Balance;
 
-#[derive_impl(polkadot_sdk::frame_system::config_preludes::TestDefaultConfig)]
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl polkadot_sdk::frame_system::Config for Test {
 	type Block = Block;
 	type AccountId = AccountId;

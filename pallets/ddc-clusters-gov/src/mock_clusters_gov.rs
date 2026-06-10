@@ -2,6 +2,8 @@
 
 #![allow(dead_code)]
 
+use polkadot_sdk::*;
+
 use std::{borrow::Cow, cell::RefCell};
 
 use ddc_primitives::{
@@ -84,7 +86,7 @@ impl Convert<Weight, BalanceOf<Self>> for Test {
 	}
 }
 
-#[derive_impl(polkadot_sdk::frame_system::config_preludes::TestDefaultConfig)]
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl polkadot_sdk::frame_system::Config for Test {
 	type Block = Block;
 	type AccountId = AccountId;

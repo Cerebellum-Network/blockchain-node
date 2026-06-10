@@ -1,5 +1,7 @@
 //! DdcStaking pallet benchmarking.
 
+use polkadot_sdk::*;
+
 use ddc_primitives::{
 	ClusterId, ClusterNodeKind, ClusterParams, ClusterProtocolParams, NodePubKey,
 };

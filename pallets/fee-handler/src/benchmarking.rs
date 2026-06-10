@@ -1,5 +1,7 @@
 //! Fee Handler pallet benchmarking.
 
+use polkadot_sdk::*;
+
 use polkadot_sdk::frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 use polkadot_sdk::frame_system::RawOrigin;
 

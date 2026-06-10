@@ -1,5 +1,7 @@
 //! DdcCustomers pallet benchmarking.
 
+use polkadot_sdk::*;
+
 use ddc_primitives::{BucketParams, ClusterId, ClusterParams, ClusterProtocolParams};
 use polkadot_sdk::frame_support::traits::Currency;
 use polkadot_sdk::sp_runtime::Perquintill;

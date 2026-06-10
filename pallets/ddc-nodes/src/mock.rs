@@ -2,6 +2,8 @@
 
 #![allow(dead_code)]
 
+use polkadot_sdk::*;
+
 use ddc_primitives::traits::staking::{StakingVisitor, StakingVisitorError};
 use polkadot_sdk::frame_support::{
 	construct_runtime, derive_impl, parameter_types,
@@ -40,7 +42,7 @@ parameter_types! {
 	pub static ExistentialDeposit: Balance = 1;
 }
 
-#[derive_impl(polkadot_sdk::frame_system::config_preludes::TestDefaultConfig)]
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl polkadot_sdk::frame_system::Config for Test {
 	type Block = Block;
 	type AccountId = AccountId;

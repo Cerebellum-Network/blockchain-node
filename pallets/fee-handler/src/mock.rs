@@ -1,4 +1,6 @@
-use polkadot_sdk::frame_support::{
+use polkadot_sdk::*;
+
+use frame_support::{
 	parameter_types,
 	traits::{ConstU32, Everything},
 	PalletId,

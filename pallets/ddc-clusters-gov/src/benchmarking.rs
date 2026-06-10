@@ -1,6 +1,8 @@
 //! DdcClustersGov pallet benchmarking.
 #![allow(clippy::extra_unused_type_parameters)]
 
+use polkadot_sdk::*;
+
 use ddc_primitives::{
 	ClusterBondingParams, ClusterId, ClusterNodeKind, ClusterParams, ClusterProtocolParams,
 	NodeParams, StorageNodeMode, StorageNodeParams, StorageNodePubKey,
