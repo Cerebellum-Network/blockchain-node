@@ -17,14 +17,7 @@ scale-info.workspace = true
 serde.workspace = true
 
 # Substrate / Polkadot SDK
-polkadot-sdk = { workspace = true, features = [
-  "frame-support",
-  "frame-system",
-  "pallet-referenda",
-  "sp-io",
-  "sp-runtime",
-  "sp-std",
-] }
+polkadot-sdk = { workspace = true, features = ["frame-support", "frame-system", "pallet-referenda", "sp-io", "sp-runtime", "sp-std"] }
 
 [dev-dependencies]
 lazy_static = { workspace = true, default-features = true }

@@ -17,40 +17,7 @@ rand = { workspace = true, default-features = true }
 serde = { workspace = true, default-features = true }
 
 # Substrate / Polkadot SDK
-polkadot-sdk = { workspace = true, default-features = true, features = [
-  "frame-benchmarking-cli",
-  "pallet-im-online",
-  "sc-authority-discovery",
-  "sc-basic-authorship",
-  "sc-chain-spec",
-  "sc-client-api",
-  "sc-consensus",
-  "sc-consensus-babe",
-  "sc-consensus-grandpa",
-  "sc-consensus-slots",
-  "sc-executor",
-  "sc-network",
-  "sc-network-common",
-  "sc-offchain",
-  "sc-rpc",
-  "sc-service",
-  "sc-sync-state-rpc",
-  "sc-sysinfo",
-  "sc-telemetry",
-  "sc-transaction-pool",
-  "sc-transaction-pool-api",
-  "sp-api",
-  "sp-authority-discovery",
-  "sp-blockchain",
-  "sp-consensus-babe",
-  "sp-consensus-grandpa",
-  "sp-core",
-  "sp-inherents",
-  "sp-runtime",
-  "sp-timestamp",
-  "sp-transaction-storage-proof",
-  "sp-trie",
-] }
+polkadot-sdk = { workspace = true, default-features = true, features = ["frame-benchmarking-cli", "pallet-im-online", "sc-authority-discovery", "sc-basic-authorship", "sc-chain-spec", "sc-client-api", "sc-consensus", "sc-consensus-babe", "sc-consensus-grandpa", "sc-consensus-slots", "sc-executor", "sc-network", "sc-network-common", "sc-offchain", "sc-rpc", "sc-service", "sc-sync-state-rpc", "sc-sysinfo", "sc-telemetry", "sc-transaction-pool", "sc-transaction-pool-api", "sp-api", "sp-authority-discovery", "sp-blockchain", "sp-consensus-babe", "sp-consensus-grandpa", "sp-core", "sp-inherents", "sp-runtime", "sp-timestamp", "sp-transaction-storage-proof", "sp-trie"] }
 
 # Cere dependencies
 cere-client = { workspace = true, optional = true }

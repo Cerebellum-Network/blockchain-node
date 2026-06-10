@@ -17,32 +17,7 @@ ddc-dac-host = { workspace = true, default-features = true }
 ddc-primitives = { workspace = true, default-features = true }
 
 # Substrate / Polkadot SDK
-polkadot-sdk = { workspace = true, default-features = true, features = [
-  "frame-benchmarking",
-  "frame-system",
-  "frame-system-rpc-runtime-api",
-  "pallet-transaction-payment",
-  "pallet-transaction-payment-rpc-runtime-api",
-  "sc-client-api",
-  "sc-executor",
-  "sc-service",
-  "sp-api",
-  "sp-authority-discovery",
-  "sp-block-builder",
-  "sp-blockchain",
-  "sp-consensus",
-  "sp-consensus-babe",
-  "sp-consensus-grandpa",
-  "sp-core",
-  "sp-inherents",
-  "sp-io",
-  "sp-offchain",
-  "sp-runtime",
-  "sp-session",
-  "sp-storage",
-  "sp-timestamp",
-  "sp-transaction-pool",
-] }
+polkadot-sdk = { workspace = true, default-features = true, features = ["frame-benchmarking", "frame-system", "frame-system-rpc-runtime-api", "pallet-transaction-payment", "pallet-transaction-payment-rpc-runtime-api", "sc-client-api", "sc-executor", "sc-service", "sp-api", "sp-authority-discovery", "sp-block-builder", "sp-blockchain", "sp-consensus", "sp-consensus-babe", "sp-consensus-grandpa", "sp-core", "sp-inherents", "sp-io", "sp-offchain", "sp-runtime", "sp-session", "sp-storage", "sp-timestamp", "sp-transaction-pool"] }
 
 # Local
 cere-dev-runtime = { workspace = true, optional = true }

@@ -220,4 +220,3 @@ pallet-hyper-fungible-token = { default-features = false, version = "2512.0.0" }
 
 [profile.release]
 panic = "unwind"
-

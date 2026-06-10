@@ -26,12 +26,7 @@ clap = { workspace = true, optional = true }
 url.workspace = true
 
 # Substrate / Polkadot SDK
-polkadot-sdk = { workspace = true, default-features = false, features = [
-  "sc-executor",
-  "sc-network",
-  "sp-io",
-  "sp-runtime",
-] }
+polkadot-sdk = { workspace = true, default-features = false, features = ["sc-executor", "sc-network", "sp-io", "sp-runtime"] }
 
 # Local
 cere-client = { workspace = true, optional = true }

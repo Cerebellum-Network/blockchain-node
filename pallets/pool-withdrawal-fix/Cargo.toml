@@ -15,14 +15,7 @@ scale-info.workspace = true
 serde.workspace = true
 
 # Substrate / Polkadot SDK
-polkadot-sdk = { workspace = true, features = [
-  "frame-support",
-  "frame-system",
-  "sp-core",
-  "sp-runtime",
-  "sp-staking",
-  "sp-std",
-] }
+polkadot-sdk = { workspace = true, features = ["frame-support", "frame-system", "sp-core", "sp-runtime", "sp-staking", "sp-std"] }
 
 [features]
 default = ["std"]

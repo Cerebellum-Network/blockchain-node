@@ -16,13 +16,7 @@ log.workspace = true
 scale-info.workspace = true
 
 # Substrate / Polkadot SDK
-polkadot-sdk = { workspace = true, features = [
-  "frame-support",
-  "frame-system",
-  "sp-io",
-  "sp-runtime",
-  "sp-std",
-] }
+polkadot-sdk = { workspace = true, features = ["frame-support", "frame-system", "sp-io", "sp-runtime", "sp-std"] }
 
 # Cere dependencies
 ddc-primitives.workspace = true
