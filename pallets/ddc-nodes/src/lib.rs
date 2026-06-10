@@ -31,9 +31,9 @@ use ddc_primitives::{
 	traits::{node::NodeManager, staking::StakingVisitor},
 	ClusterId, NodeParams, NodePubKey, StorageNodeParams, StorageNodePubKey,
 };
+pub use pallet::*;
 use polkadot_sdk::frame_support::pallet_prelude::*;
 use polkadot_sdk::frame_system::pallet_prelude::*;
-pub use pallet::*;
 use polkadot_sdk::sp_std::prelude::*;
 pub mod migrations;
 mod node;
@@ -61,7 +61,8 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: polkadot_sdk::frame_system::Config {
 		#[allow(deprecated)]
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as polkadot_sdk::frame_system::Config>::RuntimeEvent>;
+		type RuntimeEvent: From<Event<Self>>
+			+ IsType<<Self as polkadot_sdk::frame_system::Config>::RuntimeEvent>;
 		type StakingVisitor: StakingVisitor<Self>;
 		type WeightInfo: WeightInfo;
 	}

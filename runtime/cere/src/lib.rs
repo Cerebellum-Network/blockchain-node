@@ -37,6 +37,7 @@ use polkadot_sdk::frame_election_provider_support::{
 };
 use polkadot_sdk::pallet_balances::WeightInfo;
 extern crate alloc;
+pub use pallet_chainbridge;
 use polkadot_sdk::frame_support::traits::fungible::Balanced;
 use polkadot_sdk::frame_support::traits::tokens::Precision;
 use polkadot_sdk::frame_support::{
@@ -47,7 +48,10 @@ use polkadot_sdk::frame_support::{
 	parameter_types,
 	traits::{
 		fungible::{Credit, Debt, HoldConsideration},
-		tokens::{imbalance::ResolveTo, Fortitude, PayFromAccount, Preservation, UnityAssetBalanceConversion},
+		tokens::{
+			imbalance::ResolveTo, Fortitude, PayFromAccount, Preservation,
+			UnityAssetBalanceConversion,
+		},
 		ConstBool, ConstU128, ConstU16, ConstU32, ConstU64, Currency, EitherOf, EitherOfDiverse,
 		EqualPrivilegeOnly, Imbalance, InstanceFilter, KeyOwnerProofSystem, LinearStoragePrice,
 		Nothing, OnUnbalanced, VariantCountOf, WithdrawReasons,
@@ -68,7 +72,6 @@ use polkadot_sdk::frame_system::{
 };
 #[cfg(any(feature = "std", test))]
 pub use polkadot_sdk::pallet_balances::Call as BalancesCall;
-pub use pallet_chainbridge;
 use polkadot_sdk::pallet_contracts::Determinism;
 use polkadot_sdk::pallet_election_provider_multi_phase::SolutionAccuracyOf;
 use polkadot_sdk::pallet_grandpa::{
@@ -81,7 +84,9 @@ pub use polkadot_sdk::pallet_staking::StakerStatus;
 #[cfg(any(feature = "std", test))]
 pub use polkadot_sdk::pallet_sudo::Call as SudoCall;
 use polkadot_sdk::pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
-pub use polkadot_sdk::pallet_transaction_payment::{FungibleAdapter, Multiplier, TargetedFeeAdjustment};
+pub use polkadot_sdk::pallet_transaction_payment::{
+	FungibleAdapter, Multiplier, TargetedFeeAdjustment,
+};
 use polkadot_sdk::pallet_treasury::TreasuryAccountId;
 use polkadot_sdk::sp_api::impl_runtime_apis;
 use polkadot_sdk::sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
@@ -127,9 +132,9 @@ use governance::{
 	ClusterProtocolActivator, ClusterProtocolUpdater, GeneralAdmin, StakingAdmin, Treasurer,
 	TreasurySpender,
 };
+mod hyperbridge_ismp;
 /// Generated voter bag information.
 mod voter_bags;
-mod hyperbridge_ismp;
 mod weights;
 
 use ismp::{
@@ -193,7 +198,10 @@ where
 	<R as polkadot_sdk::frame_system::Config>::AccountId: Into<AccountId>,
 {
 	fn on_nonzero_unbalanced(
-		amount: Credit<<R as polkadot_sdk::frame_system::Config>::AccountId, polkadot_sdk::pallet_balances::Pallet<R>>,
+		amount: Credit<
+			<R as polkadot_sdk::frame_system::Config>::AccountId,
+			polkadot_sdk::pallet_balances::Pallet<R>,
+		>,
 	) {
 		if let Some(author) = <polkadot_sdk::pallet_authorship::Pallet<R>>::author() {
 			let _ = <polkadot_sdk::pallet_balances::Pallet<R>>::resolve(&author, amount);
@@ -202,14 +210,19 @@ where
 }
 
 pub struct DealWithFees<R>(core::marker::PhantomData<R>);
-impl<R> OnUnbalanced<Credit<R::AccountId, polkadot_sdk::pallet_balances::Pallet<R>>> for DealWithFees<R>
+impl<R> OnUnbalanced<Credit<R::AccountId, polkadot_sdk::pallet_balances::Pallet<R>>>
+	for DealWithFees<R>
 where
-	R: polkadot_sdk::pallet_balances::Config + polkadot_sdk::pallet_authorship::Config + polkadot_sdk::pallet_treasury::Config,
+	R: polkadot_sdk::pallet_balances::Config
+		+ polkadot_sdk::pallet_authorship::Config
+		+ polkadot_sdk::pallet_treasury::Config,
 	<R as polkadot_sdk::frame_system::Config>::AccountId: From<AccountId>,
 	<R as polkadot_sdk::frame_system::Config>::AccountId: Into<AccountId>,
 {
 	fn on_unbalanceds(
-		mut fees_then_tips: impl Iterator<Item = Credit<R::AccountId, polkadot_sdk::pallet_balances::Pallet<R>>>,
+		mut fees_then_tips: impl Iterator<
+			Item = Credit<R::AccountId, polkadot_sdk::pallet_balances::Pallet<R>>,
+		>,
 	) {
 		if let Some(fees) = fees_then_tips.next() {
 			// for fees, 50% to treasury, 50% to author
@@ -348,8 +361,9 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 			ProxyType::NonTransfer => !matches!(
 				c,
 				RuntimeCall::Balances(..)
-					| RuntimeCall::Vesting(polkadot_sdk::pallet_vesting::Call::vested_transfer { .. })
-					| RuntimeCall::Indices(polkadot_sdk::pallet_indices::Call::transfer { .. })
+					| RuntimeCall::Vesting(
+						polkadot_sdk::pallet_vesting::Call::vested_transfer { .. }
+					) | RuntimeCall::Indices(polkadot_sdk::pallet_indices::Call::transfer { .. })
 					| RuntimeCall::NominationPools(..)
 					| RuntimeCall::ConvictionVoting(..)
 					| RuntimeCall::Referenda(..)
@@ -449,8 +463,12 @@ impl polkadot_sdk::pallet_babe::Config for Runtime {
 
 	type KeyOwnerProof = polkadot_sdk::sp_session::MembershipProof;
 
-	type EquivocationReportSystem =
-		polkadot_sdk::pallet_babe::EquivocationReportSystem<Self, Offences, Historical, ReportLongevity>;
+	type EquivocationReportSystem = polkadot_sdk::pallet_babe::EquivocationReportSystem<
+		Self,
+		Offences,
+		Historical,
+		ReportLongevity,
+	>;
 
 	type WeightInfo = ();
 	type MaxAuthorities = MaxAuthorities;
@@ -585,7 +603,8 @@ impl polkadot_sdk::pallet_session::Config for Runtime {
 	type ValidatorIdOf = ConvertInto;
 	type ShouldEndSession = Babe;
 	type NextSessionRotation = Babe;
-	type SessionManager = polkadot_sdk::pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
+	type SessionManager =
+		polkadot_sdk::pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
 	type SessionHandler = <SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
 	type Keys = SessionKeys;
 	type DisablingStrategy = polkadot_sdk::pallet_session::disabling::UpToLimitDisablingStrategy;
@@ -633,10 +652,14 @@ impl polkadot_sdk::pallet_staking::BenchmarkingConfig for StakingBenchmarkingCon
 	type MaxValidators = ConstU32<5000>;
 }
 
-type PositiveImbalanceOf<T> =
-	Debt<<T as polkadot_sdk::frame_system::Config>::AccountId, <T as polkadot_sdk::pallet_staking::Config>::Currency>;
-pub type NegativeImbalanceOf<T> =
-	Credit<<T as polkadot_sdk::frame_system::Config>::AccountId, <T as polkadot_sdk::pallet_staking::Config>::Currency>;
+type PositiveImbalanceOf<T> = Debt<
+	<T as polkadot_sdk::frame_system::Config>::AccountId,
+	<T as polkadot_sdk::pallet_staking::Config>::Currency,
+>;
+pub type NegativeImbalanceOf<T> = Credit<
+	<T as polkadot_sdk::frame_system::Config>::AccountId,
+	<T as polkadot_sdk::pallet_staking::Config>::Currency,
+>;
 
 pub struct BurnSource;
 
@@ -699,7 +722,8 @@ impl polkadot_sdk::pallet_staking::Config for Runtime {
 	type EventListeners = (NominationPools, DelegatedStaking);
 	type WeightInfo = polkadot_sdk::pallet_staking::weights::SubstrateWeight<Runtime>;
 	type BenchmarkingConfig = StakingBenchmarkingConfig;
-	type NominationsQuota = polkadot_sdk::pallet_staking::FixedNominationsQuota<{ MaxNominations::get() }>;
+	type NominationsQuota =
+		polkadot_sdk::pallet_staking::FixedNominationsQuota<{ MaxNominations::get() }>;
 	type Filter = Nothing;
 	type MaxValidatorSet = ConstU32<1000>;
 }
@@ -767,7 +791,9 @@ polkadot_sdk::frame_election_provider_support::generate_solution_type!(
 /// to ensure election snapshot will not run out of memory. For now, we set them to smaller values
 /// since the staking is bounded and the weight pipeline takes hours for this single pallet.
 pub struct ElectionProviderBenchmarkConfig;
-impl polkadot_sdk::pallet_election_provider_multi_phase::BenchmarkingConfig for ElectionProviderBenchmarkConfig {
+impl polkadot_sdk::pallet_election_provider_multi_phase::BenchmarkingConfig
+	for ElectionProviderBenchmarkConfig
+{
 	const VOTERS: [u32; 2] = [1000, 2000];
 	const TARGETS: [u32; 2] = [500, 1000];
 	const ACTIVE_VOTERS: [u32; 2] = [500, 800];
@@ -807,7 +833,8 @@ impl onchain::Config for OnChainSeqPhragmen {
 	type System = Runtime;
 	type Solver = SequentialPhragmen<AccountId, SolutionAccuracyOf<Runtime>>;
 	type DataProvider = Staking;
-	type WeightInfo = polkadot_sdk::frame_election_provider_support::weights::SubstrateWeight<Runtime>;
+	type WeightInfo =
+		polkadot_sdk::frame_election_provider_support::weights::SubstrateWeight<Runtime>;
 	type Bounds = ElectionBounds;
 	type MaxBackersPerWinner = MaxElectingVotersSolution;
 	type MaxWinnersPerPage = MaxActiveValidators;
@@ -872,7 +899,8 @@ impl polkadot_sdk::pallet_election_provider_multi_phase::Config for Runtime {
 	type Solver = SequentialPhragmen<AccountId, SolutionAccuracyOf<Self>, OffchainRandomBalancing>;
 	type ForceOrigin = EitherOf<EnsureRoot<Self::AccountId>, StakingAdmin>;
 	type BenchmarkingConfig = ElectionProviderBenchmarkConfig;
-	type WeightInfo = polkadot_sdk::pallet_election_provider_multi_phase::weights::SubstrateWeight<Self>;
+	type WeightInfo =
+		polkadot_sdk::pallet_election_provider_multi_phase::weights::SubstrateWeight<Self>;
 	type MaxWinners = MaxActiveValidators;
 	type ElectionBounds = ElectionBounds;
 	type MaxBackersPerWinner = MaxElectingVotersSolution;
@@ -1084,7 +1112,9 @@ where
 			polkadot_sdk::frame_system::CheckEra::<Runtime>::from(era),
 			polkadot_sdk::frame_system::CheckNonce::<Runtime>::from(nonce),
 			polkadot_sdk::frame_system::CheckWeight::<Runtime>::new(),
-			polkadot_sdk::pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
+			polkadot_sdk::pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(
+				tip,
+			),
 			// frame_metadata_hash_extension commented out — coupled to hyperbridge for now.
 			polkadot_sdk::frame_system::WeightReclaim::<Runtime>::new(),
 		);
@@ -1154,8 +1184,12 @@ impl polkadot_sdk::pallet_grandpa::Config for Runtime {
 
 	type KeyOwnerProof = polkadot_sdk::sp_session::MembershipProof;
 
-	type EquivocationReportSystem =
-		polkadot_sdk::pallet_grandpa::EquivocationReportSystem<Self, Offences, Historical, ReportLongevity>;
+	type EquivocationReportSystem = polkadot_sdk::pallet_grandpa::EquivocationReportSystem<
+		Self,
+		Offences,
+		Historical,
+		ReportLongevity,
+	>;
 
 	type WeightInfo = ();
 	type MaxAuthorities = MaxAuthorities;
@@ -1315,8 +1349,11 @@ impl polkadot_sdk::pallet_nomination_pools::Config for Runtime {
 	type MaxPointsToBalance = MaxPointsToBalance;
 	type WeightInfo = ();
 	type AdminOrigin = polkadot_sdk::frame_system::EnsureRoot<Self::AccountId>;
-	type StakeAdapter =
-		polkadot_sdk::pallet_nomination_pools::adapter::DelegateStake<Self, Staking, DelegatedStaking>;
+	type StakeAdapter = polkadot_sdk::pallet_nomination_pools::adapter::DelegateStake<
+		Self,
+		Staking,
+		DelegatedStaking,
+	>;
 }
 
 parameter_types! {
@@ -1413,7 +1450,8 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type BucketManager = DdcCustomers;
 	type ClusterProtocol = DdcClusters;
 	type TreasuryVisitor = TreasuryWrapper;
-	type NominatorsAndValidatorsList = polkadot_sdk::pallet_staking::UseNominatorsAndValidatorsMap<Self>;
+	type NominatorsAndValidatorsList =
+		polkadot_sdk::pallet_staking::UseNominatorsAndValidatorsMap<Self>;
 	type VoteScoreToU64 = IdentityConvert;
 	type InspectorAuthority = DdcVerification;
 	type NodeManager = DdcNodes;
@@ -1578,7 +1616,8 @@ impl polkadot_sdk::pallet_migrations::Config for Runtime {
 	type CursorMaxLen = ConstU32<65_536>;
 	type IdentifierMaxLen = ConstU32<256>;
 	type MigrationStatusHandler = ();
-	type FailedMigrationHandler = polkadot_sdk::frame_support::migrations::FreezeChainOnFailedMigration;
+	type FailedMigrationHandler =
+		polkadot_sdk::frame_support::migrations::FreezeChainOnFailedMigration;
 	type MaxServiceWeight = MbmServiceWeight;
 	type WeightInfo = polkadot_sdk::pallet_migrations::weights::SubstrateWeight<Runtime>;
 }
@@ -1647,7 +1686,8 @@ mod runtime {
 	pub type TransactionPayment = polkadot_sdk::pallet_transaction_payment::Pallet<Runtime>;
 
 	#[runtime::pallet_index(8)]
-	pub type ElectionProviderMultiPhase = polkadot_sdk::pallet_election_provider_multi_phase::Pallet<Runtime>;
+	pub type ElectionProviderMultiPhase =
+		polkadot_sdk::pallet_election_provider_multi_phase::Pallet<Runtime>;
 
 	#[runtime::pallet_index(9)]
 	pub type Staking = polkadot_sdk::pallet_staking::Pallet<Runtime>;
@@ -1680,7 +1720,8 @@ mod runtime {
 	pub type Historical = pallet_session_historical::Pallet<Runtime>;
 
 	#[runtime::pallet_index(19)]
-	pub type RandomnessCollectiveFlip = polkadot_sdk::pallet_insecure_randomness_collective_flip::Pallet<Runtime>;
+	pub type RandomnessCollectiveFlip =
+		polkadot_sdk::pallet_insecure_randomness_collective_flip::Pallet<Runtime>;
 
 	#[runtime::pallet_index(20)]
 	pub type Identity = polkadot_sdk::pallet_identity::Pallet<Runtime>;

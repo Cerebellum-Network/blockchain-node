@@ -1,8 +1,8 @@
 use codec::Encode;
 use ddc_primitives::{NodePubKey, NodeType};
-use polkadot_sdk::frame_support::weights::Weight;
 #[cfg(any(feature = "runtime-benchmarks", test))]
 use hex_literal::hex;
+use polkadot_sdk::frame_support::weights::Weight;
 use polkadot_sdk::sp_core::crypto::UncheckedFrom;
 #[cfg(any(feature = "runtime-benchmarks", test))]
 use polkadot_sdk::sp_runtime::traits::Hash;

@@ -81,16 +81,21 @@ where
 	C: BlockBackend<Block>,
 	C: ProofProvider<Block>,
 	C::Api: polkadot_sdk::substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>,
-	C::Api: polkadot_sdk::pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
+	C::Api:
+		polkadot_sdk::pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
 	C::Api: BabeApi<Block>,
 	C::Api: BlockBuilder<Block>,
 	C::Api: pallet_ismp_runtime_api::IsmpRuntimeApi<Block, H256>,
 	P: TransactionPool + 'static,
 	SC: SelectChain<Block> + 'static,
 	B: polkadot_sdk::sc_client_api::Backend<Block> + Send + Sync + 'static,
-	B::State: polkadot_sdk::sc_client_api::backend::StateBackend<polkadot_sdk::sp_runtime::traits::HashingFor<Block>>,
+	B::State: polkadot_sdk::sc_client_api::backend::StateBackend<
+		polkadot_sdk::sp_runtime::traits::HashingFor<Block>,
+	>,
 {
-	use polkadot_sdk::pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
+	use polkadot_sdk::pallet_transaction_payment_rpc::{
+		TransactionPayment, TransactionPaymentApiServer,
+	};
 	use polkadot_sdk::sc_consensus_babe_rpc::{Babe, BabeApiServer};
 	use polkadot_sdk::sc_consensus_grandpa_rpc::GrandpaApiServer;
 	use polkadot_sdk::sc_rpc::dev::{Dev, DevApiServer};
@@ -135,8 +140,11 @@ where
 	)?;
 
 	io.merge(
-		polkadot_sdk::substrate_state_trie_migration_rpc::StateMigration::new(client.clone(), backend.clone())
-			.into_rpc(),
+		polkadot_sdk::substrate_state_trie_migration_rpc::StateMigration::new(
+			client.clone(),
+			backend.clone(),
+		)
+		.into_rpc(),
 	)?;
 	io.merge(Dev::new(client.clone()).into_rpc())?;
 	io.merge(IsmpRpcHandler::new(client, backend)?.into_rpc())?;

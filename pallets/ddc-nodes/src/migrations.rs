@@ -1,5 +1,6 @@
 #[cfg(feature = "try-runtime")]
 use ddc_primitives::StorageNodePubKey;
+use log::info;
 #[cfg(feature = "try-runtime")]
 use polkadot_sdk::frame_support::ensure;
 use polkadot_sdk::frame_support::{
@@ -7,9 +8,8 @@ use polkadot_sdk::frame_support::{
 	traits::{Get, GetStorageVersion, OnRuntimeUpgrade, StorageVersion},
 	weights::Weight,
 };
-use log::info;
-use serde::{Deserialize, Serialize};
 use polkadot_sdk::sp_runtime::Saturating;
+use serde::{Deserialize, Serialize};
 
 use super::*;
 use crate::{storage_node::StorageNodeProps, ClusterId};
@@ -146,7 +146,9 @@ pub mod v1 {
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), polkadot_sdk::sp_runtime::DispatchError> {
+		fn post_upgrade(
+			prev_state: Vec<u8>,
+		) -> Result<(), polkadot_sdk::sp_runtime::DispatchError> {
 			let prev_count: u64 = Decode::decode(&mut &prev_state[..])
 				.expect("pre_upgrade provides a valid state; qed");
 
@@ -256,7 +258,9 @@ pub mod v2 {
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), polkadot_sdk::sp_runtime::DispatchError> {
+		fn post_upgrade(
+			prev_state: Vec<u8>,
+		) -> Result<(), polkadot_sdk::sp_runtime::DispatchError> {
 			let prev_count: u64 = Decode::decode(&mut &prev_state[..])
 				.expect("pre_upgrade provides a valid state; qed");
 
@@ -451,7 +455,8 @@ pub mod v2_mbm {
 
 			let node_key = StorageNodePubKey::from([0; 32]);
 
-			let provider_id: T::AccountId = polkadot_sdk::frame_benchmarking::account("account", 1, 0);
+			let provider_id: T::AccountId =
+				polkadot_sdk::frame_benchmarking::account("account", 1, 0);
 			let cluster_id = ClusterId::from([0; 20]);
 			let props = StorageNodeProps {
 				mode: StorageNodeMode::Storage,

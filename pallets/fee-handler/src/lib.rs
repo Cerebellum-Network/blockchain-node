@@ -26,12 +26,12 @@ pub mod weights;
 mod mock;
 
 use ddc_primitives::traits::FeeHandler;
+pub use pallet::*;
 use polkadot_sdk::frame_support::traits::{
 	fungible::{Inspect, Mutate},
 	tokens::{Fortitude, Precision, Preservation},
 };
 use polkadot_sdk::sp_runtime::SaturatedConversion;
-pub use pallet::*;
 use weights::WeightInfo;
 
 #[allow(deprecated)]
@@ -52,7 +52,8 @@ pub mod pallet {
 	pub trait Config: polkadot_sdk::frame_system::Config {
 		/// The overarching runtime event type.
 		#[allow(deprecated)]
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as polkadot_sdk::frame_system::Config>::RuntimeEvent>;
+		type RuntimeEvent: From<Event<Self>>
+			+ IsType<<Self as polkadot_sdk::frame_system::Config>::RuntimeEvent>;
 		/// Native Currency Support.
 		type Currency: Mutate<Self::AccountId> + Inspect<Self::AccountId>;
 		/// Governance origin for privileged calls.

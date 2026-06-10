@@ -37,6 +37,7 @@ use ddc_primitives::traits::{
 	staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 };
 pub use ddc_primitives::{ClusterId, ClusterNodesCount, NodePubKey, NodeType};
+pub use pallet::*;
 use polkadot_sdk::frame_support::{
 	assert_ok,
 	pallet_prelude::*,
@@ -44,13 +45,12 @@ use polkadot_sdk::frame_support::{
 	traits::{Currency, DefensiveSaturating, LockIdentifier, LockableCurrency, WithdrawReasons},
 };
 use polkadot_sdk::frame_system::pallet_prelude::*;
-pub use pallet::*;
-use scale_info::TypeInfo;
 use polkadot_sdk::sp_runtime::{
 	traits::{AtLeast32BitUnsigned, CheckedAdd, CheckedSub, Saturating, StaticLookup, Zero},
 	RuntimeDebug, SaturatedConversion,
 };
 use polkadot_sdk::sp_std::prelude::*;
+use scale_info::TypeInfo;
 
 use crate::weights::WeightInfo;
 
@@ -58,8 +58,9 @@ const DDC_CLUSTER_STAKING_ID: LockIdentifier = *b"clrstake"; // DDC clusters sta
 const DDC_NODE_STAKING_ID: LockIdentifier = *b"ddcstake"; // DDC clusters maintainer's stake
 
 /// The balance type of this pallet.
-pub type BalanceOf<T> =
-	<<T as Config>::Currency as Currency<<T as polkadot_sdk::frame_system::Config>::AccountId>>::Balance;
+pub type BalanceOf<T> = <<T as Config>::Currency as Currency<
+	<T as polkadot_sdk::frame_system::Config>::AccountId,
+>>::Balance;
 
 parameter_types! {
 	/// A limit to the number of pending unlocks an account may have in parallel.
@@ -168,7 +169,8 @@ pub mod pallet {
 	pub trait Config: polkadot_sdk::frame_system::Config {
 		type Currency: LockableCurrency<Self::AccountId, Moment = BlockNumberFor<Self>>;
 		#[allow(deprecated)]
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as polkadot_sdk::frame_system::Config>::RuntimeEvent>;
+		type RuntimeEvent: From<Event<Self>>
+			+ IsType<<Self as polkadot_sdk::frame_system::Config>::RuntimeEvent>;
 
 		/// Weight information for extrinsics in this pallet.
 		type WeightInfo: WeightInfo;
@@ -415,7 +417,8 @@ pub mod pallet {
 			// Checks that the node is registered in the network
 			ensure!(T::NodeManager::exists(&node), Error::<T>::NodeIsNotFound);
 
-			polkadot_sdk::frame_system::Pallet::<T>::inc_consumers(&stash).map_err(|_| Error::<T>::BadState)?;
+			polkadot_sdk::frame_system::Pallet::<T>::inc_consumers(&stash)
+				.map_err(|_| Error::<T>::BadState)?;
 
 			Nodes::<T>::insert(&node, &stash);
 			Providers::<T>::insert(&stash, &node);
@@ -539,7 +542,8 @@ pub mod pallet {
 				};
 
 				// block number + configuration -> no overflow
-				let block = <polkadot_sdk::frame_system::Pallet<T>>::block_number() + unbonding_delay;
+				let block =
+					<polkadot_sdk::frame_system::Pallet<T>>::block_number() + unbonding_delay;
 				if let Some(chunk) =
 					ledger.unlocking.last_mut().filter(|chunk| chunk.block == block)
 				{
@@ -579,7 +583,8 @@ pub mod pallet {
 			let (stash, old_total) = (ledger.stash.clone(), ledger.total);
 			let node_pub_key = <Providers<T>>::get(stash.clone()).ok_or(Error::<T>::BadState)?;
 
-			ledger = ledger.consolidate_unlocked(<polkadot_sdk::frame_system::Pallet<T>>::block_number());
+			ledger = ledger
+				.consolidate_unlocked(<polkadot_sdk::frame_system::Pallet<T>>::block_number());
 
 			if ledger.unlocking.is_empty() && ledger.active < T::Currency::minimum_balance() {
 				// This account must have called `unbond()` with some value that caused the active
@@ -810,8 +815,8 @@ pub mod pallet {
 			ensure!(!is_cluster_node, Error::<T>::FastChillProhibited);
 
 			// block number + 1 => no overflow
-			let can_chill_from =
-				<polkadot_sdk::frame_system::Pallet<T>>::block_number() + BlockNumberFor::<T>::from(1u32);
+			let can_chill_from = <polkadot_sdk::frame_system::Pallet<T>>::block_number()
+				+ BlockNumberFor::<T>::from(1u32);
 			Self::chill_stash_soon(&stash, &controller, cluster_id, can_chill_from);
 
 			Ok(())
@@ -845,7 +850,8 @@ pub mod pallet {
 
 			T::ClusterProtocol::bond_cluster(&cluster_id)?;
 
-			polkadot_sdk::frame_system::Pallet::<T>::inc_consumers(&stash).map_err(|_| Error::<T>::BadState)?;
+			polkadot_sdk::frame_system::Pallet::<T>::inc_consumers(&stash)
+				.map_err(|_| Error::<T>::BadState)?;
 
 			<ClusterBonded<T>>::insert(&stash, &controller);
 
@@ -925,7 +931,8 @@ pub mod pallet {
 				ClusterLedger::<T>::get(&controller).ok_or(Error::<T>::NotController)?;
 			let (stash, old_total) = (ledger.stash.clone(), ledger.total);
 
-			ledger = ledger.consolidate_unlocked(<polkadot_sdk::frame_system::Pallet<T>>::block_number());
+			ledger = ledger
+				.consolidate_unlocked(<polkadot_sdk::frame_system::Pallet<T>>::block_number());
 
 			if ledger.unlocking.is_empty() && ledger.active < T::Currency::minimum_balance() {
 				// This account must have called `unbond_cluster()` with some value that caused the

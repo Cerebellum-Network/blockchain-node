@@ -24,9 +24,7 @@ use polkadot_sdk::frame_support::{
 	parameter_types,
 	traits::{
 		fungibles::{self, Dust, Unbalanced},
-		tokens::{
-			DepositConsequence, Fortitude, Preservation, Provenance, WithdrawConsequence,
-		},
+		tokens::{DepositConsequence, Fortitude, Preservation, Provenance, WithdrawConsequence},
 		Get,
 	},
 	weights::WeightToFee,
@@ -121,28 +119,44 @@ pub struct MockAssets;
 impl fungibles::Inspect<AccountId> for MockAssets {
 	type AssetId = H256;
 	type Balance = Balance;
-	fn total_issuance(_: Self::AssetId) -> Self::Balance { 0 }
-	fn minimum_balance(_: Self::AssetId) -> Self::Balance { 0 }
-	fn total_balance(_: Self::AssetId, _: &AccountId) -> Self::Balance { 0 }
-	fn balance(_: Self::AssetId, _: &AccountId) -> Self::Balance { 0 }
+	fn total_issuance(_: Self::AssetId) -> Self::Balance {
+		0
+	}
+	fn minimum_balance(_: Self::AssetId) -> Self::Balance {
+		0
+	}
+	fn total_balance(_: Self::AssetId, _: &AccountId) -> Self::Balance {
+		0
+	}
+	fn balance(_: Self::AssetId, _: &AccountId) -> Self::Balance {
+		0
+	}
 	fn reducible_balance(
 		_: Self::AssetId,
 		_: &AccountId,
 		_: Preservation,
 		_: Fortitude,
-	) -> Self::Balance { 0 }
+	) -> Self::Balance {
+		0
+	}
 	fn can_deposit(
 		_: Self::AssetId,
 		_: &AccountId,
 		_: Self::Balance,
 		_: Provenance,
-	) -> DepositConsequence { DepositConsequence::UnknownAsset }
+	) -> DepositConsequence {
+		DepositConsequence::UnknownAsset
+	}
 	fn can_withdraw(
 		_: Self::AssetId,
 		_: &AccountId,
 		_: Self::Balance,
-	) -> WithdrawConsequence<Self::Balance> { WithdrawConsequence::UnknownAsset }
-	fn asset_exists(_: Self::AssetId) -> bool { false }
+	) -> WithdrawConsequence<Self::Balance> {
+		WithdrawConsequence::UnknownAsset
+	}
+	fn asset_exists(_: Self::AssetId) -> bool {
+		false
+	}
 }
 
 impl Unbalanced<AccountId> for MockAssets {
@@ -160,9 +174,15 @@ impl Unbalanced<AccountId> for MockAssets {
 impl fungibles::Mutate<AccountId> for MockAssets {}
 
 impl fungibles::metadata::Inspect<AccountId> for MockAssets {
-	fn name(_: Self::AssetId) -> Vec<u8> { Vec::new() }
-	fn symbol(_: Self::AssetId) -> Vec<u8> { Vec::new() }
-	fn decimals(_: Self::AssetId) -> u8 { 0 }
+	fn name(_: Self::AssetId) -> Vec<u8> {
+		Vec::new()
+	}
+	fn symbol(_: Self::AssetId) -> Vec<u8> {
+		Vec::new()
+	}
+	fn decimals(_: Self::AssetId) -> u8 {
+		0
+	}
 }
 
 #[derive(Default)]
@@ -173,11 +193,12 @@ impl IsmpModule for ProxyModule {
 		if request.dest != HostStateMachine::get() {
 			return Ok(Weight::from_parts(0, 0));
 		}
-		let pallet_id = ModuleId::from_bytes(&request.to)
-			.map_err(|err| Error::Custom(err.to_string()))?;
+		let pallet_id =
+			ModuleId::from_bytes(&request.to).map_err(|err| Error::Custom(err.to_string()))?;
 		match pallet_id {
-			pallet_hyper_fungible_token::PALLET_ID =>
-				pallet_hyper_fungible_token::Pallet::<Runtime>::default().on_accept(request),
+			pallet_hyper_fungible_token::PALLET_ID => {
+				pallet_hyper_fungible_token::Pallet::<Runtime>::default().on_accept(request)
+			},
 			_ => Err(anyhow!("Destination module not found")),
 		}
 	}
@@ -197,11 +218,11 @@ impl IsmpModule for ProxyModule {
 		if source != HostStateMachine::get() {
 			return Ok(Weight::from_parts(0, 0));
 		}
-		let pallet_id = ModuleId::from_bytes(from)
-			.map_err(|err| Error::Custom(err.to_string()))?;
+		let pallet_id = ModuleId::from_bytes(from).map_err(|err| Error::Custom(err.to_string()))?;
 		match pallet_id {
-			pallet_hyper_fungible_token::PALLET_ID =>
-				pallet_hyper_fungible_token::Pallet::<Runtime>::default().on_timeout(timeout),
+			pallet_hyper_fungible_token::PALLET_ID => {
+				pallet_hyper_fungible_token::Pallet::<Runtime>::default().on_timeout(timeout)
+			},
 			_ => Ok(Weight::from_parts(0, 0)),
 		}
 	}

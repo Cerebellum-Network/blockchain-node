@@ -1,9 +1,9 @@
 #![allow(clippy::unnecessary_unwrap)]
 #![allow(clippy::collapsible_else_if)]
 
-use polkadot_sdk::frame_support::{storage_alias, traits::OnRuntimeUpgrade};
 use hex_literal::hex;
 use log::{info, warn};
+use polkadot_sdk::frame_support::{storage_alias, traits::OnRuntimeUpgrade};
 
 use super::*;
 
@@ -144,7 +144,10 @@ pub mod v1 {
 			let current_version = Pallet::<T>::in_code_storage_version();
 			let on_chain_version = Pallet::<T>::on_chain_storage_version();
 
-			polkadot_sdk::frame_support::ensure!(current_version == 1, "must_upgrade to 1st version");
+			polkadot_sdk::frame_support::ensure!(
+				current_version == 1,
+				"must_upgrade to 1st version"
+			);
 			ensure!(
 				current_version == on_chain_version,
 				"after migration, the current_version and on_chain_version should be the same"
@@ -294,7 +297,10 @@ pub mod v2 {
 			let current_version = Pallet::<T>::in_code_storage_version();
 			let on_chain_version = Pallet::<T>::on_chain_storage_version();
 
-			polkadot_sdk::frame_support::ensure!(current_version == 2, "must_upgrade to 2nd version");
+			polkadot_sdk::frame_support::ensure!(
+				current_version == 2,
+				"must_upgrade to 2nd version"
+			);
 			ensure!(
 				current_version == on_chain_version,
 				"after migration, the current_version and on_chain_version should be the same"
@@ -578,7 +584,10 @@ pub mod v3_mbm {
 			let current_version = Pallet::<T>::in_code_storage_version();
 			let on_chain_version = Pallet::<T>::on_chain_storage_version();
 
-			polkadot_sdk::frame_support::ensure!(current_version >= 3, "must_upgrade to 3rd version or higher");
+			polkadot_sdk::frame_support::ensure!(
+				current_version >= 3,
+				"must_upgrade to 3rd version or higher"
+			);
 
 			ensure!(
 				on_chain_version == 3,
@@ -792,7 +801,10 @@ pub mod v4_mbm {
 			let current_version = Pallet::<T>::in_code_storage_version();
 			let on_chain_version = Pallet::<T>::on_chain_storage_version();
 
-			polkadot_sdk::frame_support::ensure!(current_version >= 4, "must_upgrade to 4th version or higher");
+			polkadot_sdk::frame_support::ensure!(
+				current_version >= 4,
+				"must_upgrade to 4th version or higher"
+			);
 
 			ensure!(
 				on_chain_version == 4,
@@ -930,9 +942,13 @@ pub mod v4_mbm {
 			use polkadot_sdk::sp_runtime::Perquintill;
 
 			let cluster_id = ClusterId::from(DEFAULT_CLUSTER);
-			let cluster_owner: T::AccountId = polkadot_sdk::frame_benchmarking::account("account", 1, 0);
-			let customer_deposit_contract =
-				polkadot_sdk::frame_benchmarking::account::<T::AccountId>("customer_deposit_contract", 1, 0);
+			let cluster_owner: T::AccountId =
+				polkadot_sdk::frame_benchmarking::account("account", 1, 0);
+			let customer_deposit_contract = polkadot_sdk::frame_benchmarking::account::<T::AccountId>(
+				"customer_deposit_contract",
+				1,
+				0,
+			);
 
 			// note(yahortsaryk): it's not critical to use upgraded cluster protocol params in the benchmark, because the migration will be performed after the benchmark
 			let cluster_protocol_params: ClusterProtocolParams<
@@ -1111,7 +1127,10 @@ pub mod v5_mbm {
 			let current_version = Pallet::<T>::in_code_storage_version();
 			let on_chain_version = Pallet::<T>::on_chain_storage_version();
 
-			polkadot_sdk::frame_support::ensure!(current_version >= 5, "must_upgrade to 5th version or higher");
+			polkadot_sdk::frame_support::ensure!(
+				current_version >= 5,
+				"must_upgrade to 5th version or higher"
+			);
 
 			ensure!(
 				v5_mbm::ClusterLedger::<T>::iter_values().count() == 0,
@@ -1333,12 +1352,15 @@ pub mod v5_mbm {
 			use ddc_primitives::{ClusterParams, ClusterProtocolParams, DOLLARS as CERE};
 			use polkadot_sdk::sp_runtime::Perquintill;
 
-			polkadot_sdk::frame_system::Pallet::<T>::set_block_number(BlockNumberFor::<T>::from(1u32));
+			polkadot_sdk::frame_system::Pallet::<T>::set_block_number(BlockNumberFor::<T>::from(
+				1u32,
+			));
 
 			let cluster_id = ClusterId::from(DEFAULT_CLUSTER);
 			let cluster_vault_id = crate::Pallet::<T>::cluster_vault_id(&cluster_id);
 
-			let cluster_owner = polkadot_sdk::frame_benchmarking::account::<T::AccountId>("account", 1, 0); // 6PrZPs13WDfipuKAqpvx3T5usCC5VG7RYCsVMJXRosnSXV3q / 0x0f34e9208feb46b0e1c36d759ebd0886ac73ba8054147a9618a526f5872b83b1
+			let cluster_owner =
+				polkadot_sdk::frame_benchmarking::account::<T::AccountId>("account", 1, 0); // 6PrZPs13WDfipuKAqpvx3T5usCC5VG7RYCsVMJXRosnSXV3q / 0x0f34e9208feb46b0e1c36d759ebd0886ac73ba8054147a9618a526f5872b83b1
 			endow_account::<T>(&cluster_owner, 1000000 * CERE);
 
 			let contract_code = &include_bytes!("./benchmarking_customer_deposit.wasm")[..];
@@ -1411,7 +1433,8 @@ pub mod v5_mbm {
 			);
 			assert!(create_cluster_result.is_ok(), "Failed to create cluster");
 
-			let customer = polkadot_sdk::frame_benchmarking::account::<T::AccountId>("customer", 1, 0);
+			let customer =
+				polkadot_sdk::frame_benchmarking::account::<T::AccountId>("customer", 1, 0);
 			let customer_endowment = 100_u128 * CERE;
 			endow_account::<T>(&customer, customer_endowment);
 

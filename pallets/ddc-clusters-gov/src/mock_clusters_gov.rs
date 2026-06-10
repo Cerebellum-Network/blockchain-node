@@ -14,6 +14,10 @@ use ddc_primitives::{
 	ClusterId, ClusterNodeKind, ClusterParams, ClusterProtocolParams, NodeParams, NodePubKey,
 	StorageNodeParams, DOLLARS,
 };
+use lazy_static::lazy_static;
+use pallet_ddc_clusters::cluster::Cluster;
+use pallet_ddc_nodes::StorageNode;
+use parking_lot::{ReentrantMutex, ReentrantMutexGuard};
 use polkadot_sdk::frame_support::{
 	derive_impl, parameter_types,
 	traits::{
@@ -26,11 +30,7 @@ use polkadot_sdk::frame_system::{
 	mocking::{MockBlock, MockUncheckedExtrinsic},
 	EnsureRoot, EnsureSigned,
 };
-use lazy_static::lazy_static;
-use pallet_ddc_clusters::cluster::Cluster;
-use pallet_ddc_nodes::StorageNode;
 use polkadot_sdk::pallet_referenda::Curve;
-use parking_lot::{ReentrantMutex, ReentrantMutexGuard};
 use polkadot_sdk::sp_io::TestExternalities;
 use polkadot_sdk::sp_runtime::{
 	str_array as s,
@@ -181,7 +181,8 @@ impl polkadot_sdk::pallet_conviction_voting::Config for Test {
 	type Currency = Balances;
 	type VoteLockingPeriod = VoteLockingPeriod;
 	type MaxVotes = ConstU32<512>;
-	type MaxTurnout = polkadot_sdk::frame_support::traits::TotalIssuanceOf<Balances, Self::AccountId>;
+	type MaxTurnout =
+		polkadot_sdk::frame_support::traits::TotalIssuanceOf<Balances, Self::AccountId>;
 	type Polls = Referenda;
 	type BlockNumberProvider = polkadot_sdk::frame_system::Pallet<Test>;
 	type VotingHooks = ();
@@ -443,10 +444,11 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: polkadot_sdk::frame_system::Config> Ge
 }
 
 pub struct EnsureOfPermittedReferendaOrigin<T>(PhantomData<T>);
-impl<T: polkadot_sdk::frame_system::Config> EnsureOriginWithArg<T::RuntimeOrigin, PalletsOriginOf<T>>
-	for EnsureOfPermittedReferendaOrigin<T>
+impl<T: polkadot_sdk::frame_system::Config>
+	EnsureOriginWithArg<T::RuntimeOrigin, PalletsOriginOf<T>> for EnsureOfPermittedReferendaOrigin<T>
 where
-	<T as polkadot_sdk::frame_system::Config>::RuntimeOrigin: OriginTrait<PalletsOrigin = OriginCaller>,
+	<T as polkadot_sdk::frame_system::Config>::RuntimeOrigin:
+		OriginTrait<PalletsOrigin = OriginCaller>,
 {
 	type Success = T::AccountId;
 
@@ -454,15 +456,18 @@ where
 		o: T::RuntimeOrigin,
 		proposal_origin: &PalletsOriginOf<T>,
 	) -> Result<Self::Success, T::RuntimeOrigin> {
-		let origin = <polkadot_sdk::frame_system::EnsureSigned<_> as EnsureOrigin<_>>::try_origin(o.clone())?;
+		let origin = <polkadot_sdk::frame_system::EnsureSigned<_> as EnsureOrigin<_>>::try_origin(
+			o.clone(),
+		)?;
 
-		let track_id =
-			match <TracksInfo as polkadot_sdk::pallet_referenda::TracksInfo<Balance, BlockNumber>>::track_for(
-				proposal_origin,
-			) {
-				Ok(track_id) => track_id,
-				Err(_) => return Err(o),
-			};
+		let track_id = match <TracksInfo as polkadot_sdk::pallet_referenda::TracksInfo<
+			Balance,
+			BlockNumber,
+		>>::track_for(proposal_origin)
+		{
+			Ok(track_id) => track_id,
+			Err(_) => return Err(o),
+		};
 
 		if track_id == CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID
 			|| track_id == CLUSTER_PROTOCOL_UPDATER_TRACK_ID
@@ -482,7 +487,8 @@ where
 	fn try_successful_origin(
 		_proposal_origin: &PalletsOriginOf<T>,
 	) -> Result<T::RuntimeOrigin, ()> {
-		let origin = polkadot_sdk::frame_benchmarking::account::<T::AccountId>("successful_origin", 0, 0);
+		let origin =
+			polkadot_sdk::frame_benchmarking::account::<T::AccountId>("successful_origin", 0, 0);
 		Ok(polkadot_sdk::frame_system::RawOrigin::Signed(origin).into())
 	}
 }
@@ -538,10 +544,11 @@ const TRACKS_DATA: [polkadot_sdk::pallet_referenda::Track<u16, Balance, BlockNum
 pub struct TracksInfo;
 impl polkadot_sdk::pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 	type Id = u16;
-	type RuntimeOrigin = <RuntimeOrigin as polkadot_sdk::frame_support::traits::OriginTrait>::PalletsOrigin;
-	fn tracks(
-	) -> impl Iterator<Item = Cow<'static, polkadot_sdk::pallet_referenda::Track<Self::Id, Balance, BlockNumber>>>
-	{
+	type RuntimeOrigin =
+		<RuntimeOrigin as polkadot_sdk::frame_support::traits::OriginTrait>::PalletsOrigin;
+	fn tracks() -> impl Iterator<
+		Item = Cow<'static, polkadot_sdk::pallet_referenda::Track<Self::Id, Balance, BlockNumber>>,
+	> {
 		TRACKS_DATA.iter().map(Cow::Borrowed)
 	}
 	fn track_for(id: &Self::RuntimeOrigin) -> Result<Self::Id, ()> {
@@ -718,7 +725,9 @@ pub struct ExtBuilder;
 impl ExtBuilder {
 	pub fn build(self, cluster: BuiltCluster, cluster_nodes: Vec<BuiltNode>) -> TestExternalities {
 		sp_tracing::try_init_simple();
-		let mut storage = polkadot_sdk::frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
+		let mut storage = polkadot_sdk::frame_system::GenesisConfig::<Test>::default()
+			.build_storage()
+			.unwrap();
 
 		let mut balances: Vec<(AccountId, Balance)> = Vec::new();
 		let mut storage_nodes: Vec<StorageNode<Test>> = Vec::new();
@@ -738,8 +747,9 @@ impl ExtBuilder {
 		// endow system account to allow dispatching transaction
 		balances.push((DdcClustersGov::account_id(), ENDOWMENT));
 
-		let _ = polkadot_sdk::pallet_balances::GenesisConfig::<Test> { balances, ..Default::default() }
-			.assimilate_storage(&mut storage);
+		let _ =
+			polkadot_sdk::pallet_balances::GenesisConfig::<Test> { balances, ..Default::default() }
+				.assimilate_storage(&mut storage);
 
 		let _ = pallet_ddc_nodes::GenesisConfig::<Test> { storage_nodes }
 			.assimilate_storage(&mut storage);

@@ -4,12 +4,12 @@ use ddc_primitives::{
 	ClusterId, ClusterParams, ClusterProtocolParams, NodeParams, NodePubKey, StorageNodeMode,
 	StorageNodeParams,
 };
+use pallet_ddc_nodes::Node;
 pub use polkadot_sdk::frame_benchmarking::{
 	account, benchmarks, impl_benchmark_test_suite, whitelist_account, whitelisted_caller,
 	BenchmarkError,
 };
 use polkadot_sdk::frame_system::RawOrigin;
-use pallet_ddc_nodes::Node;
 use polkadot_sdk::sp_core::crypto::UncheckedFrom;
 use polkadot_sdk::sp_runtime::Perquintill;
 use polkadot_sdk::sp_std::prelude::*;

@@ -3,9 +3,9 @@ use ddc_primitives::{
 	ClusterId, NodeParams, NodePubKey, NodeType, StorageNodeMode, StorageNodePubKey,
 };
 use polkadot_sdk::frame_support::{parameter_types, BoundedVec};
+use polkadot_sdk::sp_runtime::RuntimeDebug;
 use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
-use polkadot_sdk::sp_runtime::RuntimeDebug;
 
 use crate::node::{NodeError, NodeProps, NodeTrait};
 

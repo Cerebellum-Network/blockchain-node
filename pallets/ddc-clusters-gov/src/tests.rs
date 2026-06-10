@@ -2,9 +2,9 @@
 #![allow(clippy::extra_unused_type_parameters)]
 
 use ddc_primitives::{ClusterNodeKind, ClusterParams, ClusterProtocolParams, StorageNodeParams};
+use pallet_ddc_clusters::Event::{ClusterActivated, ClusterProtocolParamsSet};
 use polkadot_sdk::frame_support::{assert_noop, assert_ok};
 use polkadot_sdk::pallet_conviction_voting::{AccountVote, Conviction, Vote};
-use pallet_ddc_clusters::Event::{ClusterActivated, ClusterProtocolParamsSet};
 use polkadot_sdk::pallet_referenda::ReferendumInfo;
 use polkadot_sdk::sp_runtime::Perquintill;
 
@@ -1218,7 +1218,8 @@ fn cluster_protocol_activation_proposal_early_approved_with_supermajority_consen
 		let referenda_index = referenda_count - 1;
 
 		let submission_deposit_amount =
-			<Test as polkadot_sdk::pallet_referenda::Config>::SubmissionDeposit::get().saturated_into::<u128>();
+			<Test as polkadot_sdk::pallet_referenda::Config>::SubmissionDeposit::get()
+				.saturated_into::<u128>();
 
 		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
 		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
@@ -1264,7 +1265,9 @@ fn cluster_protocol_activation_proposal_early_approved_with_supermajority_consen
 			balance_after_decision_deposit
 		);
 
-		let referendum = polkadot_sdk::pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index).unwrap();
+		let referendum =
+			polkadot_sdk::pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index)
+				.unwrap();
 		assert!(matches!(referendum, ReferendumInfo::Ongoing(..)));
 
 		assert_ok!(ConvictionVoting::vote(
@@ -1280,7 +1283,9 @@ fn cluster_protocol_activation_proposal_early_approved_with_supermajority_consen
 		fast_forward_to(3);
 		assert_ok!(Referenda::nudge_referendum(RuntimeOrigin::root(), referenda_index));
 
-		let referendum = polkadot_sdk::pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index).unwrap();
+		let referendum =
+			polkadot_sdk::pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index)
+				.unwrap();
 		assert!(matches!(referendum, ReferendumInfo::Approved(..)));
 
 		let balance_before_submission_deposit_refund =
@@ -1402,7 +1407,8 @@ fn cluster_protocol_activation_proposal_approved_with_supermajority_consensus_an
 		let referenda_index = referenda_count - 1;
 
 		let submission_deposit_amount =
-			<Test as polkadot_sdk::pallet_referenda::Config>::SubmissionDeposit::get().saturated_into::<u128>();
+			<Test as polkadot_sdk::pallet_referenda::Config>::SubmissionDeposit::get()
+				.saturated_into::<u128>();
 
 		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
 		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
@@ -1970,7 +1976,8 @@ fn cluster_protocol_activation_proposal_early_approved_with_unanimous_consensus_
 		let referenda_index = referenda_count - 1;
 
 		let submission_deposit_amount =
-			<Test as polkadot_sdk::pallet_referenda::Config>::SubmissionDeposit::get().saturated_into::<u128>();
+			<Test as polkadot_sdk::pallet_referenda::Config>::SubmissionDeposit::get()
+				.saturated_into::<u128>();
 
 		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
 		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
@@ -2016,7 +2023,9 @@ fn cluster_protocol_activation_proposal_early_approved_with_unanimous_consensus_
 			balance_after_decision_deposit
 		);
 
-		let referendum = polkadot_sdk::pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index).unwrap();
+		let referendum =
+			polkadot_sdk::pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index)
+				.unwrap();
 		assert!(matches!(referendum, ReferendumInfo::Ongoing(..)));
 
 		assert_ok!(ConvictionVoting::vote(
@@ -2032,7 +2041,9 @@ fn cluster_protocol_activation_proposal_early_approved_with_unanimous_consensus_
 		fast_forward_to(3);
 		assert_ok!(Referenda::nudge_referendum(RuntimeOrigin::root(), referenda_index));
 
-		let referendum = polkadot_sdk::pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index).unwrap();
+		let referendum =
+			polkadot_sdk::pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index)
+				.unwrap();
 		assert!(matches!(referendum, ReferendumInfo::Approved(..)));
 
 		let balance_before_submission_deposit_refund =
@@ -2173,7 +2184,8 @@ fn cluster_protocol_activation_proposal_approved_with_unanimous_consensus_and_na
 		let referenda_index = referenda_count - 1;
 
 		let submission_deposit_amount =
-			<Test as polkadot_sdk::pallet_referenda::Config>::SubmissionDeposit::get().saturated_into::<u128>();
+			<Test as polkadot_sdk::pallet_referenda::Config>::SubmissionDeposit::get()
+				.saturated_into::<u128>();
 
 		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
 		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
@@ -2774,7 +2786,8 @@ fn cluster_protocol_update_proposal_early_approved_with_supermajority_consensus_
 		let referenda_index = referenda_count - 1;
 
 		let submission_deposit_amount =
-			<Test as polkadot_sdk::pallet_referenda::Config>::SubmissionDeposit::get().saturated_into::<u128>();
+			<Test as polkadot_sdk::pallet_referenda::Config>::SubmissionDeposit::get()
+				.saturated_into::<u128>();
 
 		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
 		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
@@ -2823,7 +2836,9 @@ fn cluster_protocol_update_proposal_early_approved_with_supermajority_consensus_
 			balance_after_decision_deposit
 		);
 
-		let referendum = polkadot_sdk::pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index).unwrap();
+		let referendum =
+			polkadot_sdk::pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index)
+				.unwrap();
 		assert!(matches!(referendum, ReferendumInfo::Ongoing(..)));
 
 		assert_ok!(ConvictionVoting::vote(
@@ -2839,7 +2854,9 @@ fn cluster_protocol_update_proposal_early_approved_with_supermajority_consensus_
 		fast_forward_to(3);
 		assert_ok!(Referenda::nudge_referendum(RuntimeOrigin::root(), referenda_index));
 
-		let referendum = polkadot_sdk::pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index).unwrap();
+		let referendum =
+			polkadot_sdk::pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index)
+				.unwrap();
 		assert!(matches!(referendum, ReferendumInfo::Approved(..)));
 
 		let balance_before_submission_deposit_refund =
@@ -2963,7 +2980,8 @@ fn cluster_protocol_update_proposal_approved_with_supermajority_consensus_and_pr
 		let referenda_index = referenda_count - 1;
 
 		let submission_deposit_amount =
-			<Test as polkadot_sdk::pallet_referenda::Config>::SubmissionDeposit::get().saturated_into::<u128>();
+			<Test as polkadot_sdk::pallet_referenda::Config>::SubmissionDeposit::get()
+				.saturated_into::<u128>();
 
 		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
 		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
@@ -3537,7 +3555,8 @@ fn cluster_protocol_update_proposal_early_approved_with_unanimous_consensus_and_
 		let referenda_index = referenda_count - 1;
 
 		let submission_deposit_amount =
-			<Test as polkadot_sdk::pallet_referenda::Config>::SubmissionDeposit::get().saturated_into::<u128>();
+			<Test as polkadot_sdk::pallet_referenda::Config>::SubmissionDeposit::get()
+				.saturated_into::<u128>();
 
 		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
 		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
@@ -3586,7 +3605,9 @@ fn cluster_protocol_update_proposal_early_approved_with_unanimous_consensus_and_
 			balance_after_decision_deposit
 		);
 
-		let referendum = polkadot_sdk::pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index).unwrap();
+		let referendum =
+			polkadot_sdk::pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index)
+				.unwrap();
 		assert!(matches!(referendum, ReferendumInfo::Ongoing(..)));
 
 		assert_ok!(ConvictionVoting::vote(
@@ -3602,7 +3623,9 @@ fn cluster_protocol_update_proposal_early_approved_with_unanimous_consensus_and_
 		fast_forward_to(3);
 		assert_ok!(Referenda::nudge_referendum(RuntimeOrigin::root(), referenda_index));
 
-		let referendum = polkadot_sdk::pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index).unwrap();
+		let referendum =
+			polkadot_sdk::pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index)
+				.unwrap();
 		assert!(matches!(referendum, ReferendumInfo::Approved(..)));
 
 		let balance_before_submission_deposit_refund =
@@ -3743,7 +3766,8 @@ fn cluster_protocol_update_proposal_approved_with_unanimous_consensus_and_nay_de
 		let referenda_index = referenda_count - 1;
 
 		let submission_deposit_amount =
-			<Test as polkadot_sdk::pallet_referenda::Config>::SubmissionDeposit::get().saturated_into::<u128>();
+			<Test as polkadot_sdk::pallet_referenda::Config>::SubmissionDeposit::get()
+				.saturated_into::<u128>();
 
 		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
 		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));

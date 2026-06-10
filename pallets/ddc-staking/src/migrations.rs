@@ -5,13 +5,13 @@ pub mod v1 {
 		traits::{ClusterProtocol, ClusterQuery, NodeManager},
 		ClusterId, NodePubKey,
 	};
+	#[cfg(feature = "try-runtime")]
+	use hex_literal::hex;
 	use polkadot_sdk::frame_support::{
 		pallet_prelude::*,
 		traits::{Currency, LockableCurrency, OnRuntimeUpgrade, WithdrawReasons},
 		weights::Weight,
 	};
-	#[cfg(feature = "try-runtime")]
-	use hex_literal::hex;
 	use polkadot_sdk::sp_runtime::Saturating;
 	use polkadot_sdk::sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 

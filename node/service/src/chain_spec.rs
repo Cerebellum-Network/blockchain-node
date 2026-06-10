@@ -12,7 +12,6 @@ use jsonrpsee::core::__reexports::serde_json;
 use polkadot_sdk::pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 use polkadot_sdk::sc_chain_spec::ChainSpecExtension;
 use polkadot_sdk::sc_service::ChainType;
-use serde::{Deserialize, Serialize};
 use polkadot_sdk::sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use polkadot_sdk::sp_consensus_babe::AuthorityId as BabeId;
 use polkadot_sdk::sp_consensus_grandpa::AuthorityId as GrandpaId;
@@ -21,6 +20,7 @@ use polkadot_sdk::sp_runtime::{
 	traits::{IdentifyAccount, Verify},
 	Perbill,
 };
+use serde::{Deserialize, Serialize};
 
 const DEFAULT_PROTOCOL_ID: &str = "cere";
 

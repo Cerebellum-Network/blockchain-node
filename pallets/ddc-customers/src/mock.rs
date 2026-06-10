@@ -392,7 +392,9 @@ impl ExtBuilder {
 	pub fn build(self) -> TestExternalities {
 		sp_tracing::try_init_simple();
 
-		let mut storage = polkadot_sdk::frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
+		let mut storage = polkadot_sdk::frame_system::GenesisConfig::<Test>::default()
+			.build_storage()
+			.unwrap();
 
 		let _balance_genesis = polkadot_sdk::pallet_balances::GenesisConfig::<Test> {
 			balances: vec![(1, 100), (2, 100), (3, 1000), (99, 1_000_000)],
