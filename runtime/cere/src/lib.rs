@@ -107,8 +107,8 @@ use polkadot_sdk::sp_runtime::{
 		StaticLookup, Verify,
 	},
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, FixedPointNumber, FixedU128, Perbill,
-	Percent, Permill, Perquintill, RuntimeDebug,
+	ApplyExtrinsicResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill, Perquintill,
+	RuntimeDebug,
 };
 use polkadot_sdk::sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
