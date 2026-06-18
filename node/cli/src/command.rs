@@ -150,38 +150,40 @@ pub fn run() -> polkadot_sdk::sc_cli::Result<()> {
             You can enable it with `--features runtime-benchmarks`."
 							.into())
 					} else {
-						#[cfg(all(feature = "cere-dev-native", not(feature = "cere-native")))]
+						// Dispatch by chain spec rather than by exclusive cfg combinations,
+						// so the binary built with both `cere-native` and `cere-dev-native`
+						// (the default) can still run benchmarks against the cere-dev runtime
+						// via `--chain=dev`.
+						#[cfg(feature = "cere-dev-native")]
 						if _chain_spec.is_cere_dev() {
-							runner.sync_run(|config| {
-								_cmd.run_with_spec::<polkadot_sdk::sp_runtime::traits::HashingFor<
-									cere_service::cere_dev_runtime::Block,
-								>, ()>(Some(config.chain_spec))
-							})
-						} else {
-							#[allow(unreachable_code)]
-							Err(Error::Service(ServiceError::Other(
-								"No runtime feature (cere-native, cere-dev-native) is enabled"
-									.to_string(),
-							)))
-						}
-
-						#[cfg(not(any(feature = "cere-dev-native", feature = "cere-native")))]
-						{
-							#[allow(unreachable_code)]
-							Err(Error::Service(ServiceError::Other(
-								"No runtime feature (cere-native, cere-dev-native) is enabled"
-									.to_string(),
-							)))
+							return runner.sync_run(|config| {
+								_cmd.run_with_spec::<
+									polkadot_sdk::sp_runtime::traits::HashingFor<
+										cere_service::cere_dev_runtime::Block,
+									>,
+									ddc_dac_host::ddc_dac::HostFunctions,
+								>(Some(config.chain_spec))
+							});
 						}
 
 						#[cfg(feature = "cere-native")]
 						{
-							// This should never be reached due to the feature flags above
-							#[allow(unreachable_code)]
-							Err(Error::Service(ServiceError::Other(
-								"Unexpected runtime configuration".to_string(),
-							)))
+							return runner.sync_run(|config| {
+								_cmd.run_with_spec::<
+									polkadot_sdk::sp_runtime::traits::HashingFor<
+										cere_service::cere_runtime::Block,
+									>,
+									ddc_dac_host::ddc_dac::HostFunctions,
+								>(Some(config.chain_spec))
+							});
 						}
+
+						#[cfg(not(any(feature = "cere-dev-native", feature = "cere-native")))]
+						#[allow(unreachable_code)]
+						Err(Error::Service(ServiceError::Other(
+							"No runtime feature (cere-native, cere-dev-native) is enabled"
+								.to_string(),
+						)))
 					}
 				},
 				BenchmarkCmd::Block(cmd) => runner.sync_run(|config| {

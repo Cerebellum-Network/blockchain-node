@@ -31,6 +31,7 @@ polkadot-sdk = { workspace = true, default-features = false, features = ["sc-exe
 # Local
 cere-client = { workspace = true, optional = true }
 cere-service = { workspace = true, optional = true }
+ddc-dac-host = { workspace = true, default-features = true }
 
 [build-dependencies]
 substrate-build-script-utils = { workspace = true, default-features = true }

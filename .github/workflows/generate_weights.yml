@@ -139,10 +139,17 @@ jobs:
             --output=./pallet_ddc_staking_weights.rs
           
           # Benchmark the external pallet_ddc_payouts
+          # send_charging_customers_batch is excluded because its benchmark
+          # path invokes the customer-deposit ink! contract via
+          # PalletContractsExecutor, and the contract isn't deployed in the
+          # benchmark setup (results in PayerContractCallUnexpectedResult).
+          # The existing static weight in pallet_ddc_payouts_weights.rs is
+          # retained for that extrinsic.
           ./target/release/cere benchmark pallet \
             --chain=dev \
             --pallet="pallet_ddc_payouts" \
             --extrinsic="*" \
+            --exclude-extrinsics="pallet_ddc_payouts::send_charging_customers_batch" \
             --steps=50 \
             --repeat=20 \
             --template=./.maintain/frame-weight-template.hbs \

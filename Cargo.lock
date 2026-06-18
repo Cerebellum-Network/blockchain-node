@@ -2528,6 +2528,7 @@ dependencies = [
  "cere-client",
  "cere-service",
  "clap",
+ "ddc-dac-host",
  "polkadot-sdk",
  "substrate-build-script-utils",
  "url",
@@ -10193,7 +10194,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Fpolkadot-sdk-migration#09de4bfc119c93556a97cf104953cbe3b910bbe2"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Fpolkadot-sdk-migration#bda7ba99d893b58cc4627078f526a01d688bc489"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
