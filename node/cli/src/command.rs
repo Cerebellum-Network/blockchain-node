@@ -157,25 +157,23 @@ pub fn run() -> polkadot_sdk::sc_cli::Result<()> {
 						#[cfg(feature = "cere-dev-native")]
 						if _chain_spec.is_cere_dev() {
 							return runner.sync_run(|config| {
-								_cmd.run_with_spec::<
-									polkadot_sdk::sp_runtime::traits::HashingFor<
-										cere_service::cere_dev_runtime::Block,
-									>,
-									ddc_dac_host::ddc_dac::HostFunctions,
-								>(Some(config.chain_spec))
+								_cmd.run_with_spec::<polkadot_sdk::sp_runtime::traits::HashingFor<
+									cere_service::cere_dev_runtime::Block,
+								>, ddc_dac_host::ddc_dac::HostFunctions>(Some(
+									config.chain_spec,
+								))
 							});
 						}
 
 						#[cfg(feature = "cere-native")]
 						{
-							return runner.sync_run(|config| {
-								_cmd.run_with_spec::<
-									polkadot_sdk::sp_runtime::traits::HashingFor<
-										cere_service::cere_runtime::Block,
-									>,
-									ddc_dac_host::ddc_dac::HostFunctions,
-								>(Some(config.chain_spec))
-							});
+							runner.sync_run(|config| {
+								_cmd.run_with_spec::<polkadot_sdk::sp_runtime::traits::HashingFor<
+									cere_service::cere_runtime::Block,
+								>, ddc_dac_host::ddc_dac::HostFunctions>(Some(
+									config.chain_spec,
+								))
+							})
 						}
 
 						#[cfg(not(any(feature = "cere-dev-native", feature = "cere-native")))]
