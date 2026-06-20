@@ -75,14 +75,12 @@ impl pallet_ismp::Config for Runtime {
 		TreasuryPalletId,
 		false,
 	>;
-	// No on-chain migration weights yet; placeholder until benchmarks are
-	// regenerated.
-	type MigrationWeightInfo = ();
+	type MigrationWeightInfo = crate::weights::pallet_ismp::WeightInfo<Runtime>;
 }
 
 impl ismp_grandpa::Config for Runtime {
 	type IsmpHost = pallet_ismp::Pallet<Runtime>;
-	type WeightInfo = ();
+	type WeightInfo = crate::weights::ismp_grandpa::WeightInfo<Runtime>;
 	type RootOrigin = EnsureRoot<AccountId>;
 }
 
