@@ -4557,7 +4557,7 @@ dependencies = [
 [[package]]
 name = "ddc-dac-host"
 version = "0.1.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=feat%2Fpolkadot-sdk-migration#03817ddadee777a950db19523ade4fa895cb7138"
+source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=dev#69f320b01272e2807dcdf2a4c4206c60e8e5cc7a"
 dependencies = [
  "ddc-api",
  "log",
@@ -10194,7 +10194,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Fpolkadot-sdk-migration#e180fb13d54ae65b6689a85cd71dee05e262927a"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Fpolkadot-sdk-migration#2a945e65c9dc530ee8a4793b44d3e326a7623ce3"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
@@ -10240,7 +10240,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "8.0.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=feat%2Fpolkadot-sdk-migration#87ff6721343a11909c8f88c315e5c1d1ec7b5633"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=feat%2Fpolkadot-sdk-migration#d8840aed74d8fd90b80888789f5769f6cf5a09cc"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
