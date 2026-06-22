@@ -171,7 +171,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 80010,
+	spec_version: 80011,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 27,
@@ -1094,7 +1094,7 @@ where
 			polkadot_sdk::frame_system::CheckNonce::<Runtime>::from(nonce),
 			polkadot_sdk::frame_system::CheckWeight::<Runtime>::new(),
 			pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
-			frame_metadata_hash_extension::CheckMetadataHash::new(false),
+			// frame_metadata_hash_extension removed — coupled to old hyperbridge wiring.
 			polkadot_sdk::frame_system::WeightReclaim::<Runtime>::new(),
 		);
 		let raw_payload = SignedPayload::new(call, tx_ext)
@@ -1806,8 +1806,9 @@ mod runtime {
 	#[runtime::pallet_index(48)]
 	pub type IsmpGrandpa = ismp_grandpa::Pallet<Runtime>;
 
-	#[runtime::pallet_index(49)]
-	pub type Hyperbridge = pallet_hyperbridge::Pallet<Runtime>;
+	// pallet-hyperbridge removed — incompatible with ismp 2512.1+. Pallet
+	// index 49 is left unused to preserve indices for already-deployed
+	// pallets above it.
 
 	#[runtime::pallet_index(50)]
 	pub type TokenGateway = pallet_hyper_fungible_token::Pallet<Runtime>;
@@ -1850,7 +1851,6 @@ pub type TxExtension = (
 	polkadot_sdk::frame_system::CheckNonce<Runtime>,
 	polkadot_sdk::frame_system::CheckWeight<Runtime>,
 	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
-	frame_metadata_hash_extension::CheckMetadataHash<Runtime>,
 	polkadot_sdk::frame_system::WeightReclaim<Runtime>,
 );
 
