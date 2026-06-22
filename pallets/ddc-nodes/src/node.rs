@@ -2,8 +2,8 @@
 
 use codec::{Decode, Encode};
 use ddc_primitives::{NodeParams, NodePubKey, NodeType};
-use scale_info::TypeInfo;
 use polkadot_sdk::sp_runtime::RuntimeDebug;
+use scale_info::TypeInfo;
 
 use crate::{
 	pallet::Error,

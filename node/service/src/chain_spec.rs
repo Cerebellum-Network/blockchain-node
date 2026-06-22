@@ -12,7 +12,6 @@ use jsonrpsee::core::__reexports::serde_json;
 use polkadot_sdk::pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 use polkadot_sdk::sc_chain_spec::ChainSpecExtension;
 use polkadot_sdk::sc_service::ChainType;
-use serde::{Deserialize, Serialize};
 use polkadot_sdk::sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use polkadot_sdk::sp_consensus_babe::AuthorityId as BabeId;
 use polkadot_sdk::sp_consensus_grandpa::AuthorityId as GrandpaId;
@@ -21,6 +20,7 @@ use polkadot_sdk::sp_runtime::{
 	traits::{IdentifyAccount, Verify},
 	Perbill,
 };
+use serde::{Deserialize, Serialize};
 
 const DEFAULT_PROTOCOL_ID: &str = "cere";
 
@@ -32,7 +32,7 @@ pub struct Extensions {
 	/// Known bad block hashes.
 	pub bad_blocks: polkadot_sdk::sc_client_api::BadBlocks<Block>,
 	/// The light sync state extension used by the sync-state rpc.
-	pub light_sync_state: sc_sync_state_rpc::LightSyncStateExtension,
+	pub light_sync_state: polkadot_sdk::sc_sync_state_rpc::LightSyncStateExtension,
 }
 
 // Dummy chain spec, in case when we don't have the native runtime.

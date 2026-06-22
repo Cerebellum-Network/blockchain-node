@@ -18,6 +18,7 @@ use ddc_primitives::{
 	},
 	BucketId, BucketParams, ClusterId,
 };
+pub use pallet::*;
 use polkadot_sdk::frame_support::{
 	parameter_types,
 	traits::{
@@ -27,8 +28,6 @@ use polkadot_sdk::frame_support::{
 	BoundedVec, Deserialize, PalletId, Serialize,
 };
 use polkadot_sdk::frame_system::pallet_prelude::*;
-pub use pallet::*;
-use scale_info::TypeInfo;
 use polkadot_sdk::sp_io::hashing::blake2_128;
 use polkadot_sdk::sp_runtime::{
 	traits::{AccountIdConversion, Saturating, StaticLookup, Zero},
@@ -36,19 +35,22 @@ use polkadot_sdk::sp_runtime::{
 };
 use polkadot_sdk::sp_std::fmt::Debug;
 use polkadot_sdk::sp_std::prelude::*;
+use scale_info::TypeInfo;
 
 use crate::weights::WeightInfo;
 
 pub mod migrations;
 
 /// The balance type of this pallet.
-pub type BalanceOf<T> =
-	<<T as Config>::Currency as Currency<<T as polkadot_sdk::frame_system::Config>::AccountId>>::Balance;
-
-/// The balance type of contracts pallet.
-pub type ContractsBalanceOf<T> = <<T as polkadot_sdk::pallet_contracts::Config>::Currency as Inspect<
+pub type BalanceOf<T> = <<T as Config>::Currency as Currency<
 	<T as polkadot_sdk::frame_system::Config>::AccountId,
 >>::Balance;
+
+/// The balance type of contracts pallet.
+pub type ContractsBalanceOf<T> =
+	<<T as polkadot_sdk::pallet_contracts::Config>::Currency as Inspect<
+		<T as polkadot_sdk::frame_system::Config>::AccountId,
+	>>::Balance;
 
 parameter_types! {
 	/// A limit to the number of pending unlocks an account may have in parallel.
@@ -147,13 +149,16 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: polkadot_sdk::frame_system::Config + polkadot_sdk::pallet_contracts::Config {
+	pub trait Config:
+		polkadot_sdk::frame_system::Config + polkadot_sdk::pallet_contracts::Config
+	{
 		/// The accounts's pallet id, used for deriving its sovereign account ID.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 		type Currency: LockableCurrency<Self::AccountId, Moment = BlockNumberFor<Self>>;
 		#[allow(deprecated)]
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as polkadot_sdk::frame_system::Config>::RuntimeEvent>;
+		type RuntimeEvent: From<Event<Self>>
+			+ IsType<<Self as polkadot_sdk::frame_system::Config>::RuntimeEvent>;
 		/// Number of eras that staked funds must remain locked for.
 		#[pallet::constant]
 		type UnlockingDelay: Get<BlockNumberFor<Self>>;
@@ -810,7 +815,8 @@ pub mod pallet {
 				Err(Error::<T>::InsufficientDeposit)?
 			}
 
-			polkadot_sdk::frame_system::Pallet::<T>::inc_consumers(&owner).map_err(|_| Error::<T>::BadState)?;
+			polkadot_sdk::frame_system::Pallet::<T>::inc_consumers(&owner)
+				.map_err(|_| Error::<T>::BadState)?;
 
 			let owner_balance = <T as pallet::Config>::Currency::free_balance(&owner);
 			let value = value.min(owner_balance);
@@ -1028,8 +1034,9 @@ pub mod pallet {
 					salt,
 				};
 
-			let result = instantiate_call
-				.dispatch_bypass_filter(polkadot_sdk::frame_system::RawOrigin::Signed(deployer).into());
+			let result = instantiate_call.dispatch_bypass_filter(
+				polkadot_sdk::frame_system::RawOrigin::Signed(deployer).into(),
+			);
 
 			match result {
 				Ok(_) => Ok(()),
@@ -1048,16 +1055,18 @@ pub mod pallet {
 			storage_deposit_limit: Option<ContractsBalanceOf<T>>,
 			data: Vec<u8>,
 		) -> DispatchResult {
-			let call_call: polkadot_sdk::pallet_contracts::Call<T> = polkadot_sdk::pallet_contracts::Call::call {
-				dest: dest.into(),
-				value,
-				gas_limit,
-				storage_deposit_limit: storage_deposit_limit.map(Into::into),
-				data,
-			};
+			let call_call: polkadot_sdk::pallet_contracts::Call<T> =
+				polkadot_sdk::pallet_contracts::Call::call {
+					dest: dest.into(),
+					value,
+					gas_limit,
+					storage_deposit_limit: storage_deposit_limit.map(Into::into),
+					data,
+				};
 
-			let result =
-				call_call.dispatch_bypass_filter(polkadot_sdk::frame_system::RawOrigin::Signed(caller).into());
+			let result = call_call.dispatch_bypass_filter(
+				polkadot_sdk::frame_system::RawOrigin::Signed(caller).into(),
+			);
 
 			match result {
 				Ok(_) => Ok(()),

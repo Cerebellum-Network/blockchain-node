@@ -8,6 +8,8 @@ use ddc_primitives::{
 	ClusterNodeKind, ClusterNodeStatus, ClusterParams, ClusterProtocolParams, ClusterStatus,
 	NodeParams, NodePubKey, StorageNodeParams, StorageNodePubKey,
 };
+use pallet_ddc_clusters::cluster::Cluster;
+use pallet_ddc_nodes::StorageNode;
 use polkadot_sdk::frame_support::{
 	construct_runtime, derive_impl,
 	traits::{ConstBool, ConstU32, ConstU64, Nothing},
@@ -16,8 +18,6 @@ use polkadot_sdk::frame_system::{
 	mocking::{MockBlock, MockUncheckedExtrinsic},
 	EnsureSigned,
 };
-use pallet_ddc_clusters::cluster::Cluster;
-use pallet_ddc_nodes::StorageNode;
 use polkadot_sdk::sp_io::TestExternalities;
 use polkadot_sdk::sp_runtime::{
 	traits::{Convert, IdentifyAccount, IdentityLookup, Verify},
@@ -402,7 +402,9 @@ impl ExtBuilder {
 		nodes_bondes: Vec<BuiltNodeBond>,
 	) -> TestExternalities {
 		sp_tracing::try_init_simple();
-		let mut storage = polkadot_sdk::frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
+		let mut storage = polkadot_sdk::frame_system::GenesisConfig::<Test>::default()
+			.build_storage()
+			.unwrap();
 
 		let mut balances: Vec<(AccountId, Balance)> = vec![
 			(AccountId::from(USER_KEY_1), ENDOWMENT),
@@ -449,8 +451,9 @@ impl ExtBuilder {
 			insert_unique_balance(&mut balances, controller.clone(), ENDOWMENT);
 		}
 
-		let _ = polkadot_sdk::pallet_balances::GenesisConfig::<Test> { balances, ..Default::default() }
-			.assimilate_storage(&mut storage);
+		let _ =
+			polkadot_sdk::pallet_balances::GenesisConfig::<Test> { balances, ..Default::default() }
+				.assimilate_storage(&mut storage);
 
 		let _ = pallet_ddc_nodes::GenesisConfig::<Test> { storage_nodes }
 			.assimilate_storage(&mut storage);

@@ -2,10 +2,12 @@
 
 use polkadot_sdk::*;
 
-use polkadot_sdk::frame_support::{derive_impl, ord_parameter_types, parameter_types, weights::Weight};
-use polkadot_sdk::frame_system::{self as system, mocking::MockBlock};
 pub use pallet_balances as balances;
 use pallet_chainbridge as bridge;
+use polkadot_sdk::frame_support::{
+	derive_impl, ord_parameter_types, parameter_types, weights::Weight,
+};
+use polkadot_sdk::frame_system::{self as system, mocking::MockBlock};
 use polkadot_sdk::sp_core::hashing::blake2_128;
 use polkadot_sdk::sp_runtime::{BuildStorage, Perbill};
 

@@ -1,5 +1,5 @@
 use cere_service::IdentifyVariant;
-use frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
+use polkadot_sdk::frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
 use polkadot_sdk::sc_cli::{Error, SubstrateCli};
 use polkadot_sdk::sc_service::error::Error as ServiceError;
 

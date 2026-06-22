@@ -210,10 +210,11 @@ const TRACKS_DATA: [polkadot_sdk::pallet_referenda::Track<u16, Balance, BlockNum
 pub struct TracksInfo;
 impl polkadot_sdk::pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 	type Id = u16;
-	type RuntimeOrigin = <RuntimeOrigin as polkadot_sdk::frame_support::traits::OriginTrait>::PalletsOrigin;
-	fn tracks(
-	) -> impl Iterator<Item = Cow<'static, polkadot_sdk::pallet_referenda::Track<Self::Id, Balance, BlockNumber>>>
-	{
+	type RuntimeOrigin =
+		<RuntimeOrigin as polkadot_sdk::frame_support::traits::OriginTrait>::PalletsOrigin;
+	fn tracks() -> impl Iterator<
+		Item = Cow<'static, polkadot_sdk::pallet_referenda::Track<Self::Id, Balance, BlockNumber>>,
+	> {
 		TRACKS_DATA.iter().map(Cow::Borrowed)
 	}
 	fn track_for(id: &Self::RuntimeOrigin) -> Result<Self::Id, ()> {

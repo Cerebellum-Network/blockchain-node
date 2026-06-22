@@ -8,6 +8,7 @@ use ddc_primitives::{
 	traits::staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 	ClusterId, NodePubKey,
 };
+use pallet_contracts as contracts;
 use polkadot_sdk::frame_support::{
 	construct_runtime, derive_impl, parameter_types,
 	traits::{ConstBool, ConstU32, ConstU64, Nothing},
@@ -16,7 +17,6 @@ use polkadot_sdk::frame_system::{
 	mocking::{MockBlock, MockUncheckedExtrinsic},
 	EnsureSigned,
 };
-use pallet_contracts as contracts;
 use polkadot_sdk::sp_io::TestExternalities;
 use polkadot_sdk::sp_runtime::{
 	testing::TestXt,
@@ -259,7 +259,9 @@ impl ExtBuilder {
 	pub fn build(self) -> TestExternalities {
 		sp_tracing::try_init_simple();
 
-		let mut t = polkadot_sdk::frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
+		let mut t = polkadot_sdk::frame_system::GenesisConfig::<Test>::default()
+			.build_storage()
+			.unwrap();
 
 		let _ = polkadot_sdk::pallet_balances::GenesisConfig::<Test> {
 			balances: vec![

@@ -26,6 +26,7 @@ use ddc_primitives::{
 	},
 	ClusterId, ClusterNodeStatus, ClusterProtocolParams, ClusterStatus, NodePubKey,
 };
+pub use pallet::*;
 use polkadot_sdk::frame_support::{
 	dispatch::{GetDispatchInfo, Pays},
 	pallet_prelude::*,
@@ -37,14 +38,13 @@ use polkadot_sdk::frame_support::{
 };
 use polkadot_sdk::frame_system::pallet_prelude::*;
 pub use polkadot_sdk::frame_system::Config as SysConfig;
-pub use pallet::*;
 use polkadot_sdk::pallet_referenda::ReferendumIndex;
-use scale_info::TypeInfo;
 use polkadot_sdk::sp_runtime::{
 	traits::{AccountIdConversion, BlockNumberProvider, Dispatchable},
 	DispatchError, DispatchResult, RuntimeDebug, SaturatedConversion,
 };
 use polkadot_sdk::sp_std::prelude::*;
+use scale_info::TypeInfo;
 
 #[cfg(test)]
 pub(crate) mod mock_clusters_gov;
@@ -57,8 +57,9 @@ pub mod weights;
 pub use weights::WeightInfo;
 
 /// The balance type of this pallet.
-pub type BalanceOf<T> =
-	<<T as Config>::Currency as Currency<<T as polkadot_sdk::frame_system::Config>::AccountId>>::Balance;
+pub type BalanceOf<T> = <<T as Config>::Currency as Currency<
+	<T as polkadot_sdk::frame_system::Config>::AccountId,
+>>::Balance;
 
 type ReferendumBlockNumberFor<T, I = ()> =
 	<<T as polkadot_sdk::pallet_referenda::Config<I>>::BlockNumberProvider as BlockNumberProvider>::BlockNumber;
@@ -124,10 +125,13 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: polkadot_sdk::frame_system::Config + polkadot_sdk::pallet_referenda::Config {
+	pub trait Config:
+		polkadot_sdk::frame_system::Config + polkadot_sdk::pallet_referenda::Config
+	{
 		type PalletId: Get<PalletId>;
 		#[allow(deprecated)]
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as polkadot_sdk::frame_system::Config>::RuntimeEvent>;
+		type RuntimeEvent: From<Event<Self>>
+			+ IsType<<Self as polkadot_sdk::frame_system::Config>::RuntimeEvent>;
 		type Currency: LockableCurrency<Self::AccountId, Moment = BlockNumberFor<Self>>;
 		type WeightInfo: WeightInfo;
 		type OpenGovActivatorTrackOrigin: GetDdcOrigin<Self>;
@@ -423,9 +427,12 @@ pub mod pallet {
 				.ok_or(Error::<T>::NoSubmissionDeposit)?;
 
 			let refund_call =
-				polkadot_sdk::pallet_referenda::Call::<T>::refund_submission_deposit { index: referenda_index };
-			let result = refund_call
-				.dispatch_bypass_filter(polkadot_sdk::frame_system::RawOrigin::Signed(Self::account_id()).into());
+				polkadot_sdk::pallet_referenda::Call::<T>::refund_submission_deposit {
+					index: referenda_index,
+				};
+			let result = refund_call.dispatch_bypass_filter(
+				polkadot_sdk::frame_system::RawOrigin::Signed(Self::account_id()).into(),
+			);
 
 			match result {
 				Ok(_) => (),
@@ -433,7 +440,11 @@ pub mod pallet {
 				// called in the original 'pallet_referenda' before the current extrinsic calleed,
 				// so the funds are already unlocked for the pallet's balance and need to be
 				// refunded to the original depositor.
-				Err(ref e) if e.error == polkadot_sdk::pallet_referenda::Error::<T>::NoDeposit.into() => (),
+				Err(ref e)
+					if e.error == polkadot_sdk::pallet_referenda::Error::<T>::NoDeposit.into() =>
+				{
+					()
+				},
 				Err(e) => return Err(e.error),
 			}
 
@@ -636,7 +647,10 @@ pub mod pallet {
 			}
 
 			// Only allow actual closing of the proposal after the voting period has ended.
-			ensure!(polkadot_sdk::frame_system::Pallet::<T>::block_number() >= voting.end, Error::<T>::TooEarly);
+			ensure!(
+				polkadot_sdk::frame_system::Pallet::<T>::block_number() >= voting.end,
+				Error::<T>::TooEarly
+			);
 
 			let cluster_manager = T::ClusterManager::get_manager_account_id(&cluster_id)?;
 			let cluster_manager_vote = voting.ayes.iter().any(|a| a == &cluster_manager);
@@ -689,7 +703,9 @@ pub mod pallet {
 			let submission_deposit = Self::do_submission_deposit(depositor.clone())?;
 
 			let post_info = proposal
-				.dispatch_bypass_filter(polkadot_sdk::frame_system::RawOrigin::Signed(Self::account_id()).into())
+				.dispatch_bypass_filter(
+					polkadot_sdk::frame_system::RawOrigin::Signed(Self::account_id()).into(),
+				)
 				.map_err(|e| e.error)?;
 			Self::deposit_event(Event::ReferendumSubmitted { cluster_id });
 
@@ -720,7 +736,8 @@ pub mod pallet {
 			let proposal =
 				ClusterProposal::<T>::get(cluster_id).ok_or(Error::<T>::ProposalMissing)?;
 
-			let call: <T as polkadot_sdk::pallet_referenda::Config>::RuntimeCall = proposal.call.into();
+			let call: <T as polkadot_sdk::pallet_referenda::Config>::RuntimeCall =
+				proposal.call.into();
 			let bounded_call =
 				T::Preimages::bound(call).map_err(|_| Error::<T>::ProposalMissing)?;
 
@@ -744,7 +761,8 @@ pub mod pallet {
 
 		fn do_submission_deposit(depositor: T::AccountId) -> Result<BalanceOf<T>, DispatchError> {
 			let submission_deposit =
-				<T as polkadot_sdk::pallet_referenda::Config>::SubmissionDeposit::get().saturated_into::<u128>();
+				<T as polkadot_sdk::pallet_referenda::Config>::SubmissionDeposit::get()
+					.saturated_into::<u128>();
 			let amount = submission_deposit.saturated_into::<BalanceOf<T>>();
 			<T as pallet::Config>::Currency::transfer(
 				&depositor,

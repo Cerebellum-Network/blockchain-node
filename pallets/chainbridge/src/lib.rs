@@ -11,6 +11,7 @@ pub(crate) mod mock;
 mod tests;
 
 use codec::{Decode, Encode, EncodeLike};
+pub use pallet::*;
 use polkadot_sdk::frame_support::{
 	dispatch::{DispatchResult, GetDispatchInfo},
 	ensure,
@@ -19,7 +20,6 @@ use polkadot_sdk::frame_support::{
 	PalletId, Parameter,
 };
 use polkadot_sdk::frame_system::{self as system, ensure_root, ensure_signed, pallet_prelude::*};
-pub use pallet::*;
 use polkadot_sdk::sp_core::U256;
 use polkadot_sdk::sp_runtime::{
 	traits::{AccountIdConversion, Dispatchable},
@@ -133,7 +133,8 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: polkadot_sdk::frame_system::Config {
 		#[allow(deprecated)]
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as polkadot_sdk::frame_system::Config>::RuntimeEvent>;
+		type RuntimeEvent: From<Event<Self>>
+			+ IsType<<Self as polkadot_sdk::frame_system::Config>::RuntimeEvent>;
 		/// Origin used to administer the pallet
 		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 		/// Proposed dispatchable call

@@ -6,9 +6,9 @@ use ddc_primitives::{
 	ClusterParams, ClusterPricingParams, NodeParams, NodePubKey, StorageNodeMode,
 	StorageNodeParams,
 };
+use hex_literal::hex;
 use polkadot_sdk::frame_support::{assert_noop, assert_ok};
 use polkadot_sdk::frame_system::Config;
-use hex_literal::hex;
 use polkadot_sdk::sp_runtime::{traits::Hash, Perquintill};
 
 use super::{mock::*, *};

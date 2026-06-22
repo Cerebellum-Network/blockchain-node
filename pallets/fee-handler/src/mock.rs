@@ -1,11 +1,11 @@
 use polkadot_sdk::*;
 
+use frame_system as system;
 use polkadot_sdk::frame_support::{
 	parameter_types,
 	traits::{ConstU32, Everything},
 	PalletId,
 };
-use frame_system as system;
 use polkadot_sdk::sp_core::H256;
 use polkadot_sdk::sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
@@ -102,7 +102,9 @@ impl pallet_fee_handler::Config for Test {
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> polkadot_sdk::sp_io::TestExternalities {
-	let t = polkadot_sdk::frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
+	let t = polkadot_sdk::frame_system::GenesisConfig::<Test>::default()
+		.build_storage()
+		.unwrap();
 	let mut ext = polkadot_sdk::sp_io::TestExternalities::new(t);
 	ext.execute_with(|| System::set_block_number(1));
 	ext
@@ -202,7 +204,9 @@ mod tests {
 	}
 
 	pub fn new_test_ext() -> polkadot_sdk::sp_io::TestExternalities {
-		let t = polkadot_sdk::frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
+		let t = polkadot_sdk::frame_system::GenesisConfig::<Test>::default()
+			.build_storage()
+			.unwrap();
 		let mut ext = polkadot_sdk::sp_io::TestExternalities::new(t);
 		ext.execute_with(|| {
 			System::set_block_number(1);

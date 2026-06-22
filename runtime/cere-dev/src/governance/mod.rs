@@ -29,8 +29,10 @@ impl pallet_conviction_voting::Config for Runtime {
 	type Currency = Balances;
 	type VoteLockingPeriod = VoteLockingPeriod;
 	type MaxVotes = ConstU32<512>;
-	type MaxTurnout =
-		polkadot_sdk::frame_support::traits::tokens::currency::ActiveIssuanceOf<Balances, Self::AccountId>;
+	type MaxTurnout = polkadot_sdk::frame_support::traits::tokens::currency::ActiveIssuanceOf<
+		Balances,
+		Self::AccountId,
+	>;
 	type Polls = Referenda;
 	type BlockNumberProvider = System;
 	type VotingHooks = ();
@@ -84,10 +86,11 @@ impl polkadot_sdk::pallet_referenda::Config for Runtime {
 }
 
 pub struct EnsureOfPermittedReferendaOrigin<T>(PhantomData<T>);
-impl<T: polkadot_sdk::frame_system::Config> EnsureOriginWithArg<T::RuntimeOrigin, PalletsOriginOf<T>>
-	for EnsureOfPermittedReferendaOrigin<T>
+impl<T: polkadot_sdk::frame_system::Config>
+	EnsureOriginWithArg<T::RuntimeOrigin, PalletsOriginOf<T>> for EnsureOfPermittedReferendaOrigin<T>
 where
-	<T as polkadot_sdk::frame_system::Config>::RuntimeOrigin: OriginTrait<PalletsOrigin = OriginCaller>,
+	<T as polkadot_sdk::frame_system::Config>::RuntimeOrigin:
+		OriginTrait<PalletsOrigin = OriginCaller>,
 {
 	type Success = T::AccountId;
 
@@ -95,15 +98,18 @@ where
 		o: T::RuntimeOrigin,
 		proposal_origin: &PalletsOriginOf<T>,
 	) -> Result<Self::Success, T::RuntimeOrigin> {
-		let origin = <polkadot_sdk::frame_system::EnsureSigned<_> as EnsureOrigin<_>>::try_origin(o.clone())?;
+		let origin = <polkadot_sdk::frame_system::EnsureSigned<_> as EnsureOrigin<_>>::try_origin(
+			o.clone(),
+		)?;
 
-		let track_id =
-			match <TracksInfo as polkadot_sdk::pallet_referenda::TracksInfo<Balance, BlockNumber>>::track_for(
-				proposal_origin,
-			) {
-				Ok(track_id) => track_id,
-				Err(_) => return Err(o),
-			};
+		let track_id = match <TracksInfo as polkadot_sdk::pallet_referenda::TracksInfo<
+			Balance,
+			BlockNumber,
+		>>::track_for(proposal_origin)
+		{
+			Ok(track_id) => track_id,
+			Err(_) => return Err(o),
+		};
 
 		if track_id == CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID
 			|| track_id == CLUSTER_PROTOCOL_UPDATER_TRACK_ID
@@ -123,7 +129,8 @@ where
 	fn try_successful_origin(
 		_proposal_origin: &PalletsOriginOf<T>,
 	) -> Result<T::RuntimeOrigin, ()> {
-		let origin = polkadot_sdk::frame_benchmarking::account::<T::AccountId>("successful_origin", 0, 0);
+		let origin =
+			polkadot_sdk::frame_benchmarking::account::<T::AccountId>("successful_origin", 0, 0);
 		Ok(polkadot_sdk::frame_system::RawOrigin::Signed(origin).into())
 	}
 }

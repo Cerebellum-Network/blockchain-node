@@ -21,12 +21,12 @@ polkadot-sdk = { workspace = true, features = ["frame-support", "frame-system", 
 
 [dev-dependencies]
 # Substrate dev-deps via the umbrella.
-polkadot-sdk = { workspace = true, default-features = true, features = ["frame-benchmarking", "pallet-balances", "pallet-contracts", "pallet-conviction-voting", "pallet-insecure-randomness-collective-flip", "pallet-preimage", "pallet-scheduler", "pallet-timestamp", "sp-arithmetic", "sp-core", "sp-io", "sp-tracing"] }
 lazy_static = { workspace = true, default-features = true }
 pallet-ddc-clusters = { workspace = true, default-features = true }
 pallet-ddc-nodes.workspace = true
 pallet-ddc-staking.workspace = true
 parking_lot = { workspace = true, default-features = true }
+polkadot-sdk = { workspace = true, default-features = true, features = ["frame-benchmarking", "pallet-balances", "pallet-contracts", "pallet-conviction-voting", "pallet-insecure-randomness-collective-flip", "pallet-preimage", "pallet-scheduler", "pallet-timestamp", "sp-arithmetic", "sp-core", "sp-io", "sp-tracing"] }
 substrate-test-utils = { workspace = true, default-features = true }
 
 [features]

@@ -25,8 +25,8 @@ pallet-ddc-nodes.workspace = true
 
 [dev-dependencies]
 # Substrate dev-deps via the umbrella to keep trait shapes aligned with main deps.
-polkadot-sdk = { workspace = true, default-features = true, features = ["frame-benchmarking", "pallet-balances", "pallet-insecure-randomness-collective-flip", "pallet-timestamp", "sp-io", "sp-tracing"] }
 hex-literal = { workspace = true, default-features = true }
+polkadot-sdk = { workspace = true, default-features = true, features = ["frame-benchmarking", "pallet-balances", "pallet-insecure-randomness-collective-flip", "pallet-timestamp", "sp-io", "sp-tracing"] }
 substrate-test-utils = { workspace = true, default-features = true }
 
 [features]

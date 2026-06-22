@@ -20,75 +20,7 @@ scale-info.workspace = true
 static_assertions.workspace = true
 
 # Polkadot SDK
-polkadot-sdk = { workspace = true, features = [
-  "frame-election-provider-support",
-  "frame-executive",
-  "frame-support",
-  "frame-system",
-  "frame-system-rpc-runtime-api",
-  "pallet-authority-discovery",
-  "pallet-authorship",
-  "pallet-babe",
-  "pallet-bags-list",
-  "pallet-balances",
-  "pallet-bounties",
-  "pallet-child-bounties",
-  "pallet-collective",
-  "pallet-contracts",
-  "pallet-conviction-voting",
-  "pallet-delegated-staking",
-  "pallet-democracy",
-  "pallet-election-provider-multi-phase",
-  "pallet-elections-phragmen",
-  "pallet-fast-unstake",
-  "pallet-grandpa",
-  "pallet-identity",
-  "pallet-im-online",
-  "pallet-indices",
-  "pallet-insecure-randomness-collective-flip",
-  "pallet-membership",
-  "pallet-migrations",
-  "pallet-multisig",
-  "pallet-nomination-pools",
-  "pallet-nomination-pools-benchmarking",
-  "pallet-nomination-pools-runtime-api",
-  "pallet-offences",
-  "pallet-preimage",
-  "pallet-proxy",
-  "pallet-recovery",
-  "pallet-referenda",
-  "pallet-scheduler",
-  "pallet-session",
-  "pallet-staking",
-  "pallet-staking-reward-curve",
-  "pallet-sudo",
-  "pallet-timestamp",
-  "pallet-tips",
-  "pallet-transaction-payment",
-  "pallet-transaction-payment-rpc-runtime-api",
-  "pallet-treasury",
-  "pallet-utility",
-  "pallet-vesting",
-  "pallet-whitelist",
-  "sp-api",
-  "sp-arithmetic",
-  "sp-authority-discovery",
-  "sp-block-builder",
-  "sp-consensus-babe",
-  "sp-core",
-  "sp-genesis-builder",
-  "sp-inherents",
-  "sp-io",
-  "sp-mmr-primitives",
-  "sp-offchain",
-  "sp-runtime",
-  "sp-session",
-  "sp-staking",
-  "sp-std",
-  "sp-storage",
-  "sp-transaction-pool",
-  "sp-version",
-] }
+polkadot-sdk = { workspace = true, features = ["frame-election-provider-support", "frame-executive", "frame-support", "frame-system", "frame-system-rpc-runtime-api", "pallet-authority-discovery", "pallet-authorship", "pallet-babe", "pallet-bags-list", "pallet-balances", "pallet-bounties", "pallet-child-bounties", "pallet-collective", "pallet-contracts", "pallet-conviction-voting", "pallet-delegated-staking", "pallet-democracy", "pallet-election-provider-multi-phase", "pallet-elections-phragmen", "pallet-fast-unstake", "pallet-grandpa", "pallet-identity", "pallet-im-online", "pallet-indices", "pallet-insecure-randomness-collective-flip", "pallet-membership", "pallet-migrations", "pallet-multisig", "pallet-nomination-pools", "pallet-nomination-pools-benchmarking", "pallet-nomination-pools-runtime-api", "pallet-offences", "pallet-preimage", "pallet-proxy", "pallet-recovery", "pallet-referenda", "pallet-scheduler", "pallet-session", "pallet-staking", "pallet-staking-reward-curve", "pallet-sudo", "pallet-timestamp", "pallet-tips", "pallet-transaction-payment", "pallet-transaction-payment-rpc-runtime-api", "pallet-treasury", "pallet-utility", "pallet-vesting", "pallet-whitelist", "sp-api", "sp-arithmetic", "sp-authority-discovery", "sp-block-builder", "sp-consensus-babe", "sp-core", "sp-genesis-builder", "sp-inherents", "sp-io", "sp-mmr-primitives", "sp-offchain", "sp-runtime", "sp-session", "sp-staking", "sp-std", "sp-storage", "sp-transaction-pool", "sp-version"] }
 
 # cere dependencies
 cere-runtime-common.workspace = true
@@ -112,9 +44,9 @@ pallet-pool-withdrawal-fix.workspace = true
 anyhow.workspace = true
 ismp.workspace = true
 ismp-grandpa.workspace = true
+pallet-hyper-fungible-token.workspace = true
 pallet-ismp.workspace = true
 pallet-ismp-runtime-api.workspace = true
-pallet-hyper-fungible-token.workspace = true
 
 [build-dependencies]
 substrate-wasm-builder = { workspace = true, default-features = true }

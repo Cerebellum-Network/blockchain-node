@@ -73,7 +73,7 @@ pub enum Subcommand {
 
 	/// Sub-commands concerned with benchmarking.
 	#[command(subcommand)]
-	Benchmark(frame_benchmarking_cli::BenchmarkCmd),
+	Benchmark(polkadot_sdk::frame_benchmarking_cli::BenchmarkCmd),
 
 	/// Db meta columns information.
 	ChainInfo(polkadot_sdk::sc_cli::ChainInfoCmd),

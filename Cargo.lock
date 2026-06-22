@@ -200,9 +200,9 @@ dependencies = [
 
 [[package]]
 name = "alloy-dyn-abi"
-version = "1.5.6"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6ab1b2f1b48a7e6b3597cb2afae04f93879fb69d71e39736b5663d7366b23f2"
+checksum = "a475bb02d9cef2dbb99065c1664ab3fe1f9352e21d6d5ed3f02cdbfc06ed1abc"
 dependencies = [
  "alloy-json-abi",
  "alloy-primitives",
@@ -211,7 +211,7 @@ dependencies = [
  "itoa",
  "serde",
  "serde_json",
- "winnow 0.7.14",
+ "winnow 1.0.3",
 ]
 
 [[package]]
@@ -10167,7 +10167,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Fstaging-polkadot-sdk-migration#144a8ad2ae894bf8cb40a0fa31b648d8ac931597"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Fstaging-polkadot-sdk-migration#4582b98c572e34f941afd13bc2fe5e28ec1427fb"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",

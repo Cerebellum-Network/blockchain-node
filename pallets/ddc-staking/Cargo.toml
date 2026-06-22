@@ -23,11 +23,11 @@ ddc-primitives.workspace = true
 
 [dev-dependencies]
 # Substrate dev-deps via the umbrella.
-polkadot-sdk = { workspace = true, default-features = true, features = ["pallet-balances", "pallet-contracts", "pallet-insecure-randomness-collective-flip", "pallet-timestamp", "sp-core", "sp-tracing"] }
 lazy_static = { workspace = true, default-features = true }
 pallet-ddc-clusters = { workspace = true, default-features = true }
 pallet-ddc-nodes = { workspace = true, default-features = true }
 parking_lot = { workspace = true, default-features = true }
+polkadot-sdk = { workspace = true, default-features = true, features = ["pallet-balances", "pallet-contracts", "pallet-insecure-randomness-collective-flip", "pallet-timestamp", "sp-core", "sp-tracing"] }
 substrate-test-utils = { workspace = true, default-features = true }
 
 [features]

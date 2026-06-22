@@ -1,10 +1,10 @@
 use polkadot_sdk::*;
 
+pub use pallet_balances as balances;
 use polkadot_sdk::frame_support::{
 	assert_ok, derive_impl, ord_parameter_types, parameter_types, weights::Weight,
 };
 use polkadot_sdk::frame_system::{self as system};
-pub use pallet_balances as balances;
 use polkadot_sdk::sp_runtime::{traits::AccountIdConversion, BuildStorage, Perbill};
 
 use crate::{self as bridge, *};
@@ -86,7 +86,9 @@ pub const TEST_THRESHOLD: u32 = 2;
 
 pub fn new_test_ext() -> polkadot_sdk::sp_io::TestExternalities {
 	let bridge_id = AccountIdConversion::into_account_truncating(&MODULE_ID);
-	let mut t = polkadot_sdk::frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
+	let mut t = polkadot_sdk::frame_system::GenesisConfig::<Test>::default()
+		.build_storage()
+		.unwrap();
 	polkadot_sdk::pallet_balances::GenesisConfig::<Test> {
 		balances: vec![(bridge_id, ENDOWED_BALANCE)],
 		..Default::default()

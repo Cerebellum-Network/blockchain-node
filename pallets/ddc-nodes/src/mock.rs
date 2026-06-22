@@ -108,7 +108,9 @@ impl ExtBuilder {
 	pub fn build(self) -> TestExternalities {
 		sp_tracing::try_init_simple();
 
-		let mut t = polkadot_sdk::frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
+		let mut t = polkadot_sdk::frame_system::GenesisConfig::<Test>::default()
+			.build_storage()
+			.unwrap();
 		let account_id1 = AccountId::from([1; 32]);
 		let account_id2 = AccountId::from([2; 32]);
 		let _ = polkadot_sdk::pallet_balances::GenesisConfig::<Test> {

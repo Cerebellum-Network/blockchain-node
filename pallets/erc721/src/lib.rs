@@ -3,6 +3,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
+pub use pallet::*;
 use polkadot_sdk::frame_support::{
 	dispatch::DispatchResult,
 	ensure,
@@ -10,7 +11,6 @@ use polkadot_sdk::frame_support::{
 	traits::Get,
 };
 use polkadot_sdk::frame_system::{ensure_root, ensure_signed, pallet_prelude::*};
-pub use pallet::*;
 use polkadot_sdk::sp_core::U256;
 use polkadot_sdk::sp_runtime::RuntimeDebug;
 use polkadot_sdk::sp_std::prelude::*;
@@ -39,7 +39,8 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: polkadot_sdk::frame_system::Config {
 		#[allow(deprecated)]
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as polkadot_sdk::frame_system::Config>::RuntimeEvent>;
+		type RuntimeEvent: From<Event<Self>>
+			+ IsType<<Self as polkadot_sdk::frame_system::Config>::RuntimeEvent>;
 
 		/// Some identifier for this token type, possibly the originating ethereum address.
 		/// This is not explicitly used for anything, but may reflect the bridge's notion of

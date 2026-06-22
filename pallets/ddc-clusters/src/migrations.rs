@@ -1,8 +1,8 @@
 use ddc_primitives::InspectionDryRunParams;
-use polkadot_sdk::frame_support::{storage_alias, traits::OnRuntimeUpgrade};
 use log::info;
-use serde::{Deserialize, Serialize};
+use polkadot_sdk::frame_support::{storage_alias, traits::OnRuntimeUpgrade};
 use polkadot_sdk::sp_runtime::{Perquintill, Saturating};
+use serde::{Deserialize, Serialize};
 
 use super::*;
 
@@ -160,7 +160,9 @@ pub mod v2 {
 		ClusterId, ClusterNodeKind, ClusterNodeState, ClusterNodeStatus, ClusterNodesCount,
 		ClusterNodesStats, ClusterStatus,
 	};
-	use polkadot_sdk::frame_support::{pallet_prelude::*, traits::OnRuntimeUpgrade, weights::Weight};
+	use polkadot_sdk::frame_support::{
+		pallet_prelude::*, traits::OnRuntimeUpgrade, weights::Weight,
+	};
 	use polkadot_sdk::sp_runtime::Saturating;
 	use polkadot_sdk::sp_std::collections::btree_map::BTreeMap;
 	#[cfg(feature = "try-runtime")]
@@ -518,7 +520,9 @@ pub mod v3 {
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), polkadot_sdk::sp_runtime::DispatchError> {
+		fn post_upgrade(
+			prev_state: Vec<u8>,
+		) -> Result<(), polkadot_sdk::sp_runtime::DispatchError> {
 			let prev_count: u64 = Decode::decode(&mut &prev_state[..])
 				.expect("pre_upgrade provides a valid state; qed");
 
@@ -663,7 +667,9 @@ pub mod v4 {
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), polkadot_sdk::sp_runtime::DispatchError> {
+		fn post_upgrade(
+			prev_state: Vec<u8>,
+		) -> Result<(), polkadot_sdk::sp_runtime::DispatchError> {
 			let (will_run, prev_count): (bool, u64) = Decode::decode(&mut &prev_state[..])
 				.expect("pre_upgrade provides a valid state; qed");
 
@@ -947,7 +953,9 @@ pub mod v6 {
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), polkadot_sdk::sp_runtime::DispatchError> {
+		fn post_upgrade(
+			prev_state: Vec<u8>,
+		) -> Result<(), polkadot_sdk::sp_runtime::DispatchError> {
 			let (will_run, prev_count): (bool, u64) = Decode::decode(&mut &prev_state[..])
 				.expect("pre_upgrade provides a valid state; qed");
 

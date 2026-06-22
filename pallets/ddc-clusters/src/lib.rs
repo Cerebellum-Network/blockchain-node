@@ -37,14 +37,14 @@ use ddc_primitives::{
 	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
 	ClusterProtocolParams, ClusterStatus, EhdEra, InspectionDryRunParams, NodePubKey, NodeType,
 };
+pub use pallet::*;
+use pallet_ddc_nodes::{NodeRepository, NodeTrait};
 use polkadot_sdk::frame_support::{
 	assert_ok,
 	pallet_prelude::*,
 	traits::{Currency, LockableCurrency},
 };
 use polkadot_sdk::frame_system::pallet_prelude::*;
-pub use pallet::*;
-use pallet_ddc_nodes::{NodeRepository, NodeTrait};
 use polkadot_sdk::sp_core::crypto::UncheckedFrom;
 use polkadot_sdk::sp_runtime::SaturatedConversion;
 use polkadot_sdk::sp_std::prelude::*;
@@ -58,8 +58,9 @@ pub mod cluster;
 mod node_provider_auth;
 
 /// The balance type of this pallet.
-pub type BalanceOf<T> =
-	<<T as Config>::Currency as Currency<<T as polkadot_sdk::frame_system::Config>::AccountId>>::Balance;
+pub type BalanceOf<T> = <<T as Config>::Currency as Currency<
+	<T as polkadot_sdk::frame_system::Config>::AccountId,
+>>::Balance;
 
 #[polkadot_sdk::frame_support::pallet]
 pub mod pallet {
@@ -77,9 +78,12 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: polkadot_sdk::frame_system::Config + polkadot_sdk::pallet_contracts::Config {
+	pub trait Config:
+		polkadot_sdk::frame_system::Config + polkadot_sdk::pallet_contracts::Config
+	{
 		#[allow(deprecated)]
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as polkadot_sdk::frame_system::Config>::RuntimeEvent>;
+		type RuntimeEvent: From<Event<Self>>
+			+ IsType<<Self as polkadot_sdk::frame_system::Config>::RuntimeEvent>;
 		type NodeRepository: NodeRepository<Self>; // todo: get rid of tight coupling with nodes-pallet
 		type StakingVisitor: StakingVisitor<Self>;
 		type StakerCreator: StakerCreator<Self, BalanceOf<Self>>;
@@ -194,7 +198,8 @@ pub mod pallet {
 		fn build(&self) {
 			for cluster in &self.clusters {
 				assert_ok!(Pallet::<T>::create_cluster(
-					polkadot_sdk::frame_system::Origin::<T>::Signed(cluster.manager_id.clone()).into(),
+					polkadot_sdk::frame_system::Origin::<T>::Signed(cluster.manager_id.clone())
+						.into(),
 					cluster.cluster_id,
 					cluster.reserve_id.clone(),
 					ClusterParams::<T::AccountId> {

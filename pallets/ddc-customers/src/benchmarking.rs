@@ -10,8 +10,9 @@ use polkadot_sdk::sp_std::prelude::*;
 use super::*;
 use crate::Pallet as DdcCustomers;
 
-pub type BalanceOf<T> =
-	<<T as pallet::Config>::Currency as Currency<<T as polkadot_sdk::frame_system::Config>::AccountId>>::Balance;
+pub type BalanceOf<T> = <<T as pallet::Config>::Currency as Currency<
+	<T as polkadot_sdk::frame_system::Config>::AccountId,
+>>::Balance;
 
 use polkadot_sdk::frame_system::{Pallet as System, RawOrigin};
 

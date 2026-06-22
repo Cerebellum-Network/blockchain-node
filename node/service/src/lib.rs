@@ -10,12 +10,14 @@ use cere_client::ChainExecutor;
 pub use cere_dev_runtime;
 #[cfg(feature = "cere-native")]
 pub use cere_runtime;
-use frame_benchmarking_cli::SUBSTRATE_REFERENCE_HARDWARE;
 use futures::prelude::*;
+use polkadot_sdk::frame_benchmarking_cli::SUBSTRATE_REFERENCE_HARDWARE;
 use polkadot_sdk::sc_client_api::{Backend, BlockBackend};
 use polkadot_sdk::sc_consensus_babe::SlotProportion;
 pub use polkadot_sdk::sc_executor::NativeExecutionDispatch;
-use polkadot_sdk::sc_network::{service::traits::NetworkService, Event, NetworkBackend, NetworkEventStream};
+use polkadot_sdk::sc_network::{
+	service::traits::NetworkService, Event, NetworkBackend, NetworkEventStream,
+};
 use polkadot_sdk::sc_service::{
 	error::Error as ServiceError, Configuration, KeystoreContainer, RpcHandlers, TaskManager,
 	WarpSyncConfig,
@@ -32,7 +34,7 @@ pub use chain_spec::{CereChainSpec, CereDevChainSpec};
 pub use ddc_primitives::{Block, BlockNumber};
 use polkadot_sdk::sc_executor::{HeapAllocStrategy, DEFAULT_HEAP_ALLOC_STRATEGY};
 pub use polkadot_sdk::sc_service::ChainSpec;
-use sc_transaction_pool_api::OffchainTransactionPoolFactory;
+use polkadot_sdk::sc_transaction_pool_api::OffchainTransactionPoolFactory;
 pub use polkadot_sdk::sp_api::ConstructRuntimeApi;
 
 /// The minimum period of blocks on which justifications will be
@@ -55,9 +57,13 @@ pub struct BabeInherentDataProviderCreator {
 }
 
 #[async_trait::async_trait]
-impl polkadot_sdk::sp_inherents::CreateInherentDataProviders<Block, ()> for BabeInherentDataProviderCreator {
-	type InherentDataProviders =
-		(polkadot_sdk::sp_consensus_babe::inherents::InherentDataProvider, polkadot_sdk::sp_timestamp::InherentDataProvider);
+impl polkadot_sdk::sp_inherents::CreateInherentDataProviders<Block, ()>
+	for BabeInherentDataProviderCreator
+{
+	type InherentDataProviders = (
+		polkadot_sdk::sp_consensus_babe::inherents::InherentDataProvider,
+		polkadot_sdk::sp_timestamp::InherentDataProvider,
+	);
 
 	async fn create_inherent_data_providers(
 		&self,
@@ -170,7 +176,11 @@ fn new_partial<RuntimeApi>(
 			) -> Result<jsonrpsee::RpcModule<()>, polkadot_sdk::sc_service::Error>,
 			(
 				FullBabeBlockImport<RuntimeApi>,
-				polkadot_sdk::sc_consensus_grandpa::LinkHalf<Block, FullClient<RuntimeApi>, FullSelectChain>,
+				polkadot_sdk::sc_consensus_grandpa::LinkHalf<
+					Block,
+					FullClient<RuntimeApi>,
+					FullSelectChain,
+				>,
 				polkadot_sdk::sc_consensus_babe::BabeLink<Block>,
 			),
 			polkadot_sdk::sc_consensus_grandpa::SharedVoterState,
@@ -218,8 +228,8 @@ where
 		OffchainTransactionPoolFactory::new(transaction_pool.clone()),
 	)?;
 
-	let (import_queue, babe_worker_handle) =
-		polkadot_sdk::sc_consensus_babe::import_queue(polkadot_sdk::sc_consensus_babe::ImportQueueParams {
+	let (import_queue, babe_worker_handle) = polkadot_sdk::sc_consensus_babe::import_queue(
+		polkadot_sdk::sc_consensus_babe::ImportQueueParams {
 			link: babe_link.clone(),
 			block_import: block_import.clone(),
 			justification_import: Some(Box::new(justification_import)),
@@ -228,7 +238,8 @@ where
 			spawner: &task_manager.spawn_essential_handle(),
 			registry: config.prometheus_registry(),
 			telemetry: telemetry.as_ref().map(|x| x.handle()),
-		})?;
+		},
+	)?;
 
 	let import_setup = (block_import, grandpa_link, babe_link);
 
@@ -240,10 +251,11 @@ where
 		let shared_voter_state = polkadot_sdk::sc_consensus_grandpa::SharedVoterState::empty();
 		let shared_voter_state2 = shared_voter_state.clone();
 
-		let finality_proof_provider = polkadot_sdk::sc_consensus_grandpa::FinalityProofProvider::new_for_service(
-			backend.clone(),
-			Some(shared_authority_set.clone()),
-		);
+		let finality_proof_provider =
+			polkadot_sdk::sc_consensus_grandpa::FinalityProofProvider::new_for_service(
+				backend.clone(),
+				Some(shared_authority_set.clone()),
+			);
 
 		let client = client.clone();
 		let pool = transaction_pool.clone();
@@ -360,7 +372,10 @@ where
 	let hwbench = if !disable_hardware_benchmarks {
 		config.database.path().map(|database_path| {
 			let _ = std::fs::create_dir_all(database_path);
-			sc_sysinfo::gather_hwbench(Some(database_path), &SUBSTRATE_REFERENCE_HARDWARE)
+			polkadot_sdk::sc_sysinfo::gather_hwbench(
+				Some(database_path),
+				&SUBSTRATE_REFERENCE_HARDWARE,
+			)
 		})
 	} else {
 		None
@@ -424,8 +439,8 @@ where
 		})?;
 
 	if config.offchain_worker.enabled {
-		let offchain_workers =
-			sc_offchain::OffchainWorkers::new(sc_offchain::OffchainWorkerOptions {
+		let offchain_workers = polkadot_sdk::sc_offchain::OffchainWorkers::new(
+			polkadot_sdk::sc_offchain::OffchainWorkerOptions {
 				runtime_api_provider: client.clone(),
 				is_validator: config.role.is_authority(),
 				keystore: Some(keystore_container.keystore()),
@@ -436,7 +451,8 @@ where
 				network_provider: Arc::new(network.clone()),
 				enable_http_requests: true,
 				custom_extensions: |_| vec![],
-			})?;
+			},
+		)?;
 		task_manager.spawn_handle().spawn(
 			"offchain-workers-runner",
 			"offchain-worker",
@@ -447,36 +463,37 @@ where
 	let role = config.role;
 	let force_authoring = config.force_authoring;
 	let backoff_authoring_blocks =
-		Some(sc_consensus_slots::BackoffAuthoringOnFinalizedHeadLagging::default());
+		Some(polkadot_sdk::sc_consensus_slots::BackoffAuthoringOnFinalizedHeadLagging::default());
 	let name = config.network.node_name.clone();
 	let enable_grandpa = !config.disable_grandpa;
 	let prometheus_registry = config.prometheus_registry().cloned();
 
-	let rpc_handlers = polkadot_sdk::sc_service::spawn_tasks(polkadot_sdk::sc_service::SpawnTasksParams {
-		config,
-		backend: backend.clone(),
-		client: client.clone(),
-		keystore: keystore_container.keystore(),
-		network: network.clone(),
-		rpc_builder: Box::new(rpc_builder),
-		transaction_pool: transaction_pool.clone(),
-		task_manager: &mut task_manager,
-		system_rpc_tx,
-		tx_handler_controller,
-		telemetry: telemetry.as_mut(),
-		sync_service: sync_service.clone(),
-		tracing_execute_block: None,
-	})?;
+	let rpc_handlers =
+		polkadot_sdk::sc_service::spawn_tasks(polkadot_sdk::sc_service::SpawnTasksParams {
+			config,
+			backend: backend.clone(),
+			client: client.clone(),
+			keystore: keystore_container.keystore(),
+			network: network.clone(),
+			rpc_builder: Box::new(rpc_builder),
+			transaction_pool: transaction_pool.clone(),
+			task_manager: &mut task_manager,
+			system_rpc_tx,
+			tx_handler_controller,
+			telemetry: telemetry.as_mut(),
+			sync_service: sync_service.clone(),
+			tracing_execute_block: None,
+		})?;
 
 	if let Some(hwbench) = hwbench {
-		sc_sysinfo::print_hwbench(&hwbench);
+		polkadot_sdk::sc_sysinfo::print_hwbench(&hwbench);
 
 		if let Some(ref mut telemetry) = telemetry {
 			let telemetry_handle = telemetry.handle();
 			task_manager.spawn_handle().spawn(
 				"telemetry_hwbench",
 				None,
-				sc_sysinfo::initialize_hwbench_telemetry(telemetry_handle, hwbench),
+				polkadot_sdk::sc_sysinfo::initialize_hwbench_telemetry(telemetry_handle, hwbench),
 			);
 		}
 	}
@@ -507,7 +524,8 @@ where
 			create_inherent_data_providers: move |parent, ()| {
 				let client_clone = client_clone.clone();
 				async move {
-					let timestamp = polkadot_sdk::sp_timestamp::InherentDataProvider::from_system_time();
+					let timestamp =
+						polkadot_sdk::sp_timestamp::InherentDataProvider::from_system_time();
 
 					let slot =
 						polkadot_sdk::sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
@@ -543,7 +561,9 @@ where
 	// Spawn authority discovery module.
 	if role.is_authority() {
 		let authority_discovery_role =
-			sc_authority_discovery::Role::PublishAndDiscover(keystore_container.keystore());
+			polkadot_sdk::sc_authority_discovery::Role::PublishAndDiscover(
+				keystore_container.keystore(),
+			);
 		let dht_event_stream =
 			network.event_stream("authority-discovery").filter_map(|e| async move {
 				match e {
@@ -552,8 +572,8 @@ where
 				}
 			});
 		let (authority_discovery_worker, _service) =
-			sc_authority_discovery::new_worker_and_service_with_config(
-				sc_authority_discovery::WorkerConfig {
+			polkadot_sdk::sc_authority_discovery::new_worker_and_service_with_config(
+				polkadot_sdk::sc_authority_discovery::WorkerConfig {
 					publish_non_global_ips: auth_disc_publish_non_global_ips,
 					..Default::default()
 				},
@@ -626,7 +646,7 @@ struct RevertConsensus {
 }
 
 impl ExecuteWithClient for RevertConsensus {
-	type Output = sp_blockchain::Result<()>;
+	type Output = polkadot_sdk::sp_blockchain::Result<()>;
 
 	fn execute_with_client<Client, Api, Backend>(self, client: Arc<Client>) -> Self::Output
 	where
@@ -648,8 +668,13 @@ macro_rules! chain_ops {
 		// irrelevant here, so we pass None and fall back to the chart default.
 		let basics = new_partial_basics::<$scope::RuntimeApi>(config, None)?;
 
-		let polkadot_sdk::sc_service::PartialComponents { client, backend, import_queue, task_manager, .. } =
-			new_partial::<$scope::RuntimeApi>(&config, basics)?;
+		let polkadot_sdk::sc_service::PartialComponents {
+			client,
+			backend,
+			import_queue,
+			task_manager,
+			..
+		} = new_partial::<$scope::RuntimeApi>(&config, basics)?;
 		Ok((Arc::new(Client::$variant(client)), backend, import_queue, task_manager))
 	}};
 }

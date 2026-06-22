@@ -40,6 +40,11 @@ use polkadot_sdk::frame_election_provider_support::{
 };
 use polkadot_sdk::pallet_balances::WeightInfo;
 extern crate alloc;
+pub use pallet_chainbridge;
+use pallet_election_provider_multi_phase::SolutionAccuracyOf;
+use pallet_grandpa::{
+	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
+};
 use polkadot_sdk::frame_support::traits::fungible::Balanced;
 use polkadot_sdk::frame_support::traits::tokens::Precision;
 use polkadot_sdk::frame_support::{
@@ -76,21 +81,18 @@ use polkadot_sdk::frame_system::{
 };
 #[cfg(any(feature = "std", test))]
 pub use polkadot_sdk::pallet_balances::Call as BalancesCall;
-pub use pallet_chainbridge;
 use polkadot_sdk::pallet_contracts::Determinism;
-use pallet_election_provider_multi_phase::SolutionAccuracyOf;
-use pallet_grandpa::{
-	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
-};
 //use pallet_treasury::{NegativeImbalanceOf, PositiveImbalanceOf};
+#[cfg(any(feature = "std", test))]
+pub use pallet_sudo::Call as SudoCall;
+use pallet_treasury::TreasuryAccountId;
 use polkadot_sdk::pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 use polkadot_sdk::pallet_session::historical::{self as pallet_session_historical};
 pub use polkadot_sdk::pallet_staking::StakerStatus;
-#[cfg(any(feature = "std", test))]
-pub use pallet_sudo::Call as SudoCall;
 use polkadot_sdk::pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
-pub use polkadot_sdk::pallet_transaction_payment::{FungibleAdapter, Multiplier, TargetedFeeAdjustment};
-use pallet_treasury::TreasuryAccountId;
+pub use polkadot_sdk::pallet_transaction_payment::{
+	FungibleAdapter, Multiplier, TargetedFeeAdjustment,
+};
 use polkadot_sdk::sp_api::impl_runtime_apis;
 use polkadot_sdk::sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use polkadot_sdk::sp_core::{
@@ -140,9 +142,13 @@ mod voter_bags;
 use ismp::{
 	consensus::{ConsensusClientId, StateMachineHeight, StateMachineId},
 	host::StateMachine,
-	router::{Request, Response},
+	// `Response` was removed in ismp 2512.1+; the runtime API now operates on
+	// `GetResponse`.
+	router::{GetResponse, Request},
 };
-use polkadot_sdk::pallet_contracts::chain_extension::{ChainExtension, Environment, Ext, InitState, RetVal};
+use polkadot_sdk::pallet_contracts::chain_extension::{
+	ChainExtension, Environment, Ext, InitState, RetVal,
+};
 use polkadot_sdk::sp_core::H256;
 mod hyperbridge_ismp;
 mod weights;
@@ -202,7 +208,10 @@ where
 	<R as polkadot_sdk::frame_system::Config>::AccountId: Into<AccountId>,
 {
 	fn on_nonzero_unbalanced(
-		amount: Credit<<R as polkadot_sdk::frame_system::Config>::AccountId, polkadot_sdk::pallet_balances::Pallet<R>>,
+		amount: Credit<
+			<R as polkadot_sdk::frame_system::Config>::AccountId,
+			polkadot_sdk::pallet_balances::Pallet<R>,
+		>,
 	) {
 		if let Some(author) = <pallet_authorship::Pallet<R>>::author() {
 			let _ = <polkadot_sdk::pallet_balances::Pallet<R>>::resolve(&author, amount);
@@ -211,14 +220,17 @@ where
 }
 
 pub struct DealWithFees<R>(core::marker::PhantomData<R>);
-impl<R> OnUnbalanced<Credit<R::AccountId, polkadot_sdk::pallet_balances::Pallet<R>>> for DealWithFees<R>
+impl<R> OnUnbalanced<Credit<R::AccountId, polkadot_sdk::pallet_balances::Pallet<R>>>
+	for DealWithFees<R>
 where
 	R: polkadot_sdk::pallet_balances::Config + pallet_authorship::Config + pallet_treasury::Config,
 	<R as polkadot_sdk::frame_system::Config>::AccountId: From<AccountId>,
 	<R as polkadot_sdk::frame_system::Config>::AccountId: Into<AccountId>,
 {
 	fn on_unbalanceds(
-		mut fees_then_tips: impl Iterator<Item = Credit<R::AccountId, polkadot_sdk::pallet_balances::Pallet<R>>>,
+		mut fees_then_tips: impl Iterator<
+			Item = Credit<R::AccountId, polkadot_sdk::pallet_balances::Pallet<R>>,
+		>,
 	) {
 		if let Some(fees) = fees_then_tips.next() {
 			// for fees, 50% to treasury, 50% to author
@@ -594,7 +606,8 @@ impl polkadot_sdk::pallet_session::Config for Runtime {
 	type ValidatorIdOf = ConvertInto;
 	type ShouldEndSession = Babe;
 	type NextSessionRotation = Babe;
-	type SessionManager = polkadot_sdk::pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
+	type SessionManager =
+		polkadot_sdk::pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
 	type SessionHandler = <SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
 	type Keys = SessionKeys;
 	type DisablingStrategy = polkadot_sdk::pallet_session::disabling::UpToLimitDisablingStrategy;
@@ -642,10 +655,14 @@ impl polkadot_sdk::pallet_staking::BenchmarkingConfig for StakingBenchmarkingCon
 	type MaxValidators = ConstU32<5000>;
 }
 
-type PositiveImbalanceOf<T> =
-	Debt<<T as polkadot_sdk::frame_system::Config>::AccountId, <T as polkadot_sdk::pallet_staking::Config>::Currency>;
-pub type NegativeImbalanceOf<T> =
-	Credit<<T as polkadot_sdk::frame_system::Config>::AccountId, <T as polkadot_sdk::pallet_staking::Config>::Currency>;
+type PositiveImbalanceOf<T> = Debt<
+	<T as polkadot_sdk::frame_system::Config>::AccountId,
+	<T as polkadot_sdk::pallet_staking::Config>::Currency,
+>;
+pub type NegativeImbalanceOf<T> = Credit<
+	<T as polkadot_sdk::frame_system::Config>::AccountId,
+	<T as polkadot_sdk::pallet_staking::Config>::Currency,
+>;
 
 pub struct BurnSource;
 
@@ -708,7 +725,8 @@ impl polkadot_sdk::pallet_staking::Config for Runtime {
 	type EventListeners = (NominationPools, DelegatedStaking);
 	type WeightInfo = polkadot_sdk::pallet_staking::weights::SubstrateWeight<Runtime>;
 	type BenchmarkingConfig = StakingBenchmarkingConfig;
-	type NominationsQuota = polkadot_sdk::pallet_staking::FixedNominationsQuota<{ MaxNominations::get() }>;
+	type NominationsQuota =
+		polkadot_sdk::pallet_staking::FixedNominationsQuota<{ MaxNominations::get() }>;
 	type Filter = Nothing;
 	type MaxValidatorSet = ConstU32<1000>;
 }
@@ -816,7 +834,8 @@ impl onchain::Config for OnChainSeqPhragmen {
 	type System = Runtime;
 	type Solver = SequentialPhragmen<AccountId, SolutionAccuracyOf<Runtime>>;
 	type DataProvider = Staking;
-	type WeightInfo = polkadot_sdk::frame_election_provider_support::weights::SubstrateWeight<Runtime>;
+	type WeightInfo =
+		polkadot_sdk::frame_election_provider_support::weights::SubstrateWeight<Runtime>;
 	type Bounds = ElectionBounds;
 	type MaxBackersPerWinner = MaxElectingVotersSolution;
 	type MaxWinnersPerPage = MaxActiveValidators;
@@ -1093,7 +1112,9 @@ where
 			polkadot_sdk::frame_system::CheckEra::<Runtime>::from(era),
 			polkadot_sdk::frame_system::CheckNonce::<Runtime>::from(nonce),
 			polkadot_sdk::frame_system::CheckWeight::<Runtime>::new(),
-			polkadot_sdk::pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
+			polkadot_sdk::pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(
+				tip,
+			),
 			// frame_metadata_hash_extension removed — coupled to old hyperbridge wiring.
 			polkadot_sdk::frame_system::WeightReclaim::<Runtime>::new(),
 		);
@@ -1450,7 +1471,8 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type BucketManager = DdcCustomers;
 	type ClusterProtocol = DdcClusters;
 	type TreasuryVisitor = TreasuryWrapper;
-	type NominatorsAndValidatorsList = polkadot_sdk::pallet_staking::UseNominatorsAndValidatorsMap<Self>;
+	type NominatorsAndValidatorsList =
+		polkadot_sdk::pallet_staking::UseNominatorsAndValidatorsMap<Self>;
 	type VoteScoreToU64 = IdentityConvert;
 	type InspectorAuthority = DdcVerification;
 	type NodeManager = DdcNodes;
@@ -1613,7 +1635,8 @@ impl pallet_migrations::Config for Runtime {
 	type CursorMaxLen = ConstU32<65_536>;
 	type IdentifierMaxLen = ConstU32<256>;
 	type MigrationStatusHandler = ();
-	type FailedMigrationHandler = polkadot_sdk::frame_support::migrations::FreezeChainOnFailedMigration;
+	type FailedMigrationHandler =
+		polkadot_sdk::frame_support::migrations::FreezeChainOnFailedMigration;
 	type MaxServiceWeight = MbmServiceWeight;
 	type WeightInfo = pallet_migrations::weights::SubstrateWeight<Runtime>;
 }
@@ -2267,7 +2290,7 @@ impl_runtime_apis! {
 			pallet_ismp::Pallet::<Runtime>::requests(commitments)
 		}
 
-		fn responses(commitments: Vec<H256>) -> Vec<Response> {
+		fn responses(commitments: Vec<H256>) -> Vec<GetResponse> {
 			pallet_ismp::Pallet::<Runtime>::responses(commitments)
 		}
 	}
@@ -2414,7 +2437,7 @@ impl_runtime_apis! {
 			config: polkadot_sdk::frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<polkadot_sdk::frame_benchmarking::BenchmarkBatch>, alloc::string::String> {
 			use polkadot_sdk::frame_benchmarking::{baseline, BenchmarkBatch};
-			use sp_storage::TrackedStorageKey;
+			use polkadot_sdk::sp_storage::TrackedStorageKey;
 
 			// Trying to add benchmarks directly to the Session Pallet caused cyclic dependency
 			// issues. To get around that, we separated the Session benchmarks into its own crate,
