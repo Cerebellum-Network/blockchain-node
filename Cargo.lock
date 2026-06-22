@@ -10240,7 +10240,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "8.0.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=feat%2Fpolkadot-sdk-migration#d8840aed74d8fd90b80888789f5769f6cf5a09cc"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#db402f3e9b5c4158e2cf83e32ffd4dcd81eb939d"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
