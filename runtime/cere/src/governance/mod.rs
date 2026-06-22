@@ -23,8 +23,8 @@ parameter_types! {
 	pub const VoteLockingPeriod: BlockNumber = 7 * DAYS;
 }
 
-impl pallet_conviction_voting::Config for Runtime {
-	type WeightInfo = pallet_conviction_voting::weights::SubstrateWeight<Runtime>;
+impl polkadot_sdk::pallet_conviction_voting::Config for Runtime {
+	type WeightInfo = polkadot_sdk::pallet_conviction_voting::weights::SubstrateWeight<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type VoteLockingPeriod = VoteLockingPeriod;
@@ -73,8 +73,8 @@ impl polkadot_sdk::pallet_referenda::Config for Runtime {
 	type CancelOrigin = EitherOf<EnsureRoot<AccountId>, ReferendumCanceller>;
 	type KillOrigin = EitherOf<EnsureRoot<AccountId>, ReferendumKiller>;
 	type Slash = Treasury;
-	type Votes = pallet_conviction_voting::VotesOf<Runtime>;
-	type Tally = pallet_conviction_voting::TallyOf<Runtime>;
+	type Votes = polkadot_sdk::pallet_conviction_voting::VotesOf<Runtime>;
+	type Tally = polkadot_sdk::pallet_conviction_voting::TallyOf<Runtime>;
 	type SubmissionDeposit = SubmissionDeposit;
 	type MaxQueued = ConstU32<100>;
 	type UndecidingTimeout = UndecidingTimeout;

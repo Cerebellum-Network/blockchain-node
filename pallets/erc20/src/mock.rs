@@ -5,7 +5,7 @@ use polkadot_sdk::*;
 use chainbridge as bridge;
 use polkadot_sdk::frame_support::{ord_parameter_types, derive_impl, parameter_types, weights::Weight};
 use polkadot_sdk::frame_system::{self as system};
-pub use pallet_balances as balances;
+pub use polkadot_sdk::pallet_balances as balances;
 use polkadot_sdk::sp_core::{hashing::blake2_128, H256};
 use polkadot_sdk::sp_runtime::{
 	testing::Header,

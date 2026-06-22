@@ -160,8 +160,8 @@ impl polkadot_sdk::pallet_referenda::Config for Test {
 	type CancelOrigin = EnsureRoot<AccountId>;
 	type KillOrigin = EnsureRoot<AccountId>;
 	type Slash = ();
-	type Votes = pallet_conviction_voting::VotesOf<Test>;
-	type Tally = pallet_conviction_voting::TallyOf<Test>;
+	type Votes = polkadot_sdk::pallet_conviction_voting::VotesOf<Test>;
+	type Tally = polkadot_sdk::pallet_conviction_voting::TallyOf<Test>;
 	type SubmissionDeposit = SubmissionDeposit;
 	type MaxQueued = ConstU32<100>;
 	type UndecidingTimeout = UndecidingTimeout;
@@ -175,7 +175,7 @@ parameter_types! {
 	pub const VoteLockingPeriod: BlockNumber = 3 * MINUTES;
 }
 
-impl pallet_conviction_voting::Config for Test {
+impl polkadot_sdk::pallet_conviction_voting::Config for Test {
 	type WeightInfo = ();
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;

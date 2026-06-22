@@ -2,7 +2,7 @@
 
 use polkadot_sdk::*;
 
-pub use pallet_balances as balances;
+pub use polkadot_sdk::pallet_balances as balances;
 use pallet_chainbridge as bridge;
 use polkadot_sdk::frame_support::{
 	derive_impl, ord_parameter_types, parameter_types, weights::Weight,

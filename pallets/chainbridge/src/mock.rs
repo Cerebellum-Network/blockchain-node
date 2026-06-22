@@ -1,6 +1,6 @@
 use polkadot_sdk::*;
 
-pub use pallet_balances as balances;
+pub use polkadot_sdk::pallet_balances as balances;
 use polkadot_sdk::frame_support::{
 	assert_ok, derive_impl, ord_parameter_types, parameter_types, weights::Weight,
 };

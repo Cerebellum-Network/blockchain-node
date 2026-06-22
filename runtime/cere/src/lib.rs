@@ -55,12 +55,7 @@ use polkadot_sdk::frame_support::{
 	parameter_types,
 	traits::{
 		fungible::{Credit, Debt, HoldConsideration},
-		fungibles,
-		fungibles::{Dust, Inspect, Unbalanced},
-		tokens::{
-			imbalance::ResolveTo, DepositConsequence, Fortitude, PayFromAccount, Preservation,
-			Provenance, UnityAssetBalanceConversion, WithdrawConsequence,
-		},
+		tokens::{imbalance::ResolveTo, Fortitude, PayFromAccount, Preservation, UnityAssetBalanceConversion},
 		ConstBool, ConstU128, ConstU16, ConstU32, ConstU64, Currency, EitherOf, EitherOfDiverse,
 		EqualPrivilegeOnly, Imbalance, InstanceFilter, KeyOwnerProofSystem, LinearStoragePrice,
 		Nothing, OnUnbalanced, VariantCountOf, WithdrawReasons,
@@ -112,8 +107,8 @@ use polkadot_sdk::sp_runtime::{
 		StaticLookup, Verify,
 	},
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, DispatchError, DispatchResult, FixedPointNumber, FixedU128, Perbill,
-	Percent, Permill, Perquintill, RuntimeDebug,
+	ApplyExtrinsicResult, DispatchError, FixedPointNumber, FixedU128, Perbill, Percent, Permill,
+	Perquintill, RuntimeDebug,
 };
 use polkadot_sdk::sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
@@ -1805,7 +1800,7 @@ mod runtime {
 
 	// Start OpenGov.
 	#[runtime::pallet_index(41)]
-	pub type ConvictionVoting = pallet_conviction_voting::Pallet<Runtime>;
+	pub type ConvictionVoting = polkadot_sdk::pallet_conviction_voting::Pallet<Runtime>;
 
 	#[runtime::pallet_index(42)]
 	pub type Referenda = polkadot_sdk::pallet_referenda::Pallet<Runtime>;
@@ -2003,7 +1998,8 @@ mod benches {
 		[pallet_collective, TechComm]
 		[pallet_ddc_clusters_gov, DdcClustersGov]
 		[pallet_ddc_payouts, DdcPayouts]
-		[pallet_hyper_fungible_token, TokenGateway]
+		// pallet-hyper-fungible-token 2512.0.0 ships no Benchmarking impl
+		// upstream; re-enable when it does.
 		[pallet_migrations, MultiBlockMigrations]
 		[pallet_fee_handler, FeeHandler]
 	);
@@ -2417,11 +2413,11 @@ impl_runtime_apis! {
 			// Trying to add benchmarks directly to the Session Pallet caused cyclic dependency
 			// issues. To get around that, we separated the Session benchmarks into its own crate,
 			// which is why we need these two lines below.
-			use pallet_session_benchmarking::Pallet as SessionBench;
-			use pallet_offences_benchmarking::Pallet as OffencesBench;
-			use pallet_election_provider_support_benchmarking::Pallet as EPSBench;
+			use polkadot_sdk::pallet_session_benchmarking::Pallet as SessionBench;
+			use polkadot_sdk::pallet_offences_benchmarking::Pallet as OffencesBench;
+			use polkadot_sdk::pallet_election_provider_support_benchmarking::Pallet as EPSBench;
 			use pallet_nomination_pools_benchmarking::Pallet as NominationPoolsBench;
-			use frame_system_benchmarking::Pallet as SystemBench;
+			use polkadot_sdk::frame_system_benchmarking::Pallet as SystemBench;
 			use baseline::Pallet as BaselineBench;
 
 			let mut list = Vec::<BenchmarkList>::new();
@@ -2442,17 +2438,17 @@ impl_runtime_apis! {
 			// Trying to add benchmarks directly to the Session Pallet caused cyclic dependency
 			// issues. To get around that, we separated the Session benchmarks into its own crate,
 			// which is why we need these two lines below.
-			use pallet_session_benchmarking::Pallet as SessionBench;
-			use pallet_offences_benchmarking::Pallet as OffencesBench;
-			use pallet_election_provider_support_benchmarking::Pallet as EPSBench;
+			use polkadot_sdk::pallet_session_benchmarking::Pallet as SessionBench;
+			use polkadot_sdk::pallet_offences_benchmarking::Pallet as OffencesBench;
+			use polkadot_sdk::pallet_election_provider_support_benchmarking::Pallet as EPSBench;
 			use pallet_nomination_pools_benchmarking::Pallet as NominationPoolsBench;
-			use frame_system_benchmarking::Pallet as SystemBench;
+			use polkadot_sdk::frame_system_benchmarking::Pallet as SystemBench;
 			use baseline::Pallet as BaselineBench;
 
-			impl pallet_session_benchmarking::Config for Runtime {}
-			impl pallet_offences_benchmarking::Config for Runtime {}
-			impl pallet_election_provider_support_benchmarking::Config for Runtime {}
-			impl frame_system_benchmarking::Config for Runtime {}
+			impl polkadot_sdk::pallet_session_benchmarking::Config for Runtime {}
+			impl polkadot_sdk::pallet_offences_benchmarking::Config for Runtime {}
+			impl polkadot_sdk::pallet_election_provider_support_benchmarking::Config for Runtime {}
+			impl polkadot_sdk::frame_system_benchmarking::Config for Runtime {}
 			impl baseline::Config for Runtime {}
 			impl pallet_nomination_pools_benchmarking::Config for Runtime {}
 
