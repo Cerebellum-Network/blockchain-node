@@ -17,9 +17,18 @@ jobs:
 
     env:
       HCLOUD_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
+      HCLOUD_VERSION: 1.50.0
 
     steps:
       - uses: actions/checkout@v3
+
+      - name: Install hcloud CLI
+        run: |
+          curl -fsSL \
+            "https://github.com/hetznercloud/cli/releases/download/v${HCLOUD_VERSION}/hcloud-linux-amd64.tar.gz" \
+            -o /tmp/hcloud-linux-amd64.tar.gz
+          tar xzf /tmp/hcloud-linux-amd64.tar.gz -C /tmp
+          sudo install -m 0755 /tmp/hcloud /usr/local/bin/hcloud
 
       - name: Configure GitHub token for private deps
         run: |
@@ -33,25 +42,13 @@ jobs:
           echo "PUBLIC_SSH=$(cat id_rsa.pub)" >> $GITHUB_ENV
 
       - name: Upload SSH key to Hetzner
-        uses: jawher/action-hcloud@v1.50.0
-        env:
-          HCLOUD_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
-        with:
-          args: ssh-key create --name weights-key --public-key "${{ env.PUBLIC_SSH }}"
+        run: hcloud ssh-key create --name weights-key --public-key "$PUBLIC_SSH"
 
       - name: Create Hetzner Server
-        uses: jawher/action-hcloud@v1.50.0
-        env:
-          HCLOUD_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
-        with:
-          args: server create --name weights-${{ github.run_id }} --type=cpx31 --image=ubuntu-22.04 --ssh-key=weights-key --location=fsn1
+        run: hcloud server create --name weights-${{ github.run_id }} --type=cpx31 --image=ubuntu-22.04 --ssh-key=weights-key --location=fsn1
 
       - name: Fetch server IP
-        uses: jawher/action-hcloud@v1.50.0
-        env:
-          HCLOUD_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
-        with:
-          args: server describe weights-${{ github.run_id }} -o json
+        run: hcloud server describe weights-${{ github.run_id }} -o json > hcloud.output
 
       - name: Extract IP and prepare SSH
         run: |
@@ -169,17 +166,9 @@ jobs:
           path: weights/
 
       - name: Delete Hetzner server
-        uses: jawher/action-hcloud@v1.50.0
         if: always()
-        env:
-          HCLOUD_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
-        with:
-          args: server delete weights-${{ github.run_id }}
+        run: hcloud server delete weights-${{ github.run_id }} || true
 
       - name: Delete Hetzner SSH key
-        uses: jawher/action-hcloud@v1.50.0
         if: always()
-        env:
-          HCLOUD_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
-        with:
-          args: ssh-key delete weights-key
+        run: hcloud ssh-key delete weights-key || true
