@@ -10194,7 +10194,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Fpolkadot-sdk-migration#2a945e65c9dc530ee8a4793b44d3e326a7623ce3"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#c1f65d05a8a4e32a945007f0cb172a38ce823511"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
