@@ -2,9 +2,9 @@
 #![allow(clippy::extra_unused_type_parameters)]
 
 use ddc_primitives::{ClusterNodeKind, ClusterParams, ClusterProtocolParams, StorageNodeParams};
-use polkadot_sdk::pallet_conviction_voting::{AccountVote, Conviction, Vote};
 use pallet_ddc_clusters::Event::{ClusterActivated, ClusterProtocolParamsSet};
 use polkadot_sdk::frame_support::{assert_noop, assert_ok};
+use polkadot_sdk::pallet_conviction_voting::{AccountVote, Conviction, Vote};
 use polkadot_sdk::pallet_referenda::ReferendumInfo;
 use polkadot_sdk::sp_runtime::Perquintill;
 

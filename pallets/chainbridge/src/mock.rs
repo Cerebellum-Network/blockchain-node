@@ -1,10 +1,10 @@
 use polkadot_sdk::*;
 
-pub use polkadot_sdk::pallet_balances as balances;
 use polkadot_sdk::frame_support::{
 	assert_ok, derive_impl, ord_parameter_types, parameter_types, weights::Weight,
 };
 use polkadot_sdk::frame_system::{self as system};
+pub use polkadot_sdk::pallet_balances as balances;
 use polkadot_sdk::sp_runtime::{traits::AccountIdConversion, BuildStorage, Perbill};
 
 use crate::{self as bridge, *};

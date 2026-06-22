@@ -64,7 +64,10 @@ use polkadot_sdk::frame_support::{
 	parameter_types,
 	traits::{
 		fungible::{Credit, Debt, HoldConsideration},
-		tokens::{imbalance::ResolveTo, Fortitude, PayFromAccount, Preservation, UnityAssetBalanceConversion},
+		tokens::{
+			imbalance::ResolveTo, Fortitude, PayFromAccount, Preservation,
+			UnityAssetBalanceConversion,
+		},
 		ConstBool, ConstU128, ConstU16, ConstU32, ConstU64, Currency, EitherOf, EitherOfDiverse,
 		EqualPrivilegeOnly, Imbalance, InstanceFilter, KeyOwnerProofSystem, LinearStoragePrice,
 		Nothing, OnUnbalanced, VariantCountOf, WithdrawReasons,
