@@ -2,8 +2,8 @@
 
 use codec::{Decode, Encode};
 use ddc_primitives::{NodeParams, NodePubKey, NodeType};
+use polkadot_sdk::sp_runtime::RuntimeDebug;
 use scale_info::TypeInfo;
-use sp_runtime::RuntimeDebug;
 
 use crate::{
 	pallet::Error,
@@ -12,7 +12,7 @@ use crate::{
 };
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-pub enum Node<T: frame_system::Config> {
+pub enum Node<T: polkadot_sdk::frame_system::Config> {
 	Storage(StorageNode<T>),
 }
 
@@ -22,7 +22,7 @@ pub enum NodeProps {
 	StorageProps(StorageNodeProps),
 }
 
-pub trait NodeTrait<T: frame_system::Config> {
+pub trait NodeTrait<T: polkadot_sdk::frame_system::Config> {
 	fn get_pub_key(&self) -> NodePubKey;
 	fn get_provider_id(&self) -> &T::AccountId;
 	fn get_props(&self) -> NodeProps;
@@ -33,7 +33,7 @@ pub trait NodeTrait<T: frame_system::Config> {
 	fn get_type(&self) -> NodeType;
 }
 
-impl<T: frame_system::Config> Node<T> {
+impl<T: polkadot_sdk::frame_system::Config> Node<T> {
 	pub fn new(
 		node_pub_key: NodePubKey,
 		provider_id: T::AccountId,
@@ -47,7 +47,7 @@ impl<T: frame_system::Config> Node<T> {
 	}
 }
 
-impl<T: frame_system::Config> NodeTrait<T> for Node<T> {
+impl<T: polkadot_sdk::frame_system::Config> NodeTrait<T> for Node<T> {
 	fn get_pub_key(&self) -> NodePubKey {
 		match &self {
 			Node::Storage(node) => node.get_pub_key(),

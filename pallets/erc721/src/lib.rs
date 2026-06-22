@@ -3,17 +3,17 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use frame_support::{
+pub use pallet::*;
+use polkadot_sdk::frame_support::{
 	dispatch::DispatchResult,
 	ensure,
 	pallet_prelude::{ValueQuery, *},
 	traits::Get,
 };
-use frame_system::{ensure_root, ensure_signed, pallet_prelude::*};
-pub use pallet::*;
-use sp_core::U256;
-use sp_runtime::RuntimeDebug;
-use sp_std::prelude::*;
+use polkadot_sdk::frame_system::{ensure_root, ensure_signed, pallet_prelude::*};
+use polkadot_sdk::sp_core::U256;
+use polkadot_sdk::sp_runtime::RuntimeDebug;
+use polkadot_sdk::sp_std::prelude::*;
 
 pub mod weights;
 use crate::weights::WeightInfo;
@@ -28,7 +28,7 @@ pub struct Erc721Token {
 	pub metadata: Vec<u8>,
 }
 
-#[frame_support::pallet]
+#[polkadot_sdk::frame_support::pallet]
 pub mod pallet {
 	use super::*;
 
@@ -37,9 +37,10 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: polkadot_sdk::frame_system::Config {
 		#[allow(deprecated)]
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+		type RuntimeEvent: From<Event<Self>>
+			+ IsType<<Self as polkadot_sdk::frame_system::Config>::RuntimeEvent>;
 
 		/// Some identifier for this token type, possibly the originating ethereum address.
 		/// This is not explicitly used for anything, but may reflect the bridge's notion of

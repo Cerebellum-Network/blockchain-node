@@ -5,11 +5,11 @@ use ddc_primitives::{
 	ClusterNodeKind, ClusterNodeStatus, ClusterParams, ClusterProtocolParams, ClusterStatus,
 	EhdEra, StorageNodeParams, StorageNodePubKey,
 };
-use frame_support::{assert_noop, assert_ok};
 use pallet_ddc_clusters::{
 	cluster::{Cluster, ClusterProps},
 	Clusters, Error as ClustersError,
 };
+use polkadot_sdk::frame_support::{assert_noop, assert_ok};
 
 use super::{mock::*, *};
 
@@ -41,7 +41,7 @@ fn test_default_staking_ledger() {
 	let (clusters, nodes, clusters_bonds, nodes_bondes) = build_default_setup();
 	ExtBuilder.build_and_execute(clusters, nodes, clusters_bonds, nodes_bondes, || {
 		let default_staking_ledger = StakingLedger::<
-			<Test as frame_system::Config>::AccountId,
+			<Test as polkadot_sdk::frame_system::Config>::AccountId,
 			BalanceOf<Test>,
 			Test,
 		>::default_from(AccountId::from(USER_KEY_1));

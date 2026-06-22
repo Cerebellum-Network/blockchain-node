@@ -5,15 +5,15 @@ pub mod v1 {
 		traits::{ClusterProtocol, ClusterQuery, NodeManager},
 		ClusterId, NodePubKey,
 	};
-	use frame_support::{
+	#[cfg(feature = "try-runtime")]
+	use hex_literal::hex;
+	use polkadot_sdk::frame_support::{
 		pallet_prelude::*,
 		traits::{Currency, LockableCurrency, OnRuntimeUpgrade, WithdrawReasons},
 		weights::Weight,
 	};
-	#[cfg(feature = "try-runtime")]
-	use hex_literal::hex;
-	use sp_runtime::Saturating;
-	use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
+	use polkadot_sdk::sp_runtime::Saturating;
+	use polkadot_sdk::sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
 	use crate::{
 		ClusterBonded, ClusterLedger, Config, Nodes, Pallet, StakingLedger, DDC_CLUSTER_STAKING_ID,
@@ -29,7 +29,7 @@ pub mod v1 {
 	#[cfg(feature = "try-runtime")]
 	const KNOWN_ACTIVE_CLUSTERS: [[u8; 20]; 3] = [DEVNET_CLUSTER, TESTNET_CLUSTER, MAINNET_CLUSTER];
 
-	pub struct MigrateToV1<T>(sp_std::marker::PhantomData<T>);
+	pub struct MigrateToV1<T>(polkadot_sdk::sp_std::marker::PhantomData<T>);
 	impl<T: Config> OnRuntimeUpgrade for MigrateToV1<T> {
 		fn on_runtime_upgrade() -> Weight {
 			let current_version = Pallet::<T>::in_code_storage_version();
@@ -76,7 +76,7 @@ pub mod v1 {
 								continue;
 							}
 
-							if frame_system::Pallet::<T>::inc_consumers(&cluster_stash).is_ok() {
+							if polkadot_sdk::frame_system::Pallet::<T>::inc_consumers(&cluster_stash).is_ok() {
 								weight.saturating_accrue(T::DbWeight::get().reads_writes(1, 1));
 							} else {
 								weight.saturating_accrue(T::DbWeight::get().reads(1));
@@ -131,7 +131,7 @@ pub mod v1 {
 
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
-			frame_support::ensure!(
+			polkadot_sdk::frame_support::ensure!(
 				Pallet::<T>::on_chain_storage_version() == 0,
 				"must upgrade linearly"
 			);

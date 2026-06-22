@@ -2,21 +2,23 @@
 
 #![allow(dead_code)]
 
+use polkadot_sdk::*;
+
 use ddc_primitives::{
 	traits::staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 	ClusterId, NodePubKey,
 };
-use frame_support::{
+use pallet_contracts as contracts;
+use polkadot_sdk::frame_support::{
 	construct_runtime, derive_impl, parameter_types,
 	traits::{ConstBool, ConstU32, ConstU64, Nothing},
 };
-use frame_system::{
+use polkadot_sdk::frame_system::{
 	mocking::{MockBlock, MockUncheckedExtrinsic},
 	EnsureSigned,
 };
-use pallet_contracts as contracts;
-use sp_io::TestExternalities;
-use sp_runtime::{
+use polkadot_sdk::sp_io::TestExternalities;
+use polkadot_sdk::sp_runtime::{
 	testing::TestXt,
 	traits::{Convert, IdentifyAccount, IdentityLookup, Verify},
 	BuildStorage, DispatchResult, MultiSignature, Perbill, Perquintill,
@@ -38,12 +40,12 @@ construct_runtime!(
 	pub enum Test
 	{
 		Contracts: contracts::{Pallet, Call, Storage, Event<T>, HoldReason},
-		System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+		System: polkadot_sdk::frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
+		Timestamp: polkadot_sdk::pallet_timestamp::{Pallet, Call, Storage, Inherent},
+		Balances: polkadot_sdk::pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		DdcNodes: pallet_ddc_nodes::{Pallet, Call, Storage, Event<T>},
 		DdcClusters: pallet_ddc_clusters::{Pallet, Call, Storage, Event<T>},
-		Randomness: pallet_insecure_randomness_collective_flip::{Pallet, Storage},
+		Randomness: polkadot_sdk::pallet_insecure_randomness_collective_flip::{Pallet, Storage},
 	}
 );
 
@@ -58,7 +60,7 @@ parameter_types! {
 	pub const SurchargeReward: Balance = 150;
 	pub const MaxDepth: u32 = 100;
 	pub const MaxValueSize: u32 = 16_384;
-	pub Schedule: pallet_contracts::Schedule<Test> = Default::default();
+	pub Schedule: polkadot_sdk::pallet_contracts::Schedule<Test> = Default::default();
 	pub static DefaultDepositLimit: Balance = 10_000_000;
 	pub const CodeHashLockupDepositPercent: Perbill = Perbill::from_percent(0);
 	pub const MaxDelegateDependencies: u32 = 32;
@@ -71,7 +73,7 @@ impl Convert<Weight, BalanceOf<Self>> for Test {
 }
 
 type BalanceOf<T> = <<T as crate::pallet::Config>::Currency as Currency<
-	<T as frame_system::Config>::AccountId,
+	<T as polkadot_sdk::frame_system::Config>::AccountId,
 >>::Balance;
 
 impl contracts::Config for Test {
@@ -79,8 +81,8 @@ impl contracts::Config for Test {
 	type Randomness = Randomness;
 	type Currency = Balances;
 	type RuntimeEvent = RuntimeEvent;
-	type CallStack = [pallet_contracts::Frame<Self>; 5];
-	type WeightPrice = Self; //pallet_transaction_payment::Module<Self>;
+	type CallStack = [polkadot_sdk::pallet_contracts::Frame<Self>; 5];
+	type WeightPrice = Self; //polkadot_sdk::pallet_transaction_payment::Module<Self>;
 	type WeightInfo = ();
 	type ChainExtension = ();
 	type Schedule = Schedule;
@@ -89,7 +91,7 @@ impl contracts::Config for Test {
 	type DepositPerByte = DepositPerByte;
 	type DepositPerItem = DepositPerItem;
 	type DefaultDepositLimit = DefaultDepositLimit;
-	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
+	type AddressGenerator = polkadot_sdk::pallet_contracts::DefaultAddressGenerator;
 	type MaxCodeLen = ConstU32<{ 123 * 1024 }>;
 	type MaxStorageKeyLen = ConstU32<128>;
 	type UnsafeUnstableInterface = ConstBool<false>;
@@ -107,7 +109,7 @@ impl contracts::Config for Test {
 	type Xcm = ();
 }
 
-use frame_system::offchain::SigningTypes;
+use polkadot_sdk::frame_system::offchain::SigningTypes;
 
 pub type Extrinsic = TestXt<RuntimeCall, ()>;
 
@@ -116,16 +118,16 @@ impl SigningTypes for Test {
 	type Signature = Signature;
 }
 
-impl<LocalCall> frame_system::offchain::CreateTransactionBase<LocalCall> for Test
+impl<LocalCall> polkadot_sdk::frame_system::offchain::CreateTransactionBase<LocalCall> for Test
 where
 	RuntimeCall: From<LocalCall>,
 {
 	type RuntimeCall = RuntimeCall;
 	type Extrinsic = Extrinsic;
 }
-impl pallet_insecure_randomness_collective_flip::Config for Test {}
+impl polkadot_sdk::pallet_insecure_randomness_collective_flip::Config for Test {}
 
-impl<LocalCall> frame_system::offchain::CreateTransaction<LocalCall> for Test
+impl<LocalCall> polkadot_sdk::frame_system::offchain::CreateTransaction<LocalCall> for Test
 where
 	RuntimeCall: From<LocalCall>,
 {
@@ -135,12 +137,12 @@ where
 		Extrinsic::new_transaction(call, ())
 	}
 }
-impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Test
+impl<LocalCall> polkadot_sdk::frame_system::offchain::CreateSignedTransaction<LocalCall> for Test
 where
 	RuntimeCall: From<LocalCall>,
 {
 	fn create_signed_transaction<
-		C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>,
+		C: polkadot_sdk::frame_system::offchain::AppCrypto<Self::Public, Self::Signature>,
 	>(
 		call: RuntimeCall,
 		_public: <Signature as Verify>::Signer,
@@ -156,17 +158,17 @@ parameter_types! {
 }
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
-impl frame_system::Config for Test {
+impl polkadot_sdk::frame_system::Config for Test {
 	type Nonce = u64;
 	type Block = Block;
 	type AccountId = AccountId;
 	type BlockHashCount = ConstU64<250>;
-	type AccountData = pallet_balances::AccountData<Balance>;
+	type AccountData = polkadot_sdk::pallet_balances::AccountData<Balance>;
 	type MaxConsumers = ConstU32<16>;
 	type Lookup = IdentityLookup<Self::AccountId>;
 }
 
-impl pallet_balances::Config for Test {
+impl polkadot_sdk::pallet_balances::Config for Test {
 	type MaxLocks = ConstU32<1024>;
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
@@ -183,7 +185,7 @@ impl pallet_balances::Config for Test {
 	type DoneSlashHandler = ();
 }
 
-impl pallet_timestamp::Config for Test {
+impl polkadot_sdk::pallet_timestamp::Config for Test {
 	type Moment = u64;
 	type OnTimestampSet = ();
 	type MinimumPeriod = ConstU64<5>;
@@ -209,7 +211,7 @@ impl crate::pallet::Config for Test {
 }
 
 pub(crate) type DdcStakingCall = crate::Call<Test>;
-pub(crate) type TestRuntimeCall = <Test as frame_system::Config>::RuntimeCall;
+pub(crate) type TestRuntimeCall = <Test as polkadot_sdk::frame_system::Config>::RuntimeCall;
 pub struct TestStakingVisitor;
 pub struct TestStaker;
 
@@ -257,9 +259,11 @@ impl ExtBuilder {
 	pub fn build(self) -> TestExternalities {
 		sp_tracing::try_init_simple();
 
-		let mut t = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
+		let mut t = polkadot_sdk::frame_system::GenesisConfig::<Test>::default()
+			.build_storage()
+			.unwrap();
 
-		let _ = pallet_balances::GenesisConfig::<Test> {
+		let _ = polkadot_sdk::pallet_balances::GenesisConfig::<Test> {
 			balances: vec![
 				(AccountId::from([1; 32]), 100),
 				(AccountId::from([2; 32]), 100),
