@@ -45,7 +45,7 @@ jobs:
         run: hcloud ssh-key create --name weights-key --public-key "$PUBLIC_SSH"
 
       - name: Create Hetzner Server
-        run: hcloud server create --name weights-${{ github.run_id }} --type=cpx31 --image=ubuntu-22.04 --ssh-key=weights-key --location=fsn1
+        run: hcloud server create --name weights-${{ github.run_id }} --type=cpx32 --image=ubuntu-24.04 --ssh-key=weights-key --location=fsn1
 
       - name: Fetch server IP
         run: hcloud server describe weights-${{ github.run_id }} -o json > hcloud.output
