@@ -2,21 +2,23 @@
 
 #![allow(dead_code)]
 
+use polkadot_sdk::*;
+
 use ddc_primitives::{
 	traits::staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 	ClusterId, NodePubKey,
 };
-use frame_support::{
+use polkadot_sdk::frame_support::{
 	construct_runtime, derive_impl, parameter_types,
 	traits::{ConstBool, ConstU32, ConstU64, Nothing},
 };
-use frame_system::{
+use polkadot_sdk::frame_system::{
 	mocking::{MockBlock, MockUncheckedExtrinsic},
 	EnsureSigned,
 };
 use pallet_contracts as contracts;
-use sp_io::TestExternalities;
-use sp_runtime::{
+use polkadot_sdk::sp_io::TestExternalities;
+use polkadot_sdk::sp_runtime::{
 	testing::TestXt,
 	traits::{Convert, IdentifyAccount, IdentityLookup, Verify},
 	BuildStorage, DispatchResult, MultiSignature, Perbill, Perquintill,
@@ -38,7 +40,7 @@ construct_runtime!(
 	pub enum Test
 	{
 		Contracts: contracts::{Pallet, Call, Storage, Event<T>, HoldReason},
-		System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
+		System: polkadot_sdk::frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		DdcNodes: pallet_ddc_nodes::{Pallet, Call, Storage, Event<T>},
@@ -71,7 +73,7 @@ impl Convert<Weight, BalanceOf<Self>> for Test {
 }
 
 type BalanceOf<T> = <<T as crate::pallet::Config>::Currency as Currency<
-	<T as frame_system::Config>::AccountId,
+	<T as polkadot_sdk::frame_system::Config>::AccountId,
 >>::Balance;
 
 impl contracts::Config for Test {
@@ -107,7 +109,7 @@ impl contracts::Config for Test {
 	type Xcm = ();
 }
 
-use frame_system::offchain::SigningTypes;
+use polkadot_sdk::frame_system::offchain::SigningTypes;
 
 pub type Extrinsic = TestXt<RuntimeCall, ()>;
 
@@ -116,7 +118,7 @@ impl SigningTypes for Test {
 	type Signature = Signature;
 }
 
-impl<LocalCall> frame_system::offchain::CreateTransactionBase<LocalCall> for Test
+impl<LocalCall> polkadot_sdk::frame_system::offchain::CreateTransactionBase<LocalCall> for Test
 where
 	RuntimeCall: From<LocalCall>,
 {
@@ -125,7 +127,7 @@ where
 }
 impl pallet_insecure_randomness_collective_flip::Config for Test {}
 
-impl<LocalCall> frame_system::offchain::CreateTransaction<LocalCall> for Test
+impl<LocalCall> polkadot_sdk::frame_system::offchain::CreateTransaction<LocalCall> for Test
 where
 	RuntimeCall: From<LocalCall>,
 {
@@ -135,12 +137,12 @@ where
 		Extrinsic::new_transaction(call, ())
 	}
 }
-impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Test
+impl<LocalCall> polkadot_sdk::frame_system::offchain::CreateSignedTransaction<LocalCall> for Test
 where
 	RuntimeCall: From<LocalCall>,
 {
 	fn create_signed_transaction<
-		C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>,
+		C: polkadot_sdk::frame_system::offchain::AppCrypto<Self::Public, Self::Signature>,
 	>(
 		call: RuntimeCall,
 		_public: <Signature as Verify>::Signer,
@@ -156,7 +158,7 @@ parameter_types! {
 }
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
-impl frame_system::Config for Test {
+impl polkadot_sdk::frame_system::Config for Test {
 	type Nonce = u64;
 	type Block = Block;
 	type AccountId = AccountId;
@@ -209,7 +211,7 @@ impl crate::pallet::Config for Test {
 }
 
 pub(crate) type DdcStakingCall = crate::Call<Test>;
-pub(crate) type TestRuntimeCall = <Test as frame_system::Config>::RuntimeCall;
+pub(crate) type TestRuntimeCall = <Test as polkadot_sdk::frame_system::Config>::RuntimeCall;
 pub struct TestStakingVisitor;
 pub struct TestStaker;
 
@@ -257,7 +259,7 @@ impl ExtBuilder {
 	pub fn build(self) -> TestExternalities {
 		sp_tracing::try_init_simple();
 
-		let mut t = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
+		let mut t = polkadot_sdk::frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
 
 		let _ = pallet_balances::GenesisConfig::<Test> {
 			balances: vec![

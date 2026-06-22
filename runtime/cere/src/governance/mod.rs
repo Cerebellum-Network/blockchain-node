@@ -1,10 +1,10 @@
-use frame_support::{
+use polkadot_sdk::frame_support::{
 	pallet_prelude::EnsureOrigin,
 	parameter_types,
 	traits::{EitherOf, EnsureOriginWithArg, OriginTrait},
 };
-use frame_system::EnsureRootWithSuccess;
-use sp_std::marker::PhantomData;
+use polkadot_sdk::frame_system::EnsureRootWithSuccess;
+use polkadot_sdk::sp_std::marker::PhantomData;
 
 use super::*;
 
@@ -30,7 +30,7 @@ impl pallet_conviction_voting::Config for Runtime {
 	type VoteLockingPeriod = VoteLockingPeriod;
 	type MaxVotes = ConstU32<512>;
 	type MaxTurnout =
-		frame_support::traits::tokens::currency::ActiveIssuanceOf<Balances, Self::AccountId>;
+		polkadot_sdk::frame_support::traits::tokens::currency::ActiveIssuanceOf<Balances, Self::AccountId>;
 	type Polls = Referenda;
 	type BlockNumberProvider = System;
 	type VotingHooks = ();
@@ -83,10 +83,10 @@ impl pallet_referenda::Config for Runtime {
 }
 
 pub struct EnsureOfPermittedReferendaOrigin<T>(PhantomData<T>);
-impl<T: frame_system::Config> EnsureOriginWithArg<T::RuntimeOrigin, PalletsOriginOf<T>>
+impl<T: polkadot_sdk::frame_system::Config> EnsureOriginWithArg<T::RuntimeOrigin, PalletsOriginOf<T>>
 	for EnsureOfPermittedReferendaOrigin<T>
 where
-	<T as frame_system::Config>::RuntimeOrigin: OriginTrait<PalletsOrigin = OriginCaller>,
+	<T as polkadot_sdk::frame_system::Config>::RuntimeOrigin: OriginTrait<PalletsOrigin = OriginCaller>,
 {
 	type Success = T::AccountId;
 
@@ -94,7 +94,7 @@ where
 		o: T::RuntimeOrigin,
 		proposal_origin: &PalletsOriginOf<T>,
 	) -> Result<Self::Success, T::RuntimeOrigin> {
-		let origin = <frame_system::EnsureSigned<_> as EnsureOrigin<_>>::try_origin(o.clone())?;
+		let origin = <polkadot_sdk::frame_system::EnsureSigned<_> as EnsureOrigin<_>>::try_origin(o.clone())?;
 
 		let track_id =
 			match <TracksInfo as pallet_referenda::TracksInfo<Balance, BlockNumber>>::track_for(
@@ -122,7 +122,7 @@ where
 	fn try_successful_origin(
 		_proposal_origin: &PalletsOriginOf<T>,
 	) -> Result<T::RuntimeOrigin, ()> {
-		let origin = frame_benchmarking::account::<T::AccountId>("successful_origin", 0, 0);
-		Ok(frame_system::RawOrigin::Signed(origin).into())
+		let origin = polkadot_sdk::frame_benchmarking::account::<T::AccountId>("successful_origin", 0, 0);
+		Ok(polkadot_sdk::frame_system::RawOrigin::Signed(origin).into())
 	}
 }

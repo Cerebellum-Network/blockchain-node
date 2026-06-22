@@ -12,4 +12,4 @@ pub use cli::*;
 #[cfg(feature = "cli")]
 pub use command::*;
 #[cfg(feature = "cli")]
-pub use sc_cli::{Error, Result};
+pub use polkadot_sdk::sc_cli::{Error, Result};

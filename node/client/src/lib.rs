@@ -2,36 +2,36 @@ use std::sync::Arc;
 
 use ddc_primitives::Nonce;
 pub use ddc_primitives::{AccountId, Balance, Block, BlockNumber, Hash, Header, Signature};
-use sc_client_api::{
+use polkadot_sdk::sc_client_api::{
 	AuxStore, Backend as BackendT, BlockchainEvents, KeysIter, MerkleValue, PairsIter,
 	UsageProvider,
 };
-use sc_executor::WasmExecutor;
-use sp_api::{CallApiAt, ProvideRuntimeApi};
+use polkadot_sdk::sc_executor::WasmExecutor;
+use polkadot_sdk::sp_api::{CallApiAt, ProvideRuntimeApi};
 use sp_blockchain::{HeaderBackend, HeaderMetadata};
 use sp_consensus::BlockStatus;
-use sp_core::H256;
-use sp_runtime::{
+use polkadot_sdk::sp_core::H256;
+use polkadot_sdk::sp_runtime::{
 	generic::SignedBlock,
 	traits::{BlakeTwo256, Block as BlockT, NumberFor},
 	Justifications,
 };
 use sp_storage::{ChildInfo, StorageData, StorageKey};
 
-pub type FullBackend = sc_service::TFullBackend<Block>;
+pub type FullBackend = polkadot_sdk::sc_service::TFullBackend<Block>;
 
 #[cfg(not(feature = "runtime-benchmarks"))]
-pub type HostFunctions = (sp_io::SubstrateHostFunctions, ddc_dac_host::ddc_dac::HostFunctions);
+pub type HostFunctions = (polkadot_sdk::sp_io::SubstrateHostFunctions, ddc_dac_host::ddc_dac::HostFunctions);
 
 #[cfg(feature = "runtime-benchmarks")]
 pub type HostFunctions = (
-	sp_io::SubstrateHostFunctions,
-	frame_benchmarking::benchmarking::HostFunctions,
+	polkadot_sdk::sp_io::SubstrateHostFunctions,
+	polkadot_sdk::frame_benchmarking::benchmarking::HostFunctions,
 	ddc_dac_host::ddc_dac::HostFunctions,
 );
 
 pub type ChainExecutor = WasmExecutor<HostFunctions>;
-pub type FullClient<RuntimeApi> = sc_service::TFullClient<Block, RuntimeApi, ChainExecutor>;
+pub type FullClient<RuntimeApi> = polkadot_sdk::sc_service::TFullClient<Block, RuntimeApi, ChainExecutor>;
 
 #[cfg(not(any(feature = "cere", feature = "cere-dev",)))]
 compile_error!("at least one runtime feature must be enabled");
@@ -50,7 +50,7 @@ pub trait AbstractClient<Block, Backend>:
 where
 	Block: BlockT,
 	Backend: BackendT<Block>,
-	Backend::State: sc_client_api::backend::StateBackend<BlakeTwo256>,
+	Backend::State: polkadot_sdk::sc_client_api::backend::StateBackend<BlakeTwo256>,
 	Self::Api: RuntimeApiCollection,
 {
 }
@@ -59,7 +59,7 @@ impl<Block, Backend, Client> AbstractClient<Block, Backend> for Client
 where
 	Block: BlockT,
 	Backend: BackendT<Block>,
-	Backend::State: sc_client_api::backend::StateBackend<BlakeTwo256>,
+	Backend::State: polkadot_sdk::sc_client_api::backend::StateBackend<BlakeTwo256>,
 	Client: BlockchainEvents<Block>
 		+ ProvideRuntimeApi<Block>
 		+ HeaderBackend<Block>
@@ -107,8 +107,8 @@ pub trait ExecuteWithClient {
 	/// Execute whatever should be executed with the given client instance.
 	fn execute_with_client<Client, Api, Backend>(self, client: Arc<Client>) -> Self::Output
 	where
-		Backend: sc_client_api::Backend<Block>,
-		Backend::State: sc_client_api::backend::StateBackend<BlakeTwo256>,
+		Backend: polkadot_sdk::sc_client_api::Backend<Block>,
+		Backend::State: polkadot_sdk::sc_client_api::backend::StateBackend<BlakeTwo256>,
 		Api: crate::RuntimeApiCollection,
 		Client: AbstractClient<Block, Backend, Api = Api> + 'static;
 }
@@ -131,7 +131,7 @@ impl ClientHandle for Client {
 }
 
 impl UsageProvider<Block> for Client {
-	fn usage_info(&self) -> sc_client_api::ClientInfo<Block> {
+	fn usage_info(&self) -> polkadot_sdk::sc_client_api::ClientInfo<Block> {
 		with_client! {
 			self,
 			client,
@@ -142,7 +142,7 @@ impl UsageProvider<Block> for Client {
 	}
 }
 
-impl sc_client_api::BlockBackend<Block> for Client {
+impl polkadot_sdk::sc_client_api::BlockBackend<Block> for Client {
 	fn block_body(
 		&self,
 		hash: <Block as BlockT>::Hash,
@@ -242,7 +242,7 @@ impl sc_client_api::BlockBackend<Block> for Client {
 	}
 }
 
-impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
+impl polkadot_sdk::sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 	fn storage(
 		&self,
 		hash: <Block as BlockT>::Hash,
@@ -277,7 +277,7 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 		key_prefix: Option<&StorageKey>,
 		start_key: Option<&StorageKey>,
 	) -> sp_blockchain::Result<
-		PairsIter<<crate::FullBackend as sc_client_api::Backend<Block>>::State, Block>,
+		PairsIter<<crate::FullBackend as polkadot_sdk::sc_client_api::Backend<Block>>::State, Block>,
 	> {
 		with_client! {
 			self,
@@ -294,7 +294,7 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 		prefix: Option<&StorageKey>,
 		start_key: Option<&StorageKey>,
 	) -> sp_blockchain::Result<
-		KeysIter<<crate::FullBackend as sc_client_api::Backend<Block>>::State, Block>,
+		KeysIter<<crate::FullBackend as polkadot_sdk::sc_client_api::Backend<Block>>::State, Block>,
 	> {
 		with_client! {
 			self,
@@ -327,7 +327,7 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 		prefix: Option<&StorageKey>,
 		start_key: Option<&StorageKey>,
 	) -> sp_blockchain::Result<
-		KeysIter<<crate::FullBackend as sc_client_api::Backend<Block>>::State, Block>,
+		KeysIter<<crate::FullBackend as polkadot_sdk::sc_client_api::Backend<Block>>::State, Block>,
 	> {
 		with_client! {
 			self,
@@ -451,15 +451,15 @@ macro_rules! signed_payload {
   )
   ) => {
 		let $extra: runtime::SignedExtra = (
-			frame_system::CheckNonZeroSender::<runtime::Runtime>::new(),
-			frame_system::CheckSpecVersion::<runtime::Runtime>::new(),
-			frame_system::CheckTxVersion::<runtime::Runtime>::new(),
-			frame_system::CheckGenesis::<runtime::Runtime>::new(),
-			frame_system::CheckMortality::<runtime::Runtime>::from(
-				sp_runtime::generic::Era::mortal($period, $current_block),
+			polkadot_sdk::frame_system::CheckNonZeroSender::<runtime::Runtime>::new(),
+			polkadot_sdk::frame_system::CheckSpecVersion::<runtime::Runtime>::new(),
+			polkadot_sdk::frame_system::CheckTxVersion::<runtime::Runtime>::new(),
+			polkadot_sdk::frame_system::CheckGenesis::<runtime::Runtime>::new(),
+			polkadot_sdk::frame_system::CheckMortality::<runtime::Runtime>::from(
+				polkadot_sdk::sp_runtime::generic::Era::mortal($period, $current_block),
 			),
-			frame_system::CheckNonce::<runtime::Runtime>::from($nonce),
-			frame_system::CheckWeight::<runtime::Runtime>::new(),
+			polkadot_sdk::frame_system::CheckNonce::<runtime::Runtime>::from($nonce),
+			polkadot_sdk::frame_system::CheckWeight::<runtime::Runtime>::new(),
 			pallet_transaction_payment::ChargeTransactionPayment::<runtime::Runtime>::from($tip),
 		);
 
@@ -481,43 +481,43 @@ macro_rules! signed_payload {
 }
 
 pub trait RuntimeApiCollection:
-	sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
-	+ sp_api::ApiExt<Block>
-	+ sp_consensus_babe::BabeApi<Block>
-	+ sp_consensus_grandpa::GrandpaApi<Block>
-	+ sp_block_builder::BlockBuilder<Block>
+	polkadot_sdk::sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
+	+ polkadot_sdk::sp_api::ApiExt<Block>
+	+ polkadot_sdk::sp_consensus_babe::BabeApi<Block>
+	+ polkadot_sdk::sp_consensus_grandpa::GrandpaApi<Block>
+	+ polkadot_sdk::sp_block_builder::BlockBuilder<Block>
 	+ frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
 	+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
 	+ pallet_ismp_runtime_api::IsmpRuntimeApi<Block, H256>
-	+ sp_api::Metadata<Block>
-	+ sp_offchain::OffchainWorkerApi<Block>
-	+ sp_session::SessionKeys<Block>
-	+ sp_authority_discovery::AuthorityDiscoveryApi<Block>
+	+ polkadot_sdk::sp_api::Metadata<Block>
+	+ polkadot_sdk::sp_offchain::OffchainWorkerApi<Block>
+	+ polkadot_sdk::sp_session::SessionKeys<Block>
+	+ polkadot_sdk::sp_authority_discovery::AuthorityDiscoveryApi<Block>
 {
 }
 
 impl<Api> RuntimeApiCollection for Api where
-	Api: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
-		+ sp_api::ApiExt<Block>
-		+ sp_consensus_babe::BabeApi<Block>
-		+ sp_consensus_grandpa::GrandpaApi<Block>
-		+ sp_block_builder::BlockBuilder<Block>
+	Api: polkadot_sdk::sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
+		+ polkadot_sdk::sp_api::ApiExt<Block>
+		+ polkadot_sdk::sp_consensus_babe::BabeApi<Block>
+		+ polkadot_sdk::sp_consensus_grandpa::GrandpaApi<Block>
+		+ polkadot_sdk::sp_block_builder::BlockBuilder<Block>
 		+ frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
 		+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
 		+ pallet_ismp_runtime_api::IsmpRuntimeApi<Block, H256>
-		+ sp_api::Metadata<Block>
-		+ sp_offchain::OffchainWorkerApi<Block>
-		+ sp_session::SessionKeys<Block>
-		+ sp_authority_discovery::AuthorityDiscoveryApi<Block>
+		+ polkadot_sdk::sp_api::Metadata<Block>
+		+ polkadot_sdk::sp_offchain::OffchainWorkerApi<Block>
+		+ polkadot_sdk::sp_session::SessionKeys<Block>
+		+ polkadot_sdk::sp_authority_discovery::AuthorityDiscoveryApi<Block>
 {
 }
 
-pub fn benchmark_inherent_data() -> Result<sp_inherents::InherentData, sp_inherents::Error> {
-	use sp_inherents::InherentDataProvider;
+pub fn benchmark_inherent_data() -> Result<polkadot_sdk::sp_inherents::InherentData, polkadot_sdk::sp_inherents::Error> {
+	use polkadot_sdk::sp_inherents::InherentDataProvider;
 
-	let mut inherent_data = sp_inherents::InherentData::new();
+	let mut inherent_data = polkadot_sdk::sp_inherents::InherentData::new();
 	let d = std::time::Duration::from_millis(0);
-	let timestamp = sp_timestamp::InherentDataProvider::new(d.into());
+	let timestamp = polkadot_sdk::sp_timestamp::InherentDataProvider::new(d.into());
 
 	futures::executor::block_on(timestamp.provide_inherent_data(&mut inherent_data))?;
 

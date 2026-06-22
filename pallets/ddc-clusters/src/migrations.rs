@@ -1,15 +1,15 @@
 use ddc_primitives::InspectionDryRunParams;
-use frame_support::{storage_alias, traits::OnRuntimeUpgrade};
+use polkadot_sdk::frame_support::{storage_alias, traits::OnRuntimeUpgrade};
 use log::info;
 use serde::{Deserialize, Serialize};
-use sp_runtime::{Perquintill, Saturating};
+use polkadot_sdk::sp_runtime::{Perquintill, Saturating};
 
 use super::*;
 
 const LOG_TARGET: &str = "ddc-clusters";
 
 pub mod v0 {
-	use frame_support::pallet_prelude::*;
+	use polkadot_sdk::frame_support::pallet_prelude::*;
 
 	use super::*;
 
@@ -31,12 +31,12 @@ pub mod v0 {
 		crate::Pallet<T>,
 		Blake2_128Concat,
 		ClusterId,
-		Cluster<<T as frame_system::Config>::AccountId>,
+		Cluster<<T as polkadot_sdk::frame_system::Config>::AccountId>,
 	>;
 }
 
 pub mod v1 {
-	use frame_support::pallet_prelude::*;
+	use polkadot_sdk::frame_support::pallet_prelude::*;
 
 	use super::*;
 
@@ -61,7 +61,7 @@ pub mod v1 {
 		crate::Pallet<T>,
 		Blake2_128Concat,
 		ClusterId,
-		Cluster<<T as frame_system::Config>::AccountId>,
+		Cluster<<T as polkadot_sdk::frame_system::Config>::AccountId>,
 	>;
 
 	pub fn migrate_to_v1<T: Config>() -> Weight {
@@ -118,7 +118,7 @@ pub mod v1 {
 			T::DbWeight::get().reads(1)
 		}
 	}
-	pub struct MigrateToV1<T>(sp_std::marker::PhantomData<T>);
+	pub struct MigrateToV1<T>(polkadot_sdk::sp_std::marker::PhantomData<T>);
 	impl<T: Config> OnRuntimeUpgrade for MigrateToV1<T> {
 		fn on_runtime_upgrade() -> Weight {
 			migrate_to_v1::<T>()
@@ -145,7 +145,7 @@ pub mod v1 {
 			let current_version = Pallet::<T>::in_code_storage_version();
 			let on_chain_version = Pallet::<T>::on_chain_storage_version();
 
-			frame_support::ensure!(current_version == 1, "must_upgrade");
+			polkadot_sdk::frame_support::ensure!(current_version == 1, "must_upgrade");
 			ensure!(
 				current_version == on_chain_version,
 				"after migration, the current_version and on_chain_version should be the same"
@@ -160,11 +160,11 @@ pub mod v2 {
 		ClusterId, ClusterNodeKind, ClusterNodeState, ClusterNodeStatus, ClusterNodesCount,
 		ClusterNodesStats, ClusterStatus,
 	};
-	use frame_support::{pallet_prelude::*, traits::OnRuntimeUpgrade, weights::Weight};
-	use sp_runtime::Saturating;
-	use sp_std::collections::btree_map::BTreeMap;
+	use polkadot_sdk::frame_support::{pallet_prelude::*, traits::OnRuntimeUpgrade, weights::Weight};
+	use polkadot_sdk::sp_runtime::Saturating;
+	use polkadot_sdk::sp_std::collections::btree_map::BTreeMap;
 	#[cfg(feature = "try-runtime")]
-	use sp_std::vec::Vec;
+	use polkadot_sdk::sp_std::vec::Vec;
 
 	use super::*;
 	use crate::{ClustersNodes, ClustersNodesStats, Config, Pallet, LOG_TARGET};
@@ -191,7 +191,7 @@ pub mod v2 {
 		crate::Pallet<T>,
 		Blake2_128Concat,
 		ClusterId,
-		Cluster<<T as frame_system::Config>::AccountId>,
+		Cluster<<T as polkadot_sdk::frame_system::Config>::AccountId>,
 	>;
 
 	pub type OldNodeStatus = bool;
@@ -257,7 +257,7 @@ pub mod v2 {
 					Some(ClusterNodeState {
 						kind: ClusterNodeKind::External,
 						status: ClusterNodeStatus::ValidationSucceeded,
-						added_at: <frame_system::Pallet<T>>::block_number(),
+						added_at: <polkadot_sdk::frame_system::Pallet<T>>::block_number(),
 					})
 				},
 			);
@@ -304,7 +304,7 @@ pub mod v2 {
 		}
 	}
 
-	pub struct MigrateToV2<T>(sp_std::marker::PhantomData<T>);
+	pub struct MigrateToV2<T>(polkadot_sdk::sp_std::marker::PhantomData<T>);
 	impl<T: Config> OnRuntimeUpgrade for MigrateToV2<T> {
 		fn on_runtime_upgrade() -> Weight {
 			migrate_to_v2::<T>()
@@ -312,7 +312,7 @@ pub mod v2 {
 
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
-			frame_support::ensure!(
+			polkadot_sdk::frame_support::ensure!(
 				Pallet::<T>::on_chain_storage_version() == 1,
 				"must upgrade linearly"
 			);
@@ -358,7 +358,7 @@ pub mod v2 {
 			let current_version = Pallet::<T>::in_code_storage_version();
 			let onchain_version = Pallet::<T>::on_chain_storage_version();
 
-			frame_support::ensure!(current_version == 2, "must_upgrade");
+			polkadot_sdk::frame_support::ensure!(current_version == 2, "must_upgrade");
 			assert_eq!(
 				current_version, onchain_version,
 				"after migration, the current_version and onchain_version should be the same"
@@ -376,14 +376,14 @@ pub mod v2 {
 }
 
 pub mod v3 {
-	use frame_support::{
+	use polkadot_sdk::frame_support::{
 		pallet_prelude::*,
 		traits::{Get, OnRuntimeUpgrade},
 		weights::Weight,
 	};
-	use sp_std::marker::PhantomData;
+	use polkadot_sdk::sp_std::marker::PhantomData;
 	#[cfg(feature = "try-runtime")]
-	use sp_std::vec::Vec;
+	use polkadot_sdk::sp_std::vec::Vec;
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
 	pub struct Cluster<AccountId> {
@@ -408,7 +408,7 @@ pub mod v3 {
 		crate::Pallet<T>,
 		Blake2_128Concat,
 		ClusterId,
-		Cluster<<T as frame_system::Config>::AccountId>,
+		Cluster<<T as polkadot_sdk::frame_system::Config>::AccountId>,
 	>;
 
 	#[derive(
@@ -511,14 +511,14 @@ pub mod v3 {
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::DispatchError> {
+		fn pre_upgrade() -> Result<Vec<u8>, polkadot_sdk::sp_runtime::DispatchError> {
 			let prev_count = v2::Clusters::<T>::iter().count();
 
 			Ok((prev_count as u64).encode())
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), sp_runtime::DispatchError> {
+		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), polkadot_sdk::sp_runtime::DispatchError> {
 			let prev_count: u64 = Decode::decode(&mut &prev_state[..])
 				.expect("pre_upgrade provides a valid state; qed");
 
@@ -544,7 +544,7 @@ pub mod v3 {
 pub mod v4 {
 	use super::*;
 	use crate::BalanceOf;
-	use frame_support::{pallet_prelude::*, traits::Get, weights::Weight};
+	use polkadot_sdk::frame_support::{pallet_prelude::*, traits::Get, weights::Weight};
 
 	#[derive(
 		Clone,
@@ -581,7 +581,7 @@ pub mod v4 {
 		ClusterProtocolParams<
 			BalanceOf<T>,
 			BlockNumberFor<T>,
-			<T as frame_system::Config>::AccountId,
+			<T as polkadot_sdk::frame_system::Config>::AccountId,
 		>,
 	>;
 
@@ -653,7 +653,7 @@ pub mod v4 {
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::DispatchError> {
+		fn pre_upgrade() -> Result<Vec<u8>, polkadot_sdk::sp_runtime::DispatchError> {
 			let on_chain_version = Pallet::<T>::on_chain_storage_version();
 			let current_version = Pallet::<T>::in_code_storage_version();
 			let will_run = on_chain_version == 3 && current_version >= 4;
@@ -663,7 +663,7 @@ pub mod v4 {
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), sp_runtime::DispatchError> {
+		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), polkadot_sdk::sp_runtime::DispatchError> {
 			let (will_run, prev_count): (bool, u64) = Decode::decode(&mut &prev_state[..])
 				.expect("pre_upgrade provides a valid state; qed");
 
@@ -683,7 +683,7 @@ pub mod v4 {
 }
 
 pub mod v5 {
-	use frame_support::pallet_prelude::*;
+	use polkadot_sdk::frame_support::pallet_prelude::*;
 
 	use super::*;
 
@@ -711,7 +711,7 @@ pub mod v5 {
 		crate::Pallet<T>,
 		Blake2_128Concat,
 		ClusterId,
-		Cluster<<T as frame_system::Config>::AccountId>,
+		Cluster<<T as polkadot_sdk::frame_system::Config>::AccountId>,
 	>;
 
 	pub fn migrate_to_v5<T: Config>() -> Weight {
@@ -772,7 +772,7 @@ pub mod v5 {
 			T::DbWeight::get().reads(1)
 		}
 	}
-	pub struct MigrateToV5<T>(sp_std::marker::PhantomData<T>);
+	pub struct MigrateToV5<T>(polkadot_sdk::sp_std::marker::PhantomData<T>);
 	impl<T: Config> OnRuntimeUpgrade for MigrateToV5<T> {
 		fn on_runtime_upgrade() -> Weight {
 			migrate_to_v5::<T>()
@@ -810,10 +810,10 @@ pub mod v5 {
 pub mod v6 {
 	use super::*;
 	use crate::BalanceOf;
-	use frame_support::{pallet_prelude::*, traits::Get, weights::Weight};
-	use sp_std::marker::PhantomData;
+	use polkadot_sdk::frame_support::{pallet_prelude::*, traits::Get, weights::Weight};
+	use polkadot_sdk::sp_std::marker::PhantomData;
 	#[cfg(feature = "try-runtime")]
-	use sp_std::vec::Vec;
+	use polkadot_sdk::sp_std::vec::Vec;
 
 	#[derive(
 		Clone,
@@ -853,7 +853,7 @@ pub mod v6 {
 		ClusterProtocolParams<
 			BalanceOf<T>,
 			BlockNumberFor<T>,
-			<T as frame_system::Config>::AccountId,
+			<T as polkadot_sdk::frame_system::Config>::AccountId,
 		>,
 	>;
 
@@ -881,7 +881,7 @@ pub mod v6 {
 				v4::ClusterProtocolParams<
 					BalanceOf<T>,
 					BlockNumberFor<T>,
-					<T as frame_system::Config>::AccountId,
+					<T as polkadot_sdk::frame_system::Config>::AccountId,
 				>,
 				_,
 			>(
@@ -889,7 +889,7 @@ pub mod v6 {
 				 old_cluster_params: v4::ClusterProtocolParams<
 					BalanceOf<T>,
 					BlockNumberFor<T>,
-					<T as frame_system::Config>::AccountId,
+					<T as polkadot_sdk::frame_system::Config>::AccountId,
 				>| {
 					info!(target: LOG_TARGET, "     Migrating protocol params for cluster {:?} ...", cluster_id);
 					translated.saturating_inc();
@@ -937,7 +937,7 @@ pub mod v6 {
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::DispatchError> {
+		fn pre_upgrade() -> Result<Vec<u8>, polkadot_sdk::sp_runtime::DispatchError> {
 			let on_chain_version = Pallet::<T>::on_chain_storage_version();
 			let current_version = Pallet::<T>::in_code_storage_version();
 			let will_run = on_chain_version == 5 && current_version >= 6;
@@ -947,7 +947,7 @@ pub mod v6 {
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), sp_runtime::DispatchError> {
+		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), polkadot_sdk::sp_runtime::DispatchError> {
 			let (will_run, prev_count): (bool, u64) = Decode::decode(&mut &prev_state[..])
 				.expect("pre_upgrade provides a valid state; qed");
 

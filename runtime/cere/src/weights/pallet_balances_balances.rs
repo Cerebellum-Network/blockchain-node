@@ -44,12 +44,12 @@
 #![allow(unused_imports)]
 #![allow(missing_docs)]
 
-use frame_support::{traits::Get, weights::Weight};
+use polkadot_sdk::frame_support::{traits::Get, weights::Weight};
 use core::marker::PhantomData;
 
 /// Weight functions for `pallet_balances`.
 pub struct WeightInfo<T>(PhantomData<T>);
-impl<T: frame_system::Config> pallet_balances::WeightInfo for WeightInfo<T> {
+impl<T: polkadot_sdk::frame_system::Config> pallet_balances::WeightInfo for WeightInfo<T> {
     /// Storage: `System::Account` (r:1 w:1)
     /// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
     fn transfer_allow_death() -> Weight {

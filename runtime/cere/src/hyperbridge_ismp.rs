@@ -1,9 +1,9 @@
-use frame_support::{parameter_types, weights::WeightToFee};
-use frame_system::EnsureRoot;
+use polkadot_sdk::frame_support::{parameter_types, weights::WeightToFee};
+use polkadot_sdk::frame_system::EnsureRoot;
 use ismp::{error::Error, host::StateMachine, module::IsmpModule, router::IsmpRouter};
 use ismp_grandpa::consensus::GrandpaConsensusClient;
-use pallet_token_gateway::types::EvmToSubstrate;
-use sp_core::H160;
+use pallet_hyper_fungible_token::types::EvmToSubstrate;
+use polkadot_sdk::sp_core::H160;
 
 use super::*;
 
@@ -31,7 +31,7 @@ impl pallet_ismp::Config for Runtime {
 	// The pallet_timestamp pallet
 	type TimestampProvider = Timestamp;
 	// The currency implementation that is offered to relayers
-	// this could also be `frame_support::traits::tokens::fungible::ItemOf`
+	// this could also be `polkadot_sdk::frame_support::traits::tokens::fungible::ItemOf`
 	type Currency = Balances;
 	// The balance type for the currency implementation
 	type Balance = Balance;
@@ -199,7 +199,7 @@ impl fungibles::metadata::Mutate<AccountId> for MockAssets {
 		_name: Vec<u8>,
 		_symbol: Vec<u8>,
 		_decimals: u8,
-	) -> frame_support::dispatch::DispatchResult {
+	) -> polkadot_sdk::frame_support::dispatch::DispatchResult {
 		Ok(())
 	}
 }
@@ -231,7 +231,7 @@ impl EvmToSubstrate<Runtime> for EvmToSubstrateFactory {
 		account.into()
 	}
 }
-impl pallet_token_gateway::Config for Runtime {
+impl pallet_hyper_fungible_token::Config for Runtime {
 	// Configured as Pallet Ismp
 	type Dispatcher = pallet_hyperbridge::Pallet<Runtime>;
 	// Configured as Pallet Assets
@@ -245,6 +245,6 @@ impl pallet_token_gateway::Config for Runtime {
 	// The precision of the native asset
 	type Decimals = Decimals;
 	type EvmToSubstrate = EvmToSubstrateFactory;
-	type WeightInfo = weights::pallet_token_gateway::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_hyper_fungible_token::SubstrateWeight<Runtime>;
 	type CreateOrigin = EnsureRoot<AccountId>;
 }

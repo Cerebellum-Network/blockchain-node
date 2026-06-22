@@ -2,22 +2,24 @@
 
 #![allow(dead_code)]
 
+use polkadot_sdk::*;
+
 use ddc_primitives::{
 	ClusterNodeKind, ClusterNodeStatus, ClusterParams, ClusterProtocolParams, ClusterStatus,
 	NodeParams, NodePubKey, StorageNodeParams, StorageNodePubKey,
 };
-use frame_support::{
+use polkadot_sdk::frame_support::{
 	construct_runtime, derive_impl,
 	traits::{ConstBool, ConstU32, ConstU64, Nothing},
 };
-use frame_system::{
+use polkadot_sdk::frame_system::{
 	mocking::{MockBlock, MockUncheckedExtrinsic},
 	EnsureSigned,
 };
 use pallet_ddc_clusters::cluster::Cluster;
 use pallet_ddc_nodes::StorageNode;
-use sp_io::TestExternalities;
-use sp_runtime::{
+use polkadot_sdk::sp_io::TestExternalities;
+use polkadot_sdk::sp_runtime::{
 	traits::{Convert, IdentifyAccount, IdentityLookup, Verify},
 	BuildStorage, MultiSignature, Perbill, Perquintill,
 };
@@ -38,7 +40,7 @@ type Block = MockBlock<Test>;
 construct_runtime!(
 	pub enum Test
 	{
-		System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
+		System: polkadot_sdk::frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Contracts: pallet_contracts::{Pallet, Call, Storage, Event<T>, HoldReason},
@@ -62,11 +64,11 @@ impl Convert<Weight, BalanceOf<Self>> for Test {
 }
 
 type BalanceOf<T> = <<T as crate::pallet::Config>::Currency as Currency<
-	<T as frame_system::Config>::AccountId,
+	<T as polkadot_sdk::frame_system::Config>::AccountId,
 >>::Balance;
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
-impl frame_system::Config for Test {
+impl polkadot_sdk::frame_system::Config for Test {
 	type Block = Block;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
@@ -182,7 +184,7 @@ impl crate::pallet::Config for Test {
 }
 
 pub(crate) type DdcStakingCall = crate::Call<Test>;
-pub(crate) type TestRuntimeCall = <Test as frame_system::Config>::RuntimeCall;
+pub(crate) type TestRuntimeCall = <Test as polkadot_sdk::frame_system::Config>::RuntimeCall;
 
 // (stash, controller, cluster)
 #[allow(clippy::type_complexity)]
@@ -400,7 +402,7 @@ impl ExtBuilder {
 		nodes_bondes: Vec<BuiltNodeBond>,
 	) -> TestExternalities {
 		sp_tracing::try_init_simple();
-		let mut storage = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
+		let mut storage = polkadot_sdk::frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
 
 		let mut balances: Vec<(AccountId, Balance)> = vec![
 			(AccountId::from(USER_KEY_1), ENDOWMENT),

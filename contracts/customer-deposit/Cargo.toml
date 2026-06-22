@@ -7,9 +7,10 @@ publish = false
 
 [dependencies]
 base64ct = { version = "=1.6.0" } # the version of `base64ct` should be pinned for ink-related requirements
-ddc-primitives = { git = "https://github.com/Cerebellum-Network/ddc-primitives.git", branch = "staging", default-features = false }
+# Pinned to ddc-primitives staging migration branch; flip to staging once that PR merges.
+ddc-primitives = { git = "https://github.com/Cerebellum-Network/ddc-primitives.git", branch = "chore/staging-2512.3.2-umbrella", default-features = false }
 ink.workspace = true
-sp-runtime.workspace = true
+polkadot-sdk = { workspace = true, features = ["sp-runtime"] }
 
 [lib]
 path = "lib.rs"
@@ -19,6 +20,7 @@ default = ["std"]
 std = [
   "ink/std",
   "ddc-primitives/std",
+  "polkadot-sdk/std",
 ]
 
 ink-as-dependency = []

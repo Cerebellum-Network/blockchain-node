@@ -2,10 +2,10 @@ use codec::{Decode, Encode};
 use ddc_primitives::{
 	ClusterId, NodeParams, NodePubKey, NodeType, StorageNodeMode, StorageNodePubKey,
 };
-use frame_support::{parameter_types, BoundedVec};
+use polkadot_sdk::frame_support::{parameter_types, BoundedVec};
 use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
-use sp_runtime::RuntimeDebug;
+use polkadot_sdk::sp_runtime::RuntimeDebug;
 
 use crate::node::{NodeError, NodeProps, NodeTrait};
 
@@ -16,7 +16,7 @@ parameter_types! {
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
 #[scale_info(skip_type_params(T))]
-pub struct StorageNode<T: frame_system::Config> {
+pub struct StorageNode<T: polkadot_sdk::frame_system::Config> {
 	pub pub_key: StorageNodePubKey,
 	pub provider_id: T::AccountId,
 	pub cluster_id: Option<ClusterId>,
@@ -34,7 +34,7 @@ pub struct StorageNodeProps {
 	pub mode: StorageNodeMode,
 }
 
-impl<T: frame_system::Config> StorageNode<T> {
+impl<T: polkadot_sdk::frame_system::Config> StorageNode<T> {
 	pub fn new(
 		node_pub_key: NodePubKey,
 		provider_id: T::AccountId,
@@ -67,7 +67,7 @@ impl<T: frame_system::Config> StorageNode<T> {
 	}
 }
 
-impl<T: frame_system::Config> NodeTrait<T> for StorageNode<T> {
+impl<T: polkadot_sdk::frame_system::Config> NodeTrait<T> for StorageNode<T> {
 	fn get_pub_key(&self) -> NodePubKey {
 		NodePubKey::StoragePubKey(self.pub_key.clone())
 	}

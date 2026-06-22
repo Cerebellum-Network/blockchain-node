@@ -26,8 +26,8 @@ pub mod weights;
 mod mock;
 
 use ddc_primitives::traits::FeeHandler;
-use frame_support::{
-	sp_runtime::SaturatedConversion,
+use polkadot_sdk::frame_support::{
+	polkadot_sdk::sp_runtime::SaturatedConversion,
 	traits::{
 		fungible::{Inspect, Mutate},
 		tokens::{Fortitude, Precision, Preservation},
@@ -39,11 +39,11 @@ use weights::WeightInfo;
 #[allow(deprecated)]
 #[allow(clippy::let_unit_value)]
 #[allow(clippy::manual_inspect)]
-#[frame_support::pallet]
+#[polkadot_sdk::frame_support::pallet]
 pub mod pallet {
-	use frame_support::{pallet_prelude::*, PalletId};
-	use frame_system::pallet_prelude::*;
-	use sp_runtime::traits::AccountIdConversion;
+	use polkadot_sdk::frame_support::{pallet_prelude::*, PalletId};
+	use polkadot_sdk::frame_system::pallet_prelude::*;
+	use polkadot_sdk::sp_runtime::traits::AccountIdConversion;
 
 	use super::*;
 
@@ -51,10 +51,10 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: polkadot_sdk::frame_system::Config {
 		/// The overarching runtime event type.
 		#[allow(deprecated)]
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as polkadot_sdk::frame_system::Config>::RuntimeEvent>;
 		/// Native Currency Support.
 		type Currency: Mutate<Self::AccountId> + Inspect<Self::AccountId>;
 		/// Governance origin for privileged calls.

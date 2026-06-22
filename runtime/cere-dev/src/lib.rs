@@ -22,21 +22,28 @@
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "512"]
 
+// Bring polkadot-sdk sub-crates (frame_support, frame_system, sp_*, pallet_*,
+// sc_*) into scope so macro expansions (`construct_runtime!`,
+// `#[frame_support::pallet]`, `#[derive_impl(...)]`, `generate_solution_type!`,
+// runtime-API impls) can resolve their unqualified references through the
+// umbrella's re-exports.
+use polkadot_sdk::*;
+
 use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 use ddc_primitives::{
 	traits::pallet::{GetDdcOrigin, PalletVisitor},
 	AccountIndex, Balance, BlockNumber, Hash, Moment, Nonce,
 };
 pub use ddc_primitives::{AccountId, Signature};
-use frame_election_provider_support::{
+use polkadot_sdk::frame_election_provider_support::{
 	bounds::ElectionBoundsBuilder, onchain, BalancingConfig, SequentialPhragmen, VoteWeight,
 };
-use frame_support::traits::fungible::Balanced;
+use polkadot_sdk::frame_support::traits::fungible::Balanced;
 //use pallet_treasury::{PositiveImbalanceOf, NegativeImbalanceOf};
 use pallet_balances::WeightInfo;
 extern crate alloc;
-use frame_support::traits::tokens::Precision;
-use frame_support::{
+use polkadot_sdk::frame_support::traits::tokens::Precision;
+use polkadot_sdk::frame_support::{
 	derive_impl,
 	dispatch::DispatchClass,
 	genesis_builder_helper::{build_state, get_preset},
@@ -63,8 +70,8 @@ use frame_support::{
 	PalletId,
 };
 #[cfg(any(feature = "std", test))]
-pub use frame_system::Call as SystemCall;
-use frame_system::{
+pub use polkadot_sdk::frame_system::Call as SystemCall;
+use polkadot_sdk::frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot, EnsureSigned,
 };
@@ -92,17 +99,17 @@ pub use pallet_staking::StakerStatus;
 pub use pallet_sudo::Call as SudoCall;
 use pallet_transaction_payment::{FeeDetails, FungibleAdapter, RuntimeDispatchInfo};
 pub use pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment};
-use sp_api::impl_runtime_apis;
-use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
-use sp_core::{
+use polkadot_sdk::sp_api::impl_runtime_apis;
+use polkadot_sdk::sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
+use polkadot_sdk::sp_core::{
 	crypto::{AccountId32, KeyTypeId},
 	OpaqueMetadata,
 };
-use sp_inherents::{CheckInherentsResult, InherentData};
-use sp_io::hashing::blake2_128;
+use polkadot_sdk::sp_inherents::{CheckInherentsResult, InherentData};
+use polkadot_sdk::sp_io::hashing::blake2_128;
 #[cfg(any(feature = "std", test))]
-pub use sp_runtime::BuildStorage;
-use sp_runtime::{
+pub use polkadot_sdk::sp_runtime::BuildStorage;
+use polkadot_sdk::sp_runtime::{
 	curve::PiecewiseLinear,
 	generic, impl_opaque_keys,
 	traits::{
@@ -114,10 +121,10 @@ use sp_runtime::{
 	ApplyExtrinsicResult, DispatchError, DispatchResult, FixedPointNumber, FixedU128, Perbill,
 	Percent, Permill, Perquintill, RuntimeDebug,
 };
-use sp_std::{marker::PhantomData, prelude::*};
+use polkadot_sdk::sp_std::{marker::PhantomData, prelude::*};
 #[cfg(any(feature = "std", test))]
-use sp_version::NativeVersion;
-use sp_version::RuntimeVersion;
+use polkadot_sdk::sp_version::NativeVersion;
+use polkadot_sdk::sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 
 /// Implementations of some helper traits passed into runtime modules as associated types.
@@ -127,7 +134,7 @@ use cere_runtime_common::{
 	constants::{currency::*, time::*},
 	CurrencyToVote,
 };
-use sp_runtime::generic::Era;
+use polkadot_sdk::sp_runtime::generic::Era;
 
 // Governance configurations.
 pub mod governance;
@@ -144,7 +151,7 @@ use ismp::{
 	router::{Request, Response},
 };
 use pallet_treasury::TreasuryAccountId;
-use sp_core::H256;
+use polkadot_sdk::sp_core::H256;
 mod hyperbridge_ismp;
 mod weights;
 
@@ -163,7 +170,7 @@ pub fn wasm_binary_unwrap() -> &'static [u8] {
 }
 
 /// Runtime version.
-#[sp_version::runtime_version]
+#[polkadot_sdk::sp_version::runtime_version]
 pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: alloc::borrow::Cow::Borrowed("node"),
 	impl_name: alloc::borrow::Cow::Borrowed("substrate-node"),
@@ -180,10 +187,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 };
 
 /// The BABE epoch configuration at genesis.
-pub const BABE_GENESIS_EPOCH_CONFIG: sp_consensus_babe::BabeEpochConfiguration =
-	sp_consensus_babe::BabeEpochConfiguration {
+pub const BABE_GENESIS_EPOCH_CONFIG: polkadot_sdk::sp_consensus_babe::BabeEpochConfiguration =
+	polkadot_sdk::sp_consensus_babe::BabeEpochConfiguration {
 		c: PRIMARY_PROBABILITY,
-		allowed_slots: sp_consensus_babe::AllowedSlots::PrimaryAndSecondaryPlainSlots,
+		allowed_slots: polkadot_sdk::sp_consensus_babe::AllowedSlots::PrimaryAndSecondaryPlainSlots,
 	};
 
 /// Native version.
@@ -199,11 +206,11 @@ pub struct ToAuthor<R>(core::marker::PhantomData<R>);
 impl<R> OnUnbalanced<Credit<R::AccountId, pallet_balances::Pallet<R>>> for ToAuthor<R>
 where
 	R: pallet_balances::Config + pallet_authorship::Config,
-	<R as frame_system::Config>::AccountId: From<AccountId>,
-	<R as frame_system::Config>::AccountId: Into<AccountId>,
+	<R as polkadot_sdk::frame_system::Config>::AccountId: From<AccountId>,
+	<R as polkadot_sdk::frame_system::Config>::AccountId: Into<AccountId>,
 {
 	fn on_nonzero_unbalanced(
-		amount: Credit<<R as frame_system::Config>::AccountId, pallet_balances::Pallet<R>>,
+		amount: Credit<<R as polkadot_sdk::frame_system::Config>::AccountId, pallet_balances::Pallet<R>>,
 	) {
 		if let Some(author) = <pallet_authorship::Pallet<R>>::author() {
 			let _ = <pallet_balances::Pallet<R>>::resolve(&author, amount);
@@ -215,8 +222,8 @@ pub struct DealWithFees<R>(core::marker::PhantomData<R>);
 impl<R> OnUnbalanced<Credit<R::AccountId, pallet_balances::Pallet<R>>> for DealWithFees<R>
 where
 	R: pallet_balances::Config + pallet_authorship::Config + pallet_treasury::Config,
-	<R as frame_system::Config>::AccountId: From<AccountId>,
-	<R as frame_system::Config>::AccountId: Into<AccountId>,
+	<R as polkadot_sdk::frame_system::Config>::AccountId: From<AccountId>,
+	<R as polkadot_sdk::frame_system::Config>::AccountId: Into<AccountId>,
 {
 	fn on_unbalanceds(
 		mut fees_then_tips: impl Iterator<Item = Credit<R::AccountId, pallet_balances::Pallet<R>>>,
@@ -280,7 +287,7 @@ parameter_types! {
 const_assert!(NORMAL_DISPATCH_RATIO.deconstruct() >= AVERAGE_ON_INITIALIZE_RATIO.deconstruct());
 
 #[derive_impl(frame_system::config_preludes::SolochainDefaultConfig)]
-impl frame_system::Config for Runtime {
+impl polkadot_sdk::frame_system::Config for Runtime {
 	type BlockWeights = RuntimeBlockWeights;
 	type BlockLength = RuntimeBlockLength;
 	type DbWeight = RocksDbWeight;
@@ -323,7 +330,7 @@ impl pallet_multisig::Config for Runtime {
 	type DepositFactor = DepositFactor;
 	type MaxSignatories = MaxSignatories;
 	type WeightInfo = pallet_multisig::weights::SubstrateWeight<Runtime>;
-	type BlockNumberProvider = frame_system::Pallet<Runtime>;
+	type BlockNumberProvider = polkadot_sdk::frame_system::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -407,7 +414,7 @@ impl pallet_proxy::Config for Runtime {
 	type CallHasher = BlakeTwo256;
 	type AnnouncementDepositBase = AnnouncementDepositBase;
 	type AnnouncementDepositFactor = AnnouncementDepositFactor;
-	type BlockNumberProvider = frame_system::Pallet<Runtime>;
+	type BlockNumberProvider = polkadot_sdk::frame_system::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -446,7 +453,7 @@ impl pallet_scheduler::Config for Runtime {
 	type WeightInfo = pallet_scheduler::weights::SubstrateWeight<Runtime>;
 	type OriginPrivilegeCmp = EqualPrivilegeOnly;
 	type Preimages = Preimage;
-	type BlockNumberProvider = frame_system::Pallet<Runtime>;
+	type BlockNumberProvider = polkadot_sdk::frame_system::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -464,7 +471,7 @@ impl pallet_babe::Config for Runtime {
 	type EpochChangeTrigger = pallet_babe::ExternalTrigger;
 	type DisabledValidators = Session;
 
-	type KeyOwnerProof = sp_session::MembershipProof;
+	type KeyOwnerProof = polkadot_sdk::sp_session::MembershipProof;
 
 	type EquivocationReportSystem =
 		pallet_babe::EquivocationReportSystem<Self, Offences, Historical, ReportLongevity>;
@@ -502,7 +509,7 @@ impl pallet_balances::Config for Runtime {
 	type DustRemoval = DustToTreasury;
 	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = ExistentialDeposit;
-	type AccountStore = frame_system::Pallet<Runtime>;
+	type AccountStore = polkadot_sdk::frame_system::Pallet<Runtime>;
 	type WeightInfo = pallet_balances::weights::SubstrateWeight<Runtime>;
 	type FreezeIdentifier = RuntimeFreezeReason;
 	type RuntimeFreezeReason = RuntimeFreezeReason;
@@ -575,7 +582,7 @@ impl_opaque_keys! {
 
 impl pallet_session::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type ValidatorId = <Self as frame_system::Config>::AccountId;
+	type ValidatorId = <Self as polkadot_sdk::frame_system::Config>::AccountId;
 	type ValidatorIdOf = ConvertInto;
 	type ShouldEndSession = Babe;
 	type NextSessionRotation = Babe;
@@ -607,14 +614,14 @@ pallet_staking_reward_curve::build! {
 }
 
 parameter_types! {
-	pub const SessionsPerEra: sp_staking::SessionIndex = 6;
-	pub const BondingDuration: sp_staking::EraIndex = 3;
-	pub const SlashDeferDuration: sp_staking::EraIndex = 2;
+	pub const SessionsPerEra: polkadot_sdk::sp_staking::SessionIndex = 6;
+	pub const BondingDuration: polkadot_sdk::sp_staking::EraIndex = 3;
+	pub const SlashDeferDuration: polkadot_sdk::sp_staking::EraIndex = 2;
 	pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
 	pub const MaxExposurePageSize: u32 = 512;
 	pub const MaxNominatorRewardedPerValidator: u32 = 256;
 	pub OffchainRepeat: BlockNumber = 5;
-	pub const MaxNominations: u32 = <NposSolution16 as frame_election_provider_support::NposSolution>::LIMIT as u32;
+	pub const MaxNominations: u32 = <NposSolution16 as polkadot_sdk::frame_election_provider_support::NposSolution>::LIMIT as u32;
 	pub const MaxControllersInDeprecationBatch: u32 = 5900;
 }
 
@@ -625,9 +632,9 @@ impl pallet_staking::BenchmarkingConfig for StakingBenchmarkingConfig {
 }
 
 type PositiveImbalanceOf<T> =
-	Debt<<T as frame_system::Config>::AccountId, <T as pallet_staking::Config>::Currency>;
+	Debt<<T as polkadot_sdk::frame_system::Config>::AccountId, <T as pallet_staking::Config>::Currency>;
 pub type NegativeImbalanceOf<T> =
-	Credit<<T as frame_system::Config>::AccountId, <T as pallet_staking::Config>::Currency>;
+	Credit<<T as polkadot_sdk::frame_system::Config>::AccountId, <T as pallet_staking::Config>::Currency>;
 
 pub struct BurnSource;
 
@@ -686,7 +693,7 @@ impl pallet_staking::Config for Runtime {
 	type TargetList = pallet_staking::UseValidatorsMap<Self>;
 	type MaxUnlockingChunks = ConstU32<32>;
 	type MaxControllersInDeprecationBatch = MaxControllersInDeprecationBatch;
-	type HistoryDepth = frame_support::traits::ConstU32<84>;
+	type HistoryDepth = polkadot_sdk::frame_support::traits::ConstU32<84>;
 	type EventListeners = (NominationPools, DelegatedStaking);
 	type WeightInfo = pallet_staking::weights::SubstrateWeight<Runtime>;
 	type BenchmarkingConfig = StakingBenchmarkingConfig;
@@ -700,7 +707,7 @@ impl pallet_fast_unstake::Config for Runtime {
 	type ControlOrigin = EnsureRoot<AccountId>;
 	type Deposit = ConstU128<{ DOLLARS }>;
 	type Currency = Balances;
-	type BatchSize = frame_support::traits::ConstU32<64>;
+	type BatchSize = polkadot_sdk::frame_support::traits::ConstU32<64>;
 	type Staking = Staking;
 	type MaxErasToCheckPerBlock = ConstU32<1>;
 	type WeightInfo = ();
@@ -739,16 +746,16 @@ parameter_types! {
 	/// We take the top 22500 nominators as electing voters and all of the validators as electable
 	/// targets. Whilst this is the case, we cannot and shall not increase the size of the
 	/// validator intentions.
-	pub ElectionBounds: frame_election_provider_support::bounds::ElectionBounds =
+	pub ElectionBounds: polkadot_sdk::frame_election_provider_support::bounds::ElectionBounds =
 		ElectionBoundsBuilder::default().voters_count(MaxElectingVoters::get().into()).build();
 }
 
-frame_election_provider_support::generate_solution_type!(
+polkadot_sdk::frame_election_provider_support::generate_solution_type!(
 	#[compact]
 	pub struct NposSolution16::<
 		VoterIndex = u32,
 		TargetIndex = u16,
-		Accuracy = sp_runtime::PerU16,
+		Accuracy = polkadot_sdk::sp_runtime::PerU16,
 		MaxVoters = MaxElectingVoters,
 	>(16)
 );
@@ -775,11 +782,11 @@ pub const MINER_MAX_ITERATIONS: u32 = 10;
 pub struct OffchainRandomBalancing;
 impl Get<Option<BalancingConfig>> for OffchainRandomBalancing {
 	fn get() -> Option<BalancingConfig> {
-		use sp_runtime::traits::TrailingZeroInput;
+		use polkadot_sdk::sp_runtime::traits::TrailingZeroInput;
 		let iterations = match MINER_MAX_ITERATIONS {
 			0 => 0,
 			max => {
-				let seed = sp_io::offchain::random_seed();
+				let seed = polkadot_sdk::sp_io::offchain::random_seed();
 				let random = <u32>::decode(&mut TrailingZeroInput::new(&seed))
 					.expect("input is padded with zeroes; qed")
 					% max.saturating_add(1);
@@ -798,7 +805,7 @@ impl onchain::Config for OnChainSeqPhragmen {
 	type System = Runtime;
 	type Solver = SequentialPhragmen<AccountId, SolutionAccuracyOf<Runtime>>;
 	type DataProvider = Staking;
-	type WeightInfo = frame_election_provider_support::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = polkadot_sdk::frame_election_provider_support::weights::SubstrateWeight<Runtime>;
 	type Bounds = ElectionBounds;
 	type MaxBackersPerWinner = MaxElectingVotersSolution;
 	type MaxWinnersPerPage = MaxActiveValidators;
@@ -812,7 +819,7 @@ impl pallet_election_provider_multi_phase::MinerConfig for Runtime {
 	type MaxVotesPerVoter = <
 	<Self as pallet_election_provider_multi_phase::Config>::DataProvider
 	as
-	frame_election_provider_support::ElectionDataProvider
+	polkadot_sdk::frame_election_provider_support::ElectionDataProvider
 	>::MaxVotesPerVoter;
 	type MaxWinners = MaxActiveValidators;
 	type MaxBackersPerWinner = MaxElectingVotersSolution;
@@ -1059,7 +1066,7 @@ parameter_types! {
 	pub const MaxPeerInHeartbeats: u32 = 10_000;
 }
 
-impl<LocalCall> frame_system::offchain::CreateTransaction<LocalCall> for Runtime
+impl<LocalCall> polkadot_sdk::frame_system::offchain::CreateTransaction<LocalCall> for Runtime
 where
 	RuntimeCall: From<LocalCall>,
 {
@@ -1070,12 +1077,12 @@ where
 	}
 }
 
-impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
+impl<LocalCall> polkadot_sdk::frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
 where
 	RuntimeCall: From<LocalCall>,
 {
 	fn create_signed_transaction<
-		C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>,
+		C: polkadot_sdk::frame_system::offchain::AppCrypto<Self::Public, Self::Signature>,
 	>(
 		call: RuntimeCall,
 		public: <Signature as traits::Verify>::Signer,
@@ -1093,17 +1100,17 @@ where
 			.saturating_sub(1);
 		let era = Era::mortal(period, current_block);
 		let tx_ext: TxExtension = (
-			frame_system::AuthorizeCall::<Runtime>::new(),
-			frame_system::CheckNonZeroSender::<Runtime>::new(),
-			frame_system::CheckSpecVersion::<Runtime>::new(),
-			frame_system::CheckTxVersion::<Runtime>::new(),
-			frame_system::CheckGenesis::<Runtime>::new(),
-			frame_system::CheckEra::<Runtime>::from(era),
-			frame_system::CheckNonce::<Runtime>::from(nonce),
-			frame_system::CheckWeight::<Runtime>::new(),
+			polkadot_sdk::frame_system::AuthorizeCall::<Runtime>::new(),
+			polkadot_sdk::frame_system::CheckNonZeroSender::<Runtime>::new(),
+			polkadot_sdk::frame_system::CheckSpecVersion::<Runtime>::new(),
+			polkadot_sdk::frame_system::CheckTxVersion::<Runtime>::new(),
+			polkadot_sdk::frame_system::CheckGenesis::<Runtime>::new(),
+			polkadot_sdk::frame_system::CheckEra::<Runtime>::from(era),
+			polkadot_sdk::frame_system::CheckNonce::<Runtime>::from(nonce),
+			polkadot_sdk::frame_system::CheckWeight::<Runtime>::new(),
 			pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
 			frame_metadata_hash_extension::CheckMetadataHash::new(false),
-			frame_system::WeightReclaim::<Runtime>::new(),
+			polkadot_sdk::frame_system::WeightReclaim::<Runtime>::new(),
 		);
 		let raw_payload = SignedPayload::new(call, tx_ext)
 			.map_err(|e| {
@@ -1118,7 +1125,7 @@ where
 	}
 }
 
-impl<LocalCall> frame_system::offchain::CreateBare<LocalCall> for Runtime
+impl<LocalCall> polkadot_sdk::frame_system::offchain::CreateBare<LocalCall> for Runtime
 where
 	RuntimeCall: From<LocalCall>,
 {
@@ -1127,12 +1134,12 @@ where
 	}
 }
 
-impl frame_system::offchain::SigningTypes for Runtime {
+impl polkadot_sdk::frame_system::offchain::SigningTypes for Runtime {
 	type Public = <Signature as traits::Verify>::Signer;
 	type Signature = Signature;
 }
 
-impl<C> frame_system::offchain::CreateTransactionBase<C> for Runtime
+impl<C> polkadot_sdk::frame_system::offchain::CreateTransactionBase<C> for Runtime
 where
 	RuntimeCall: From<C>,
 {
@@ -1169,7 +1176,7 @@ parameter_types! {
 impl pallet_grandpa::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 
-	type KeyOwnerProof = sp_session::MembershipProof;
+	type KeyOwnerProof = polkadot_sdk::sp_session::MembershipProof;
 
 	type EquivocationReportSystem =
 		pallet_grandpa::EquivocationReportSystem<Self, Offences, Historical, ReportLongevity>;
@@ -1262,7 +1269,7 @@ parameter_types! {
 /// Configure the send data pallet
 impl pallet_chainbridge::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
+	type AdminOrigin = polkadot_sdk::frame_system::EnsureRoot<Self::AccountId>;
 	type Proposal = RuntimeCall;
 	type ChainIdentity = ChainId;
 	type ProposalLifetime = ProposalLifetime;
@@ -1322,8 +1329,8 @@ impl pallet_nomination_pools::Config for Runtime {
 	type RewardCounter = FixedU128;
 	type BalanceToU256 = cere_runtime_common::BalanceToU256;
 	type U256ToBalance = cere_runtime_common::U256ToBalance;
-	type PostUnbondingPoolsWindow = frame_support::traits::ConstU32<4>;
-	type MaxMetadataLen = frame_support::traits::ConstU32<256>;
+	type PostUnbondingPoolsWindow = polkadot_sdk::frame_support::traits::ConstU32<4>;
+	type MaxMetadataLen = polkadot_sdk::frame_support::traits::ConstU32<256>;
 	// we use the same number of allowed unlocking chunks as with staking.
 	type MaxUnbonding = <Self as pallet_staking::Config>::MaxUnlockingChunks;
 	type BlockNumberProvider = System;
@@ -1331,7 +1338,7 @@ impl pallet_nomination_pools::Config for Runtime {
 	type PalletId = PoolsPalletId;
 	type MaxPointsToBalance = MaxPointsToBalance;
 	type WeightInfo = ();
-	type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
+	type AdminOrigin = polkadot_sdk::frame_system::EnsureRoot<Self::AccountId>;
 	type StakeAdapter =
 		pallet_nomination_pools::adapter::DelegateStake<Self, Staking, DelegatedStaking>;
 }
@@ -1393,7 +1400,7 @@ parameter_types! {
 }
 
 pub struct TreasuryWrapper;
-impl<T: frame_system::Config> PalletVisitor<T> for TreasuryWrapper {
+impl<T: polkadot_sdk::frame_system::Config> PalletVisitor<T> for TreasuryWrapper {
 	fn get_account_id() -> T::AccountId {
 		TreasuryPalletId::get().into_account_truncating()
 	}
@@ -1531,14 +1538,14 @@ impl pallet_ddc_clusters_gov::Config for Runtime {
 }
 
 pub struct ClustersGovWrapper;
-impl<T: frame_system::Config> PalletVisitor<T> for ClustersGovWrapper {
+impl<T: polkadot_sdk::frame_system::Config> PalletVisitor<T> for ClustersGovWrapper {
 	fn get_account_id() -> T::AccountId {
 		ClustersGovPalletId::get().into_account_truncating()
 	}
 }
 
 pub struct DdcOriginAsNative<DdcOrigin, RuntimeOrigin>(PhantomData<(DdcOrigin, RuntimeOrigin)>);
-impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
+impl<DdcOrigin: Get<T::RuntimeOrigin>, T: polkadot_sdk::frame_system::Config> GetDdcOrigin<T>
 	for DdcOriginAsNative<DdcOrigin, T>
 {
 	fn get() -> T::RuntimeOrigin {
@@ -1594,7 +1601,7 @@ impl pallet_migrations::Config for Runtime {
 	type CursorMaxLen = ConstU32<65_536>;
 	type IdentifierMaxLen = ConstU32<256>;
 	type MigrationStatusHandler = ();
-	type FailedMigrationHandler = frame_support::migrations::FreezeChainOnFailedMigration;
+	type FailedMigrationHandler = polkadot_sdk::frame_support::migrations::FreezeChainOnFailedMigration;
 	type MaxServiceWeight = MbmServiceWeight;
 	type WeightInfo = pallet_migrations::weights::SubstrateWeight<Runtime>;
 }
@@ -1620,7 +1627,7 @@ impl pallet_pool_withdrawal_fix::Config for Runtime {
 	type WeightInfo = ();
 }
 
-#[frame_support::runtime]
+#[polkadot_sdk::frame_support::runtime]
 mod runtime {
 	#[runtime::runtime]
 	#[runtime::derive(
@@ -1637,7 +1644,7 @@ mod runtime {
 	pub struct Runtime;
 
 	#[runtime::pallet_index(0)]
-	pub type System = frame_system::Pallet<Runtime>;
+	pub type System = polkadot_sdk::frame_system::Pallet<Runtime>;
 
 	#[runtime::pallet_index(1)]
 	pub type Utility = pallet_utility::Pallet<Runtime>;
@@ -1792,7 +1799,7 @@ mod runtime {
 	pub type Hyperbridge = pallet_hyperbridge::Pallet<Runtim>;
 
 	#[runtime::pallet_index(50)]
-	pub type TokenGateway = pallet_token_gateway::Pallet<Runtime>;
+	pub type TokenGateway = pallet_hyper_fungible_token::Pallet<Runtime>;
 
 	// Migrations pallet
 	#[runtime::pallet_index(51)]
@@ -1808,7 +1815,7 @@ mod runtime {
 }
 
 /// The address format for describing accounts.
-pub type Address = sp_runtime::MultiAddress<AccountId, AccountIndex>;
+pub type Address = polkadot_sdk::sp_runtime::MultiAddress<AccountId, AccountIndex>;
 /// Block header type as expected by this runtime.
 pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
 /// Block type as expected by this runtime.
@@ -1823,17 +1830,17 @@ pub type BlockId = generic::BlockId<Block>;
 ///
 /// [`sign`]: <../../testing/src/keyring.rs.html>
 pub type TxExtension = (
-	frame_system::AuthorizeCall<Runtime>,
-	frame_system::CheckNonZeroSender<Runtime>,
-	frame_system::CheckSpecVersion<Runtime>,
-	frame_system::CheckTxVersion<Runtime>,
-	frame_system::CheckGenesis<Runtime>,
-	frame_system::CheckEra<Runtime>,
-	frame_system::CheckNonce<Runtime>,
-	frame_system::CheckWeight<Runtime>,
+	polkadot_sdk::frame_system::AuthorizeCall<Runtime>,
+	polkadot_sdk::frame_system::CheckNonZeroSender<Runtime>,
+	polkadot_sdk::frame_system::CheckSpecVersion<Runtime>,
+	polkadot_sdk::frame_system::CheckTxVersion<Runtime>,
+	polkadot_sdk::frame_system::CheckGenesis<Runtime>,
+	polkadot_sdk::frame_system::CheckEra<Runtime>,
+	polkadot_sdk::frame_system::CheckNonce<Runtime>,
+	polkadot_sdk::frame_system::CheckWeight<Runtime>,
 	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 	frame_metadata_hash_extension::CheckMetadataHash<Runtime>,
-	frame_system::WeightReclaim<Runtime>,
+	polkadot_sdk::frame_system::WeightReclaim<Runtime>,
 );
 
 /// Unchecked extrinsic type as expected by this runtime.
@@ -1852,23 +1859,23 @@ parameter_types! {
 type Migrations = ();
 
 /// Executive: handles dispatch to the various modules.
-pub type Executive = frame_executive::Executive<
+pub type Executive = polkadot_sdk::frame_executive::Executive<
 	Runtime,
 	Block,
-	frame_system::ChainContext<Runtime>,
+	polkadot_sdk::frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
 	Migrations,
 >;
 
-type EventRecord = frame_system::EventRecord<
-	<Runtime as frame_system::Config>::RuntimeEvent,
-	<Runtime as frame_system::Config>::Hash,
+type EventRecord = polkadot_sdk::frame_system::EventRecord<
+	<Runtime as polkadot_sdk::frame_system::Config>::RuntimeEvent,
+	<Runtime as polkadot_sdk::frame_system::Config>::Hash,
 >;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benches {
-	frame_benchmarking::define_benchmarks!(
+	polkadot_sdk::frame_benchmarking::define_benchmarks!(
 		[frame_benchmarking, BaselineBench::<Runtime>]
 		[pallet_babe, Babe]
 		[pallet_bags_list, VoterList]
@@ -1906,28 +1913,28 @@ mod benches {
 		[pallet_collective, TechComm]
 		[pallet_ddc_clusters_gov, DdcClustersGov]
 		[pallet_ddc_payouts, DdcPayouts]
-		[pallet_token_gateway, TokenGateway]
+		[pallet_hyper_fungible_token, TokenGateway]
 		[pallet_migrations, MultiBlockMigrations]
 		[pallet_fee_handler, FeeHandler]
 	);
 }
 
 impl_runtime_apis! {
-	impl sp_genesis_builder::GenesisBuilder<Block> for Runtime {
+	impl polkadot_sdk::sp_genesis_builder::GenesisBuilder<Block> for Runtime {
 
-		fn get_preset(id: &Option<sp_genesis_builder::PresetId>) -> Option<Vec<u8>> {
+		fn get_preset(id: &Option<polkadot_sdk::sp_genesis_builder::PresetId>) -> Option<Vec<u8>> {
 			get_preset::<RuntimeGenesisConfig>(id, |_| None)
 		}
 
-		fn preset_names() -> Vec<sp_genesis_builder::PresetId> {
+		fn preset_names() -> Vec<polkadot_sdk::sp_genesis_builder::PresetId> {
 			vec![]
 		}
 
-		fn build_state(config: Vec<u8>) -> sp_genesis_builder::Result {
+		fn build_state(config: Vec<u8>) -> polkadot_sdk::sp_genesis_builder::Result {
 			build_state::<RuntimeGenesisConfig>(config)
 		}
 	}
-	impl sp_api::Core<Block> for Runtime {
+	impl polkadot_sdk::sp_api::Core<Block> for Runtime {
 		fn version() -> RuntimeVersion {
 			VERSION
 		}
@@ -1936,12 +1943,12 @@ impl_runtime_apis! {
 			Executive::execute_block(block);
 		}
 
-		fn initialize_block(header: &<Block as BlockT>::Header)-> sp_runtime::ExtrinsicInclusionMode {
+		fn initialize_block(header: &<Block as BlockT>::Header)-> polkadot_sdk::sp_runtime::ExtrinsicInclusionMode {
 			Executive::initialize_block(header)
 		}
 	}
 
-	impl sp_api::Metadata<Block> for Runtime {
+	impl polkadot_sdk::sp_api::Metadata<Block> for Runtime {
 		fn metadata() -> OpaqueMetadata {
 			OpaqueMetadata::new(Runtime::metadata().into())
 		}
@@ -1950,19 +1957,19 @@ impl_runtime_apis! {
 			Runtime::metadata_at_version(version)
 		}
 
-		fn metadata_versions() -> sp_std::vec::Vec<u32> {
+		fn metadata_versions() -> polkadot_sdk::sp_std::vec::Vec<u32> {
 			Runtime::metadata_versions()
 		}
 	}
 
-	impl frame_support::view_functions::runtime_api::RuntimeViewFunction<Block> for Runtime {
+	impl polkadot_sdk::frame_support::view_functions::runtime_api::RuntimeViewFunction<Block> for Runtime {
 		#[allow(unconditional_recursion)]
-		fn execute_view_function(id: frame_support::view_functions::ViewFunctionId, input: Vec<u8>) -> Result<Vec<u8>, frame_support::view_functions::ViewFunctionDispatchError> {
+		fn execute_view_function(id: polkadot_sdk::frame_support::view_functions::ViewFunctionId, input: Vec<u8>) -> Result<Vec<u8>, polkadot_sdk::frame_support::view_functions::ViewFunctionDispatchError> {
 			Runtime::execute_view_function(id, input)
 		}
 	}
 
-	impl sp_block_builder::BlockBuilder<Block> for Runtime {
+	impl polkadot_sdk::sp_block_builder::BlockBuilder<Block> for Runtime {
 		fn apply_extrinsic(extrinsic: <Block as BlockT>::Extrinsic) -> ApplyExtrinsicResult {
 			Executive::apply_extrinsic(extrinsic)
 		}
@@ -1980,7 +1987,7 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block> for Runtime {
+	impl polkadot_sdk::sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block> for Runtime {
 		fn validate_transaction(
 			source: TransactionSource,
 			tx: <Block as BlockT>::Extrinsic,
@@ -1990,7 +1997,7 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl sp_offchain::OffchainWorkerApi<Block> for Runtime {
+	impl polkadot_sdk::sp_offchain::OffchainWorkerApi<Block> for Runtime {
 		fn offchain_worker(header: &<Block as BlockT>::Header) {
 			Executive::offchain_worker(header)
 		}
@@ -2032,10 +2039,10 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl sp_consensus_babe::BabeApi<Block> for Runtime {
-		fn configuration() -> sp_consensus_babe::BabeConfiguration {
+	impl polkadot_sdk::sp_consensus_babe::BabeApi<Block> for Runtime {
+		fn configuration() -> polkadot_sdk::sp_consensus_babe::BabeConfiguration {
 			let epoch_config = Babe::epoch_config().unwrap_or(BABE_GENESIS_EPOCH_CONFIG);
-			sp_consensus_babe::BabeConfiguration {
+			polkadot_sdk::sp_consensus_babe::BabeConfiguration {
 				slot_duration: Babe::slot_duration(),
 				epoch_length: EpochDuration::get(),
 				c: epoch_config.c,
@@ -2045,32 +2052,32 @@ impl_runtime_apis! {
 			}
 		}
 
-		fn current_epoch_start() -> sp_consensus_babe::Slot {
+		fn current_epoch_start() -> polkadot_sdk::sp_consensus_babe::Slot {
 			Babe::current_epoch_start()
 		}
 
-		fn current_epoch() -> sp_consensus_babe::Epoch {
+		fn current_epoch() -> polkadot_sdk::sp_consensus_babe::Epoch {
 			Babe::current_epoch()
 		}
 
-		fn next_epoch() -> sp_consensus_babe::Epoch {
+		fn next_epoch() -> polkadot_sdk::sp_consensus_babe::Epoch {
 			Babe::next_epoch()
 		}
 
 		fn generate_key_ownership_proof(
-			_slot: sp_consensus_babe::Slot,
-			authority_id: sp_consensus_babe::AuthorityId,
-		) -> Option<sp_consensus_babe::OpaqueKeyOwnershipProof> {
+			_slot: polkadot_sdk::sp_consensus_babe::Slot,
+			authority_id: polkadot_sdk::sp_consensus_babe::AuthorityId,
+		) -> Option<polkadot_sdk::sp_consensus_babe::OpaqueKeyOwnershipProof> {
 			use codec::Encode;
 
-			Historical::prove((sp_consensus_babe::KEY_TYPE, authority_id))
+			Historical::prove((polkadot_sdk::sp_consensus_babe::KEY_TYPE, authority_id))
 				.map(|p| p.encode())
-				.map(sp_consensus_babe::OpaqueKeyOwnershipProof::new)
+				.map(polkadot_sdk::sp_consensus_babe::OpaqueKeyOwnershipProof::new)
 		}
 
 		fn submit_report_equivocation_unsigned_extrinsic(
-			equivocation_proof: sp_consensus_babe::EquivocationProof<<Block as BlockT>::Header>,
-			key_owner_proof: sp_consensus_babe::OpaqueKeyOwnershipProof,
+			equivocation_proof: polkadot_sdk::sp_consensus_babe::EquivocationProof<<Block as BlockT>::Header>,
+			key_owner_proof: polkadot_sdk::sp_consensus_babe::OpaqueKeyOwnershipProof,
 		) -> Option<()> {
 			let key_owner_proof = key_owner_proof.decode()?;
 
@@ -2081,7 +2088,7 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl sp_authority_discovery::AuthorityDiscoveryApi<Block> for Runtime {
+	impl polkadot_sdk::sp_authority_discovery::AuthorityDiscoveryApi<Block> for Runtime {
 		fn authorities() -> Vec<AuthorityDiscoveryId> {
 			AuthorityDiscovery::authorities()
 		}
@@ -2233,7 +2240,7 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl sp_session::SessionKeys<Block> for Runtime {
+	impl polkadot_sdk::sp_session::SessionKeys<Block> for Runtime {
 		fn generate_session_keys(seed: Option<Vec<u8>>) -> Vec<u8> {
 			SessionKeys::generate(seed)
 		}
@@ -2289,8 +2296,8 @@ impl_runtime_apis! {
 	}
 
 	#[cfg(feature = "try-runtime")]
-	impl frame_try_runtime::TryRuntime<Block> for Runtime {
-		fn on_runtime_upgrade(checks: frame_try_runtime::UpgradeCheckSelect) -> (Weight, Weight) {
+	impl polkadot_sdk::frame_try_runtime::TryRuntime<Block> for Runtime {
+		fn on_runtime_upgrade(checks: polkadot_sdk::frame_try_runtime::UpgradeCheckSelect) -> (Weight, Weight) {
 			log::info!("try-runtime::on_runtime_upgrade cere.");
 			let weight = Executive::try_runtime_upgrade(checks).unwrap();
 			(weight, RuntimeBlockWeights::get().max_block)
@@ -2300,7 +2307,7 @@ impl_runtime_apis! {
 			block: <Block as BlockT>::LazyBlock,
 			state_root_check: bool,
 			signature_check: bool,
-			select: frame_try_runtime::TryStateSelect,
+			select: polkadot_sdk::frame_try_runtime::TryStateSelect,
 		) -> Weight {
 			// NOTE: intentional unwrap: we don't want to propagate the error backwards, and want to
 			// have a backtrace here.
@@ -2310,13 +2317,13 @@ impl_runtime_apis! {
 
 
 	#[cfg(feature = "runtime-benchmarks")]
-	impl frame_benchmarking::Benchmark<Block> for Runtime {
+	impl polkadot_sdk::frame_benchmarking::Benchmark<Block> for Runtime {
 		fn benchmark_metadata(extra: bool) -> (
-			Vec<frame_benchmarking::BenchmarkList>,
-			Vec<frame_support::traits::StorageInfo>,
+			Vec<polkadot_sdk::frame_benchmarking::BenchmarkList>,
+			Vec<polkadot_sdk::frame_support::traits::StorageInfo>,
 		) {
-			use frame_benchmarking::{baseline, BenchmarkList};
-			use frame_support::traits::StorageInfoTrait;
+			use polkadot_sdk::frame_benchmarking::{baseline, BenchmarkList};
+			use polkadot_sdk::frame_support::traits::StorageInfoTrait;
 
 			// Trying to add benchmarks directly to the Session Pallet caused cyclic dependency
 			// issues. To get around that, we separated the Session benchmarks into its own crate,
@@ -2338,9 +2345,9 @@ impl_runtime_apis! {
 
 		#[allow(non_local_definitions)]
 		fn dispatch_benchmark(
-			config: frame_benchmarking::BenchmarkConfig
-		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, alloc::string::String> {
-			use frame_benchmarking::{baseline, BenchmarkBatch};
+			config: polkadot_sdk::frame_benchmarking::BenchmarkConfig
+		) -> Result<Vec<polkadot_sdk::frame_benchmarking::BenchmarkBatch>, alloc::string::String> {
+			use polkadot_sdk::frame_benchmarking::{baseline, BenchmarkBatch};
 			use sp_storage::TrackedStorageKey;
 
 			// Trying to add benchmarks directly to the Session Pallet caused cyclic dependency
@@ -2388,9 +2395,9 @@ impl_runtime_apis! {
 
 #[cfg(test)]
 mod tests {
-	use frame_election_provider_support::NposSolution;
-	use frame_system::offchain::CreateSignedTransaction;
-	use sp_runtime::UpperOf;
+	use polkadot_sdk::frame_election_provider_support::NposSolution;
+	use polkadot_sdk::frame_system::offchain::CreateSignedTransaction;
+	use polkadot_sdk::sp_runtime::UpperOf;
 
 	use super::*;
 

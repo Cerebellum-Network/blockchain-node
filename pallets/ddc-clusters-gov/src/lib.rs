@@ -26,7 +26,7 @@ use ddc_primitives::{
 	},
 	ClusterId, ClusterNodeStatus, ClusterProtocolParams, ClusterStatus, NodePubKey,
 };
-use frame_support::{
+use polkadot_sdk::frame_support::{
 	dispatch::{GetDispatchInfo, Pays},
 	pallet_prelude::*,
 	traits::{
@@ -35,16 +35,16 @@ use frame_support::{
 	},
 	weights::Weight,
 };
-use frame_system::pallet_prelude::*;
-pub use frame_system::Config as SysConfig;
+use polkadot_sdk::frame_system::pallet_prelude::*;
+pub use polkadot_sdk::frame_system::Config as SysConfig;
 pub use pallet::*;
 use pallet_referenda::ReferendumIndex;
 use scale_info::TypeInfo;
-use sp_runtime::{
+use polkadot_sdk::sp_runtime::{
 	traits::{AccountIdConversion, BlockNumberProvider, Dispatchable},
 	DispatchError, DispatchResult, RuntimeDebug, SaturatedConversion,
 };
-use sp_std::prelude::*;
+use polkadot_sdk::sp_std::prelude::*;
 
 #[cfg(test)]
 pub(crate) mod mock_clusters_gov;
@@ -58,7 +58,7 @@ pub use weights::WeightInfo;
 
 /// The balance type of this pallet.
 pub type BalanceOf<T> =
-	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+	<<T as Config>::Currency as Currency<<T as polkadot_sdk::frame_system::Config>::AccountId>>::Balance;
 
 type ReferendumBlockNumberFor<T, I = ()> =
 	<<T as pallet_referenda::Config<I>>::BlockNumberProvider as BlockNumberProvider>::BlockNumber;
@@ -107,16 +107,16 @@ pub struct SubmissionDeposit<AccountId> {
 	amount: u128,
 }
 
-#[frame_support::pallet]
+#[polkadot_sdk::frame_support::pallet]
 pub mod pallet {
-	use frame_support::PalletId;
-	use sp_std::vec;
+	use polkadot_sdk::frame_support::PalletId;
+	use polkadot_sdk::sp_std::vec;
 
 	use super::*;
 
 	/// The current storage version.
-	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-		frame_support::traits::StorageVersion::new(0);
+	const STORAGE_VERSION: polkadot_sdk::frame_support::traits::StorageVersion =
+		polkadot_sdk::frame_support::traits::StorageVersion::new(0);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -124,10 +124,10 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_referenda::Config {
+	pub trait Config: polkadot_sdk::frame_system::Config + pallet_referenda::Config {
 		type PalletId: Get<PalletId>;
 		#[allow(deprecated)]
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as polkadot_sdk::frame_system::Config>::RuntimeEvent>;
 		type Currency: LockableCurrency<Self::AccountId, Moment = BlockNumberFor<Self>>;
 		type WeightInfo: WeightInfo;
 		type OpenGovActivatorTrackOrigin: GetDdcOrigin<Self>;
@@ -285,7 +285,7 @@ pub mod pallet {
 			let seats = cluster_nodes_stats.validation_succeeded as u32 + 1;
 			let threshold = T::SeatsConsensus::get_threshold(seats);
 			let votes = {
-				let start = frame_system::Pallet::<T>::block_number();
+				let start = polkadot_sdk::frame_system::Pallet::<T>::block_number();
 				let end = start + T::ClusterProposalDuration::get();
 				Votes { seats, threshold, ayes: vec![], nays: vec![], start, end }
 			};
@@ -341,7 +341,7 @@ pub mod pallet {
 			let seats = cluster_nodes_stats.validation_succeeded as u32 + 1;
 			let threshold = T::SeatsConsensus::get_threshold(seats);
 			let votes = {
-				let start = frame_system::Pallet::<T>::block_number();
+				let start = polkadot_sdk::frame_system::Pallet::<T>::block_number();
 				let end = start + T::ClusterProposalDuration::get();
 				Votes { seats, threshold, ayes: vec![], nays: vec![], start, end }
 			};
@@ -425,7 +425,7 @@ pub mod pallet {
 			let refund_call =
 				pallet_referenda::Call::<T>::refund_submission_deposit { index: referenda_index };
 			let result = refund_call
-				.dispatch_bypass_filter(frame_system::RawOrigin::Signed(Self::account_id()).into());
+				.dispatch_bypass_filter(polkadot_sdk::frame_system::RawOrigin::Signed(Self::account_id()).into());
 
 			match result {
 				Ok(_) => (),
@@ -636,7 +636,7 @@ pub mod pallet {
 			}
 
 			// Only allow actual closing of the proposal after the voting period has ended.
-			ensure!(frame_system::Pallet::<T>::block_number() >= voting.end, Error::<T>::TooEarly);
+			ensure!(polkadot_sdk::frame_system::Pallet::<T>::block_number() >= voting.end, Error::<T>::TooEarly);
 
 			let cluster_manager = T::ClusterManager::get_manager_account_id(&cluster_id)?;
 			let cluster_manager_vote = voting.ayes.iter().any(|a| a == &cluster_manager);
@@ -689,7 +689,7 @@ pub mod pallet {
 			let submission_deposit = Self::do_submission_deposit(depositor.clone())?;
 
 			let post_info = proposal
-				.dispatch_bypass_filter(frame_system::RawOrigin::Signed(Self::account_id()).into())
+				.dispatch_bypass_filter(polkadot_sdk::frame_system::RawOrigin::Signed(Self::account_id()).into())
 				.map_err(|e| e.error)?;
 			Self::deposit_event(Event::ReferendumSubmitted { cluster_id });
 

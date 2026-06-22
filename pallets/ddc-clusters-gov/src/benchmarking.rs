@@ -1,15 +1,17 @@
 //! DdcClustersGov pallet benchmarking.
 #![allow(clippy::extra_unused_type_parameters)]
 
+use polkadot_sdk::*;
+
 use ddc_primitives::{
 	ClusterBondingParams, ClusterId, ClusterNodeKind, ClusterParams, ClusterProtocolParams,
 	NodeParams, StorageNodeMode, StorageNodeParams, StorageNodePubKey,
 };
-use frame_benchmarking::{account, benchmarks};
-use frame_system::RawOrigin;
+use polkadot_sdk::frame_benchmarking::{account, benchmarks};
+use polkadot_sdk::frame_system::RawOrigin;
 use pallet_referenda::Pallet as Referenda;
-use sp_runtime::{Perquintill, SaturatedConversion};
-use sp_std::prelude::*;
+use polkadot_sdk::sp_runtime::{Perquintill, SaturatedConversion};
+use polkadot_sdk::sp_std::prelude::*;
 
 use super::*;
 use crate::Pallet as DdcClustersGov;
@@ -125,23 +127,23 @@ pub fn create_cluster_with_nodes<T: Config>(
 }
 
 fn next_block<T: Config>() {
-	frame_system::Pallet::<T>::set_block_number(
-		frame_system::Pallet::<T>::block_number() + BlockNumberFor::<T>::from(1_u32),
+	polkadot_sdk::frame_system::Pallet::<T>::set_block_number(
+		polkadot_sdk::frame_system::Pallet::<T>::block_number() + BlockNumberFor::<T>::from(1_u32),
 	);
 }
 
 fn fast_forward_to<T: Config>(n: BlockNumberFor<T>) {
-	while frame_system::Pallet::<T>::block_number() < n {
+	while polkadot_sdk::frame_system::Pallet::<T>::block_number() < n {
 		next_block::<T>();
 	}
 }
 
 fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
-	frame_system::Pallet::<T>::assert_last_event(generic_event.into());
+	polkadot_sdk::frame_system::Pallet::<T>::assert_last_event(generic_event.into());
 }
 
 fn assert_has_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
-	frame_system::Pallet::<T>::assert_has_event(generic_event.into());
+	polkadot_sdk::frame_system::Pallet::<T>::assert_has_event(generic_event.into());
 }
 
 fn default_cluster_protocol_params<T: Config>(

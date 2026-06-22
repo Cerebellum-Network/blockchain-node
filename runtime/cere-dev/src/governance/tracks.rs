@@ -3,7 +3,7 @@
 use alloc::borrow::Cow;
 
 use cere_runtime_common::constants::tracks::*;
-use sp_runtime::str_array as s;
+use polkadot_sdk::sp_runtime::str_array as s;
 
 use super::*;
 use crate::{Balance, BlockNumber};
@@ -210,16 +210,16 @@ const TRACKS_DATA: [pallet_referenda::Track<u16, Balance, BlockNumber>; 14] = [
 pub struct TracksInfo;
 impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 	type Id = u16;
-	type RuntimeOrigin = <RuntimeOrigin as frame_support::traits::OriginTrait>::PalletsOrigin;
+	type RuntimeOrigin = <RuntimeOrigin as polkadot_sdk::frame_support::traits::OriginTrait>::PalletsOrigin;
 	fn tracks(
 	) -> impl Iterator<Item = Cow<'static, pallet_referenda::Track<Self::Id, Balance, BlockNumber>>>
 	{
 		TRACKS_DATA.iter().map(Cow::Borrowed)
 	}
 	fn track_for(id: &Self::RuntimeOrigin) -> Result<Self::Id, ()> {
-		if let Ok(system_origin) = frame_system::RawOrigin::try_from(id.clone()) {
+		if let Ok(system_origin) = polkadot_sdk::frame_system::RawOrigin::try_from(id.clone()) {
 			match system_origin {
-				frame_system::RawOrigin::Root => Ok(ROOT_TRACK_ID),
+				polkadot_sdk::frame_system::RawOrigin::Root => Ok(ROOT_TRACK_ID),
 				_ => Err(()),
 			}
 		} else if let Ok(custom_origin) = pallet_origins::pallet::Origin::try_from(id.clone()) {

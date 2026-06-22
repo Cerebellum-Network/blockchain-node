@@ -78,14 +78,14 @@ pub mod time {
 }
 
 pub mod tracks {
-	pub const fn percent(x: i32) -> sp_arithmetic::FixedI64 {
-		sp_arithmetic::FixedI64::from_rational(x as u128, 100)
+	pub const fn percent(x: i32) -> polkadot_sdk::sp_arithmetic::FixedI64 {
+		polkadot_sdk::sp_arithmetic::FixedI64::from_rational(x as u128, 100)
 	}
-	pub const fn percent_perbill(x: Perbill) -> sp_arithmetic::FixedI64 {
-		sp_arithmetic::FixedI64::from_perbill(x)
+	pub const fn percent_perbill(x: Perbill) -> polkadot_sdk::sp_arithmetic::FixedI64 {
+		polkadot_sdk::sp_arithmetic::FixedI64::from_perbill(x)
 	}
 	pub use pallet_referenda::Curve;
-	use sp_runtime::Perbill;
+	use polkadot_sdk::sp_runtime::Perbill;
 
 	pub const APP_ROOT: Curve =
 		Curve::make_reciprocal(4, 28, percent(80), percent(50), percent(100));

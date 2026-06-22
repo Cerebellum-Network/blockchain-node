@@ -11,21 +11,21 @@ pub(crate) mod mock;
 mod tests;
 
 use codec::{Decode, Encode, EncodeLike};
-use frame_support::{
+use polkadot_sdk::frame_support::{
 	dispatch::{DispatchResult, GetDispatchInfo},
 	ensure,
 	pallet_prelude::*,
 	traits::{EnsureOrigin, Get},
 	PalletId, Parameter,
 };
-use frame_system::{self as system, ensure_root, ensure_signed, pallet_prelude::*};
+use polkadot_sdk::frame_system::{self as system, ensure_root, ensure_signed, pallet_prelude::*};
 pub use pallet::*;
-use sp_core::U256;
-use sp_runtime::{
+use polkadot_sdk::sp_core::U256;
+use polkadot_sdk::sp_runtime::{
 	traits::{AccountIdConversion, Dispatchable},
 	RuntimeDebug,
 };
-use sp_std::prelude::*;
+use polkadot_sdk::sp_std::prelude::*;
 
 const DEFAULT_RELAYER_THRESHOLD: u32 = 1;
 pub const MODULE_ID: PalletId = PalletId(*b"cb/bridg");
@@ -103,7 +103,7 @@ pub fn derive_resource_id(chain: u8, id: &[u8]) -> ResourceId {
 	r_id
 }
 
-#[frame_support::pallet]
+#[polkadot_sdk::frame_support::pallet]
 pub mod pallet {
 	use super::*;
 
@@ -112,7 +112,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	/// Simple ensure origin for the bridge account
-	pub struct EnsureBridge<T>(sp_std::marker::PhantomData<T>);
+	pub struct EnsureBridge<T>(polkadot_sdk::sp_std::marker::PhantomData<T>);
 	impl<T: Config> EnsureOrigin<T::RuntimeOrigin> for EnsureBridge<T> {
 		type Success = T::AccountId;
 		fn try_origin(o: T::RuntimeOrigin) -> Result<Self::Success, T::RuntimeOrigin> {
@@ -131,9 +131,9 @@ pub mod pallet {
 	}
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: polkadot_sdk::frame_system::Config {
 		#[allow(deprecated)]
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as polkadot_sdk::frame_system::Config>::RuntimeEvent>;
 		/// Origin used to administer the pallet
 		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 		/// Proposed dispatchable call
@@ -518,7 +518,7 @@ pub mod pallet {
 			prop: Box<T::Proposal>,
 			in_favour: bool,
 		) -> DispatchResult {
-			let now = <frame_system::Pallet<T>>::block_number();
+			let now = <polkadot_sdk::frame_system::Pallet<T>>::block_number();
 			let mut votes = match <Votes<T>>::get(src_id, (nonce, prop.clone())) {
 				Some(v) => v,
 				None => {
@@ -553,7 +553,7 @@ pub mod pallet {
 			prop: Box<T::Proposal>,
 		) -> DispatchResult {
 			if let Some(mut votes) = <Votes<T>>::get(src_id, (nonce, prop.clone())) {
-				let now = <frame_system::Pallet<T>>::block_number();
+				let now = <polkadot_sdk::frame_system::Pallet<T>>::block_number();
 				ensure!(!votes.is_complete(), Error::<T>::ProposalAlreadyComplete);
 				ensure!(!votes.is_expired(now), Error::<T>::ProposalExpired);
 
@@ -601,7 +601,7 @@ pub mod pallet {
 			call: Box<T::Proposal>,
 		) -> DispatchResult {
 			Self::deposit_event(Event::ProposalApproved(src_id, nonce));
-			call.dispatch(frame_system::RawOrigin::Signed(Self::account_id()).into())
+			call.dispatch(polkadot_sdk::frame_system::RawOrigin::Signed(Self::account_id()).into())
 				.map(|_| ())
 				.map_err(|e| e.error)?;
 			Self::deposit_event(Event::ProposalSucceeded(src_id, nonce));

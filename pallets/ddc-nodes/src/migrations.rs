@@ -1,15 +1,15 @@
 #[cfg(feature = "try-runtime")]
 use ddc_primitives::StorageNodePubKey;
 #[cfg(feature = "try-runtime")]
-use frame_support::ensure;
-use frame_support::{
+use polkadot_sdk::frame_support::ensure;
+use polkadot_sdk::frame_support::{
 	storage_alias,
 	traits::{Get, GetStorageVersion, OnRuntimeUpgrade, StorageVersion},
 	weights::Weight,
 };
 use log::info;
 use serde::{Deserialize, Serialize};
-use sp_runtime::Saturating;
+use polkadot_sdk::sp_runtime::Saturating;
 
 use super::*;
 use crate::{storage_node::StorageNodeProps, ClusterId};
@@ -18,16 +18,16 @@ const LOG_TARGET: &str = "ddc-customers";
 pub const PALLET_MIGRATIONS_ID: &[u8; 16] = b"pallet-ddc-nodes";
 
 pub mod v0 {
-	use frame_support::pallet_prelude::*;
+	use polkadot_sdk::frame_support::pallet_prelude::*;
 
 	use super::*;
 
 	// Define the old storage node structure
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
 	#[scale_info(skip_type_params(T))]
-	pub struct StorageNode<T: frame_system::Config> {
+	pub struct StorageNode<T: polkadot_sdk::frame_system::Config> {
 		pub pub_key: StorageNodePubKey,
-		pub provider_id: <T as frame_system::Config>::AccountId,
+		pub provider_id: <T as polkadot_sdk::frame_system::Config>::AccountId,
 		pub cluster_id: Option<ClusterId>,
 		pub props: StorageNodeProps,
 	}
@@ -65,7 +65,7 @@ pub mod v1 {
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
 	#[scale_info(skip_type_params(T))]
-	pub struct StorageNode<T: frame_system::Config> {
+	pub struct StorageNode<T: polkadot_sdk::frame_system::Config> {
 		pub pub_key: StorageNodePubKey,
 		pub provider_id: T::AccountId,
 		pub cluster_id: Option<ClusterId>,
@@ -139,14 +139,14 @@ pub mod v1 {
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::DispatchError> {
+		fn pre_upgrade() -> Result<Vec<u8>, polkadot_sdk::sp_runtime::DispatchError> {
 			let prev_count = v0::StorageNodes::<T>::iter().count();
 
 			Ok((prev_count as u64).encode())
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), sp_runtime::DispatchError> {
+		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), polkadot_sdk::sp_runtime::DispatchError> {
 			let prev_count: u64 = Decode::decode(&mut &prev_state[..])
 				.expect("pre_upgrade provides a valid state; qed");
 
@@ -180,7 +180,7 @@ pub mod v2 {
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
 	#[scale_info(skip_type_params(T))]
-	pub struct StorageNode<T: frame_system::Config> {
+	pub struct StorageNode<T: polkadot_sdk::frame_system::Config> {
 		pub pub_key: StorageNodePubKey,
 		pub provider_id: T::AccountId,
 		pub cluster_id: Option<ClusterId>,
@@ -250,13 +250,13 @@ pub mod v2 {
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::DispatchError> {
+		fn pre_upgrade() -> Result<Vec<u8>, polkadot_sdk::sp_runtime::DispatchError> {
 			let prev_count = v1::StorageNodes::<T>::iter().count();
 			Ok((prev_count as u64).encode())
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), sp_runtime::DispatchError> {
+		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), polkadot_sdk::sp_runtime::DispatchError> {
 			let prev_count: u64 = Decode::decode(&mut &prev_state[..])
 				.expect("pre_upgrade provides a valid state; qed");
 
@@ -286,7 +286,7 @@ pub mod v2 {
 }
 
 pub mod v2_mbm {
-	use frame_support::{
+	use polkadot_sdk::frame_support::{
 		migrations::{MigrationId, SteppedMigration, SteppedMigrationError},
 		pallet_prelude::*,
 		weights::WeightMeter,
@@ -365,7 +365,7 @@ pub mod v2_mbm {
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::TryRuntimeError> {
+		fn pre_upgrade() -> Result<Vec<u8>, polkadot_sdk::sp_runtime::TryRuntimeError> {
 			info!(
 				target: LOG_TARGET,
 				"PRE-CHECK Step in v2 migration"
@@ -451,7 +451,7 @@ pub mod v2_mbm {
 
 			let node_key = StorageNodePubKey::from([0; 32]);
 
-			let provider_id: T::AccountId = frame_benchmarking::account("account", 1, 0);
+			let provider_id: T::AccountId = polkadot_sdk::frame_benchmarking::account("account", 1, 0);
 			let cluster_id = ClusterId::from([0; 20]);
 			let props = StorageNodeProps {
 				mode: StorageNodeMode::Storage,
@@ -520,7 +520,7 @@ pub mod v0_v2 {
 #[cfg(feature = "try-runtime")]
 mod test {
 	use ddc_primitives::StorageNodeMode;
-	use frame_support::pallet_prelude::StorageVersion;
+	use polkadot_sdk::frame_support::pallet_prelude::StorageVersion;
 
 	use super::*;
 	use crate::mock::{Test as T, *};

@@ -2,6 +2,8 @@
 
 #![allow(dead_code)]
 
+use polkadot_sdk::*;
+
 use std::{borrow::Cow, cell::RefCell};
 
 use ddc_primitives::{
@@ -12,7 +14,7 @@ use ddc_primitives::{
 	ClusterId, ClusterNodeKind, ClusterParams, ClusterProtocolParams, NodeParams, NodePubKey,
 	StorageNodeParams, DOLLARS,
 };
-use frame_support::{
+use polkadot_sdk::frame_support::{
 	derive_impl, parameter_types,
 	traits::{
 		fungible::HoldConsideration, ConstBool, ConstU32, ConstU64, EnsureOriginWithArg,
@@ -20,7 +22,7 @@ use frame_support::{
 	},
 	PalletId,
 };
-use frame_system::{
+use polkadot_sdk::frame_system::{
 	mocking::{MockBlock, MockUncheckedExtrinsic},
 	EnsureRoot, EnsureSigned,
 };
@@ -29,8 +31,8 @@ use pallet_ddc_clusters::cluster::Cluster;
 use pallet_ddc_nodes::StorageNode;
 use pallet_referenda::Curve;
 use parking_lot::{ReentrantMutex, ReentrantMutexGuard};
-use sp_io::TestExternalities;
-use sp_runtime::{
+use polkadot_sdk::sp_io::TestExternalities;
+use polkadot_sdk::sp_runtime::{
 	str_array as s,
 	traits::{Convert, IdentifyAccount, IdentityLookup, Verify},
 	BuildStorage, MultiSignature, Perbill,
@@ -53,7 +55,7 @@ pub type Signature = MultiSignature;
 type UncheckedExtrinsic = MockUncheckedExtrinsic<Test>;
 type Block = MockBlock<Test>;
 
-frame_support::construct_runtime!(
+polkadot_sdk::frame_support::construct_runtime!(
 	pub enum Test
 	{
 		System: frame_system,
@@ -75,7 +77,7 @@ frame_support::construct_runtime!(
 );
 
 pub type BalanceOf<T> = <<T as pallet_referenda::Config>::Currency as Currency<
-	<T as frame_system::Config>::AccountId,
+	<T as polkadot_sdk::frame_system::Config>::AccountId,
 >>::Balance;
 
 impl Convert<Weight, BalanceOf<Self>> for Test {
@@ -85,7 +87,7 @@ impl Convert<Weight, BalanceOf<Self>> for Test {
 }
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
-impl frame_system::Config for Test {
+impl polkadot_sdk::frame_system::Config for Test {
 	type Block = Block;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
@@ -179,9 +181,9 @@ impl pallet_conviction_voting::Config for Test {
 	type Currency = Balances;
 	type VoteLockingPeriod = VoteLockingPeriod;
 	type MaxVotes = ConstU32<512>;
-	type MaxTurnout = frame_support::traits::TotalIssuanceOf<Balances, Self::AccountId>;
+	type MaxTurnout = polkadot_sdk::frame_support::traits::TotalIssuanceOf<Balances, Self::AccountId>;
 	type Polls = Referenda;
-	type BlockNumberProvider = frame_system::Pallet<Test>;
+	type BlockNumberProvider = polkadot_sdk::frame_system::Pallet<Test>;
 	type VotingHooks = ();
 }
 
@@ -196,7 +198,7 @@ impl pallet_scheduler::Config for Test {
 	type WeightInfo = ();
 	type OriginPrivilegeCmp = EqualPrivilegeOnly;
 	type Preimages = Preimage;
-	type BlockNumberProvider = frame_system::Pallet<Test>;
+	type BlockNumberProvider = polkadot_sdk::frame_system::Pallet<Test>;
 }
 
 parameter_types! {
@@ -432,7 +434,7 @@ impl SeatsConsensus for MockedSeatsConsensus {
 }
 
 pub struct DdcOriginAsNative<DdcOrigin, RuntimeOrigin>(PhantomData<(DdcOrigin, RuntimeOrigin)>);
-impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
+impl<DdcOrigin: Get<T::RuntimeOrigin>, T: polkadot_sdk::frame_system::Config> GetDdcOrigin<T>
 	for DdcOriginAsNative<DdcOrigin, T>
 {
 	fn get() -> T::RuntimeOrigin {
@@ -441,10 +443,10 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
 }
 
 pub struct EnsureOfPermittedReferendaOrigin<T>(PhantomData<T>);
-impl<T: frame_system::Config> EnsureOriginWithArg<T::RuntimeOrigin, PalletsOriginOf<T>>
+impl<T: polkadot_sdk::frame_system::Config> EnsureOriginWithArg<T::RuntimeOrigin, PalletsOriginOf<T>>
 	for EnsureOfPermittedReferendaOrigin<T>
 where
-	<T as frame_system::Config>::RuntimeOrigin: OriginTrait<PalletsOrigin = OriginCaller>,
+	<T as polkadot_sdk::frame_system::Config>::RuntimeOrigin: OriginTrait<PalletsOrigin = OriginCaller>,
 {
 	type Success = T::AccountId;
 
@@ -452,7 +454,7 @@ where
 		o: T::RuntimeOrigin,
 		proposal_origin: &PalletsOriginOf<T>,
 	) -> Result<Self::Success, T::RuntimeOrigin> {
-		let origin = <frame_system::EnsureSigned<_> as EnsureOrigin<_>>::try_origin(o.clone())?;
+		let origin = <polkadot_sdk::frame_system::EnsureSigned<_> as EnsureOrigin<_>>::try_origin(o.clone())?;
 
 		let track_id =
 			match <TracksInfo as pallet_referenda::TracksInfo<Balance, BlockNumber>>::track_for(
@@ -480,13 +482,13 @@ where
 	fn try_successful_origin(
 		_proposal_origin: &PalletsOriginOf<T>,
 	) -> Result<T::RuntimeOrigin, ()> {
-		let origin = frame_benchmarking::account::<T::AccountId>("successful_origin", 0, 0);
-		Ok(frame_system::RawOrigin::Signed(origin).into())
+		let origin = polkadot_sdk::frame_benchmarking::account::<T::AccountId>("successful_origin", 0, 0);
+		Ok(polkadot_sdk::frame_system::RawOrigin::Signed(origin).into())
 	}
 }
 
-const fn percent(x: i32) -> sp_arithmetic::FixedI64 {
-	sp_arithmetic::FixedI64::from_rational(x as u128, 100)
+const fn percent(x: i32) -> polkadot_sdk::sp_arithmetic::FixedI64 {
+	polkadot_sdk::sp_arithmetic::FixedI64::from_rational(x as u128, 100)
 }
 
 const APP_CLUSTER_PROTOCOL_ACTIVATOR: Curve = Curve::make_linear(10, 28, percent(0), percent(10));
@@ -536,7 +538,7 @@ const TRACKS_DATA: [pallet_referenda::Track<u16, Balance, BlockNumber>; 2] = [
 pub struct TracksInfo;
 impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 	type Id = u16;
-	type RuntimeOrigin = <RuntimeOrigin as frame_support::traits::OriginTrait>::PalletsOrigin;
+	type RuntimeOrigin = <RuntimeOrigin as polkadot_sdk::frame_support::traits::OriginTrait>::PalletsOrigin;
 	fn tracks(
 	) -> impl Iterator<Item = Cow<'static, pallet_referenda::Track<Self::Id, Balance, BlockNumber>>>
 	{
@@ -559,12 +561,12 @@ impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 }
 
 #[allow(unused_imports)]
-#[frame_support::pallet]
+#[polkadot_sdk::frame_support::pallet]
 mod pallet_mock_origins {
-	use frame_support::pallet_prelude::*;
+	use polkadot_sdk::frame_support::pallet_prelude::*;
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {}
+	pub trait Config: polkadot_sdk::frame_system::Config {}
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -716,7 +718,7 @@ pub struct ExtBuilder;
 impl ExtBuilder {
 	pub fn build(self, cluster: BuiltCluster, cluster_nodes: Vec<BuiltNode>) -> TestExternalities {
 		sp_tracing::try_init_simple();
-		let mut storage = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
+		let mut storage = polkadot_sdk::frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
 
 		let mut balances: Vec<(AccountId, Balance)> = Vec::new();
 		let mut storage_nodes: Vec<StorageNode<Test>> = Vec::new();

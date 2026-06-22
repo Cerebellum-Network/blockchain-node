@@ -1,8 +1,8 @@
 //! Testing utils for ddc-staking.
 
 use ddc_primitives::{NodeParams, StorageNodeMode, StorageNodeParams, StorageNodePubKey};
-use frame_benchmarking::account;
-use sp_std::vec;
+use polkadot_sdk::frame_benchmarking::account;
+use polkadot_sdk::sp_std::vec;
 
 use crate::{Config, NodePubKey};
 

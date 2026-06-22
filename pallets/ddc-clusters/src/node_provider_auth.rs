@@ -1,14 +1,14 @@
 use codec::Encode;
 use ddc_primitives::{NodePubKey, NodeType};
-use frame_support::weights::Weight;
+use polkadot_sdk::frame_support::weights::Weight;
 #[cfg(any(feature = "runtime-benchmarks", test))]
 use hex_literal::hex;
-use sp_core::crypto::UncheckedFrom;
+use polkadot_sdk::sp_core::crypto::UncheckedFrom;
 #[cfg(any(feature = "runtime-benchmarks", test))]
-use sp_runtime::traits::Hash;
-use sp_std::prelude::Vec;
+use polkadot_sdk::sp_runtime::traits::Hash;
+use polkadot_sdk::sp_std::prelude::Vec;
 #[cfg(any(feature = "runtime-benchmarks", test))]
-use sp_std::vec;
+use polkadot_sdk::sp_std::vec;
 
 use crate::Config;
 
@@ -88,7 +88,7 @@ where
 
 		// Load the contract code.
 		let wasm = &include_bytes!("./test_data/node_provider_auth_white_list.wasm")[..];
-		let _wasm_hash = <T as frame_system::Config>::Hashing::hash(wasm);
+		let _wasm_hash = <T as polkadot_sdk::frame_system::Config>::Hashing::hash(wasm);
 		let contract_args = encode_constructor();
 
 		// upload and instantiate the contract

@@ -1,21 +1,23 @@
-use frame_support::{
+use polkadot_sdk::*;
+
+use polkadot_sdk::frame_support::{
 	parameter_types,
 	traits::{ConstU32, Everything},
 	PalletId,
 };
 use frame_system as system;
-use sp_core::H256;
-use sp_runtime::{
+use polkadot_sdk::sp_core::H256;
+use polkadot_sdk::sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 	BuildStorage,
 };
 
 use crate as pallet_fee_handler;
 
-type Block = frame_system::mocking::MockBlock<Test>;
+type Block = polkadot_sdk::frame_system::mocking::MockBlock<Test>;
 
 // Configure a mock runtime to test the pallet.
-frame_support::construct_runtime!(
+polkadot_sdk::frame_support::construct_runtime!(
 	pub enum Test {
 		System: frame_system,
 		Balances: pallet_balances,
@@ -92,38 +94,38 @@ parameter_types! {
 impl pallet_fee_handler::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
-	type GovernanceOrigin = frame_system::EnsureRoot<u64>;
+	type GovernanceOrigin = polkadot_sdk::frame_system::EnsureRoot<u64>;
 	type PalletId = FeeHandlerPalletId;
 	type TreasuryPalletId = TreasuryPalletId;
 	type WeightInfo = pallet_fee_handler::weights::SubstrateWeight<Test>;
 }
 
 // Build genesis storage according to the mock runtime.
-pub fn new_test_ext() -> sp_io::TestExternalities {
-	let t = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
-	let mut ext = sp_io::TestExternalities::new(t);
+pub fn new_test_ext() -> polkadot_sdk::sp_io::TestExternalities {
+	let t = polkadot_sdk::frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
+	let mut ext = polkadot_sdk::sp_io::TestExternalities::new(t);
 	ext.execute_with(|| System::set_block_number(1));
 	ext
 }
 
 #[cfg(test)]
 mod tests {
-	use frame_support::{
+	use polkadot_sdk::frame_support::{
 		assert_ok, parameter_types,
 		traits::{
 			fungible::{Inspect, Mutate},
 			ConstU16, ConstU32, ConstU64,
 		},
 	};
-	use sp_core::H256;
-	use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-	use sp_std::vec::Vec;
+	use polkadot_sdk::sp_core::H256;
+	use polkadot_sdk::sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+	use polkadot_sdk::sp_std::vec::Vec;
 
 	use super::*;
 
-	type Block = frame_system::mocking::MockBlock<Test>;
+	type Block = polkadot_sdk::frame_system::mocking::MockBlock<Test>;
 
-	frame_support::construct_runtime!(
+	polkadot_sdk::frame_support::construct_runtime!(
 		pub enum Test {
 			System: frame_system,
 			Balances: pallet_balances,
@@ -131,8 +133,8 @@ mod tests {
 		}
 	);
 
-	impl frame_system::Config for Test {
-		type BaseCallFilter = frame_support::traits::Everything;
+	impl polkadot_sdk::frame_system::Config for Test {
+		type BaseCallFilter = polkadot_sdk::frame_support::traits::Everything;
 		type BlockWeights = ();
 		type BlockLength = ();
 		type DbWeight = ();
@@ -193,15 +195,15 @@ mod tests {
 	impl pallet_fee_handler::Config for Test {
 		type RuntimeEvent = RuntimeEvent;
 		type Currency = Balances;
-		type GovernanceOrigin = frame_system::EnsureRoot<u64>;
+		type GovernanceOrigin = polkadot_sdk::frame_system::EnsureRoot<u64>;
 		type PalletId = FeeHandlerPalletId;
 		type TreasuryPalletId = TreasuryPalletId;
 		type WeightInfo = crate::weights::SubstrateWeight<Test>;
 	}
 
-	pub fn new_test_ext() -> sp_io::TestExternalities {
-		let t = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
-		let mut ext = sp_io::TestExternalities::new(t);
+	pub fn new_test_ext() -> polkadot_sdk::sp_io::TestExternalities {
+		let t = polkadot_sdk::frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
+		let mut ext = polkadot_sdk::sp_io::TestExternalities::new(t);
 		ext.execute_with(|| {
 			System::set_block_number(1);
 		});

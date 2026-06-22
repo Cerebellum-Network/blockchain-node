@@ -1,7 +1,7 @@
 use super::*;
 use crate::mock::*;
-use frame_support::{assert_noop, assert_ok};
-use sp_runtime::traits::AccountIdConversion;
+use polkadot_sdk::frame_support::{assert_noop, assert_ok};
+use polkadot_sdk::sp_runtime::traits::AccountIdConversion;
 
 #[test]
 fn manual_topup_works() {

@@ -1,19 +1,21 @@
 //! Test utilities
 
+use polkadot_sdk::*;
+
 use ddc_primitives::{
 	traits::cluster::{ClusterCreator, ClusterManager, ClusterProtocol, ClusterQuery},
 	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterNodeKind, ClusterNodeState,
 	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
 	ClusterProtocolParams, ClusterStatus, InspectionDryRunParams, NodePubKey, NodeType,
 };
-use frame_support::{
+use polkadot_sdk::frame_support::{
 	construct_runtime, derive_impl, parameter_types,
 	traits::{ConstBool, ConstU32, ConstU64, Nothing},
 };
 
-use frame_system::{mocking::MockBlock, EnsureSigned};
-use sp_io::TestExternalities;
-use sp_runtime::{
+use polkadot_sdk::frame_system::{mocking::MockBlock, EnsureSigned};
+use polkadot_sdk::sp_io::TestExternalities;
+use polkadot_sdk::sp_runtime::{
 	traits::{Convert, IdentityLookup},
 	BuildStorage, DispatchError, DispatchResult, Perbill, Perquintill, Weight,
 };
@@ -31,7 +33,7 @@ type Block = MockBlock<Test>;
 construct_runtime!(
 	pub enum Test
 	{
-		System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
+		System: polkadot_sdk::frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Balances: pallet_balances,
 		DdcCustomers: pallet_ddc_customers::{Pallet, Call, Storage, Config<T>, Event<T>},
@@ -45,7 +47,7 @@ parameter_types! {
 }
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
-impl frame_system::Config for Test {
+impl polkadot_sdk::frame_system::Config for Test {
 	type Block = Block;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
@@ -390,7 +392,7 @@ impl ExtBuilder {
 	pub fn build(self) -> TestExternalities {
 		sp_tracing::try_init_simple();
 
-		let mut storage = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
+		let mut storage = polkadot_sdk::frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
 
 		let _balance_genesis = pallet_balances::GenesisConfig::<Test> {
 			balances: vec![(1, 100), (2, 100), (3, 1000), (99, 1_000_000)],

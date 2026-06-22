@@ -9,8 +9,8 @@
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
-use frame_support::{traits::Get, weights::{Weight, constants::RocksDbWeight}};
-use sp_std::marker::PhantomData;
+use polkadot_sdk::frame_support::{traits::Get, weights::{Weight, constants::RocksDbWeight}};
+use polkadot_sdk::sp_std::marker::PhantomData;
 
 /// Weight functions needed for pallet_fee_handler.
 pub trait WeightInfo {
@@ -21,7 +21,7 @@ pub trait WeightInfo {
 /// Weights for pallet_fee_handler using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 
-impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
+impl<T: polkadot_sdk::frame_system::Config> WeightInfo for SubstrateWeight<T> {
     fn manual_topup() -> Weight {
         Weight::from_parts(10_000, 0)
             .saturating_add(T::DbWeight::get().reads(1))
