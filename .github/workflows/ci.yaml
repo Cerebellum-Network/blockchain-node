@@ -6,8 +6,18 @@ on:
   push:
     branches: [ '**' ]
 
-  # Allows you to run this workflow manually from the Actions tab
+  # Allows you to run this workflow manually from the Actions tab. Use the
+  # `run_try_runtime_live` input to opt into the expensive try-runtime
+  # on-runtime-upgrade check against the testnet archive — that job is gated
+  # off by default because it streams the entire on-chain state over the
+  # archive WS endpoint and ties up a runner for an hour+.
   workflow_dispatch:
+    inputs:
+      run_try_runtime_live:
+        description: 'Run try-runtime on-runtime-upgrade against testnet archive (slow/expensive)'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   id-token: write
@@ -67,7 +77,10 @@ jobs:
   check-runtime:
     name: Check Runtime
     needs: format
-    runs-on: ubuntu-24.04
+    # Heavy build job — runs on the self-hosted Hetzner pool that also runs
+    # tests/tarpaulin and try-runtime live. Ubuntu-hosted runners run out of
+    # disk on the wasm-builder stage.
+    runs-on: ["self-hosted", "cere-network-memory-large"]
     steps:
       - uses: actions/checkout@v4
       - name: Install linux dependencies
@@ -95,10 +108,46 @@ jobs:
           cargo build --release --bin cere
           timeout --preserve-status 30s ./target/release/cere --dev
 
-  check-try-runtime:
-    name: Try-Runtime Check
+  # Cheap try-runtime gate — just verifies the workspace still compiles with
+  # the `try-runtime` feature flag. Runs on every push so we catch
+  # try-runtime feature-gate regressions in PR CI.
+  try-runtime-build:
+    name: Try-Runtime Build
     needs: format
     runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install linux dependencies
+        run: sudo apt update && sudo apt install -y cargo clang libclang-dev libssl-dev llvm libudev-dev protobuf-compiler
+      - name: Install toolchain and rust-src
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.91.0
+          override: true
+          target: wasm32-unknown-unknown
+          components: rust-src
+      - name: Enhanced Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "runtime-build"
+          cache-on-failure: true
+      - name: Configure Git
+        run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+      - name: Build for try-runtime
+        run: |
+          CARGO_INCREMENTAL=1 cargo build --release --features try-runtime
+
+  # Expensive try-runtime live check — streams the entire on-chain state from
+  # archive.testnet.cere.network, then replays the runtime upgrade locally.
+  # Gated behind manual workflow_dispatch + the `run_try_runtime_live` input
+  # so it only runs when a maintainer explicitly requests it (e.g. before a
+  # release, or after pallet ordering / storage layout changes). Runs on the
+  # large self-hosted Hetzner runner used by Generate Weights.
+  check-try-runtime:
+    name: Try-Runtime Check (live, testnet)
+    needs: format
+    if: github.event_name == 'workflow_dispatch' && inputs.run_try_runtime_live
+    runs-on: ["self-hosted", "cere-network-memory-large"]
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
@@ -123,7 +172,7 @@ jobs:
       - name: Build for try-runtime
         run: |
           CARGO_INCREMENTAL=1 cargo build --release --features try-runtime
-      - name: Check Try-Runtime
+      - name: Check Try-Runtime (cere-runtime vs testnet)
         run: |
           try-runtime --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
             on-runtime-upgrade --disable-idempotency-checks --blocktime 6000 live --uri wss://archive.testnet.cere.network:443
@@ -131,7 +180,10 @@ jobs:
   clippy:
     name: Run Clippy
     needs: format
-    runs-on: ubuntu-24.04
+    # Heavy job — clippy compiles every member crate under
+    # runtime-benchmarks,try-runtime. Move off ubuntu-hosted to avoid disk
+    # exhaustion on the wasm-builder stage.
+    runs-on: ["self-hosted", "cere-network-memory-large"]
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
