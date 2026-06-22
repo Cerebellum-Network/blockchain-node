@@ -9,7 +9,7 @@ use ddc_primitives::{
 };
 use polkadot_sdk::frame_benchmarking::{account, benchmarks};
 use polkadot_sdk::frame_system::RawOrigin;
-use pallet_referenda::Pallet as Referenda;
+use polkadot_sdk::pallet_referenda::Pallet as Referenda;
 use polkadot_sdk::sp_runtime::{Perquintill, SaturatedConversion};
 use polkadot_sdk::sp_std::prelude::*;
 
@@ -508,7 +508,7 @@ benchmarks! {
 
 		DdcClustersGov::<T>::close_proposal(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterMember::ClusterManager).expect("Could not close proposal");
 
-		let referenda_index = pallet_referenda::ReferendumCount::<T>::get() - 1;
+		let referenda_index = polkadot_sdk::pallet_referenda::ReferendumCount::<T>::get() - 1;
 
 		assert!(SubmissionDeposits::<T>::contains_key(referenda_index));
 

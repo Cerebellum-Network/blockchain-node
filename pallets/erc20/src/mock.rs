@@ -43,7 +43,7 @@ ord_parameter_types! {
 	pub const One: u64 = 1;
 }
 
-impl pallet_balances::Config for Test {
+impl polkadot_sdk::pallet_balances::Config for Test {
 	type Balance = u64;
 	type DustRemoval = ();
 	type Event = Event;
@@ -108,7 +108,7 @@ pub const ENDOWED_BALANCE: u64 = 100_000_000;
 pub fn new_test_ext() -> polkadot_sdk::sp_io::TestExternalities {
 	let bridge_id = PalletId(*b"cb/bridg").into_account();
 	let mut t = polkadot_sdk::frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
-	pallet_balances::GenesisConfig::<Test> {
+	polkadot_sdk::pallet_balances::GenesisConfig::<Test> {
 		balances: vec![(bridge_id, ENDOWED_BALANCE), (RELAYER_A, ENDOWED_BALANCE)],
 	}
 		.assimilate_storage(&mut t)

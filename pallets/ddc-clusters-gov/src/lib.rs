@@ -38,7 +38,7 @@ use polkadot_sdk::frame_support::{
 use polkadot_sdk::frame_system::pallet_prelude::*;
 pub use polkadot_sdk::frame_system::Config as SysConfig;
 pub use pallet::*;
-use pallet_referenda::ReferendumIndex;
+use polkadot_sdk::pallet_referenda::ReferendumIndex;
 use scale_info::TypeInfo;
 use polkadot_sdk::sp_runtime::{
 	traits::{AccountIdConversion, BlockNumberProvider, Dispatchable},
@@ -61,9 +61,9 @@ pub type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as polkadot_sdk::frame_system::Config>::AccountId>>::Balance;
 
 type ReferendumBlockNumberFor<T, I = ()> =
-	<<T as pallet_referenda::Config<I>>::BlockNumberProvider as BlockNumberProvider>::BlockNumber;
+	<<T as polkadot_sdk::pallet_referenda::Config<I>>::BlockNumberProvider as BlockNumberProvider>::BlockNumber;
 
-pub type ReferendaCall<T> = pallet_referenda::Call<T>;
+pub type ReferendaCall<T> = polkadot_sdk::pallet_referenda::Call<T>;
 
 /// Info for keeping track of a proposal being voted on.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -124,7 +124,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: polkadot_sdk::frame_system::Config + pallet_referenda::Config {
+	pub trait Config: polkadot_sdk::frame_system::Config + polkadot_sdk::pallet_referenda::Config {
 		type PalletId: Get<PalletId>;
 		#[allow(deprecated)]
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as polkadot_sdk::frame_system::Config>::RuntimeEvent>;
@@ -138,7 +138,7 @@ pub mod pallet {
 		type ClusterProposalCall: Parameter
 			+ From<Call<Self>>
 			+ Dispatchable<RuntimeOrigin = Self::RuntimeOrigin>
-			+ IsType<<Self as pallet_referenda::Config>::RuntimeCall>
+			+ IsType<<Self as polkadot_sdk::pallet_referenda::Config>::RuntimeCall>
 			+ GetDispatchInfo;
 		type ClusterCreator: ClusterCreator<Self::AccountId, BlockNumberFor<Self>, BalanceOf<Self>>;
 		type ClusterManager: ClusterManager<Self::AccountId, BlockNumberFor<Self>>;
@@ -423,7 +423,7 @@ pub mod pallet {
 				.ok_or(Error::<T>::NoSubmissionDeposit)?;
 
 			let refund_call =
-				pallet_referenda::Call::<T>::refund_submission_deposit { index: referenda_index };
+				polkadot_sdk::pallet_referenda::Call::<T>::refund_submission_deposit { index: referenda_index };
 			let result = refund_call
 				.dispatch_bypass_filter(polkadot_sdk::frame_system::RawOrigin::Signed(Self::account_id()).into());
 
@@ -433,7 +433,7 @@ pub mod pallet {
 				// called in the original 'pallet_referenda' before the current extrinsic calleed,
 				// so the funds are already unlocked for the pallet's balance and need to be
 				// refunded to the original depositor.
-				Err(ref e) if e.error == pallet_referenda::Error::<T>::NoDeposit.into() => (),
+				Err(ref e) if e.error == polkadot_sdk::pallet_referenda::Error::<T>::NoDeposit.into() => (),
 				Err(e) => return Err(e.error),
 			}
 
@@ -693,7 +693,7 @@ pub mod pallet {
 				.map_err(|e| e.error)?;
 			Self::deposit_event(Event::ReferendumSubmitted { cluster_id });
 
-			let referenda_index = pallet_referenda::ReferendumCount::<T>::get() - 1;
+			let referenda_index = polkadot_sdk::pallet_referenda::ReferendumCount::<T>::get() - 1;
 			Self::do_retain_submission_deposit(referenda_index, depositor, submission_deposit);
 			let proposal_weight = post_info.actual_weight.unwrap_or(dispatch_weight);
 
@@ -720,7 +720,7 @@ pub mod pallet {
 			let proposal =
 				ClusterProposal::<T>::get(cluster_id).ok_or(Error::<T>::ProposalMissing)?;
 
-			let call: <T as pallet_referenda::Config>::RuntimeCall = proposal.call.into();
+			let call: <T as polkadot_sdk::pallet_referenda::Config>::RuntimeCall = proposal.call.into();
 			let bounded_call =
 				T::Preimages::bound(call).map_err(|_| Error::<T>::ProposalMissing)?;
 
@@ -731,7 +731,7 @@ pub mod pallet {
 
 			let pallets_origin: <T::RuntimeOrigin as OriginTrait>::PalletsOrigin =
 				proposal_origin.caller().clone();
-			let referenda_call = pallet_referenda::Call::<T>::submit {
+			let referenda_call = polkadot_sdk::pallet_referenda::Call::<T>::submit {
 				proposal_origin: Box::new(pallets_origin),
 				proposal: bounded_call,
 				enactment_moment: DispatchTime::After(T::ReferendumEnactmentDuration::get()),
@@ -744,7 +744,7 @@ pub mod pallet {
 
 		fn do_submission_deposit(depositor: T::AccountId) -> Result<BalanceOf<T>, DispatchError> {
 			let submission_deposit =
-				<T as pallet_referenda::Config>::SubmissionDeposit::get().saturated_into::<u128>();
+				<T as polkadot_sdk::pallet_referenda::Config>::SubmissionDeposit::get().saturated_into::<u128>();
 			let amount = submission_deposit.saturated_into::<BalanceOf<T>>();
 			<T as pallet::Config>::Currency::transfer(
 				&depositor,

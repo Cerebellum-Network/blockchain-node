@@ -460,7 +460,7 @@ macro_rules! signed_payload {
 			),
 			polkadot_sdk::frame_system::CheckNonce::<runtime::Runtime>::from($nonce),
 			polkadot_sdk::frame_system::CheckWeight::<runtime::Runtime>::new(),
-			pallet_transaction_payment::ChargeTransactionPayment::<runtime::Runtime>::from($tip),
+			polkadot_sdk::pallet_transaction_payment::ChargeTransactionPayment::<runtime::Runtime>::from($tip),
 		);
 
 		let $raw_payload = runtime::SignedPayload::from_raw(

@@ -21,7 +21,7 @@ parameter_types! {
 impl polkadot_sdk::frame_system::Config for Test {
 	type Block = Block;
 	type BlockHashCount = BlockHashCount;
-	type AccountData = pallet_balances::AccountData<u64>;
+	type AccountData = polkadot_sdk::pallet_balances::AccountData<u64>;
 	type MaxConsumers = polkadot_sdk::frame_support::traits::ConstU32<16>;
 }
 
@@ -33,7 +33,7 @@ ord_parameter_types! {
 	pub const One: u64 = 1;
 }
 
-impl pallet_balances::Config for Test {
+impl polkadot_sdk::pallet_balances::Config for Test {
 	type Balance = u64;
 	type DustRemoval = ();
 	type RuntimeEvent = RuntimeEvent;
@@ -87,7 +87,7 @@ pub const TEST_THRESHOLD: u32 = 2;
 pub fn new_test_ext() -> polkadot_sdk::sp_io::TestExternalities {
 	let bridge_id = AccountIdConversion::into_account_truncating(&MODULE_ID);
 	let mut t = polkadot_sdk::frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
-	pallet_balances::GenesisConfig::<Test> {
+	polkadot_sdk::pallet_balances::GenesisConfig::<Test> {
 		balances: vec![(bridge_id, ENDOWED_BALANCE)],
 		..Default::default()
 	}

@@ -9,7 +9,7 @@ use cere_runtime_common::constants::currency::DOLLARS;
 use ddc_primitives::sr25519::AuthorityId as DdcVerificationId;
 pub use ddc_primitives::{AccountId, Balance, Block, Signature};
 use jsonrpsee::core::__reexports::serde_json;
-use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
+use polkadot_sdk::pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 use polkadot_sdk::sc_chain_spec::ChainSpecExtension;
 use polkadot_sdk::sc_service::ChainType;
 use serde::{Deserialize, Serialize};

@@ -40,7 +40,7 @@ use polkadot_sdk::frame_election_provider_support::{
 };
 use polkadot_sdk::frame_support::traits::fungible::Balanced;
 //use pallet_treasury::{PositiveImbalanceOf, NegativeImbalanceOf};
-use pallet_balances::WeightInfo;
+use polkadot_sdk::pallet_balances::WeightInfo;
 extern crate alloc;
 use polkadot_sdk::frame_support::traits::tokens::Precision;
 use polkadot_sdk::frame_support::{
@@ -76,9 +76,9 @@ use polkadot_sdk::frame_system::{
 	EnsureRoot, EnsureSigned,
 };
 #[cfg(any(feature = "std", test))]
-pub use pallet_balances::Call as BalancesCall;
+pub use polkadot_sdk::pallet_balances::Call as BalancesCall;
 pub use pallet_chainbridge;
-use pallet_contracts::{
+use polkadot_sdk::pallet_contracts::{
 	chain_extension::{ChainExtension, Environment, Ext, InitState, RetVal},
 	Determinism,
 };
@@ -92,13 +92,13 @@ use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
 use pallet_identity::legacy::IdentityInfo;
-use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
-use pallet_session::historical::{self as pallet_session_historical};
-pub use pallet_staking::StakerStatus;
+use polkadot_sdk::pallet_im_online::sr25519::AuthorityId as ImOnlineId;
+use polkadot_sdk::pallet_session::historical::{self as pallet_session_historical};
+pub use polkadot_sdk::pallet_staking::StakerStatus;
 #[cfg(any(feature = "std", test))]
 pub use pallet_sudo::Call as SudoCall;
-use pallet_transaction_payment::{FeeDetails, FungibleAdapter, RuntimeDispatchInfo};
-pub use pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment};
+use polkadot_sdk::pallet_transaction_payment::{FeeDetails, FungibleAdapter, RuntimeDispatchInfo};
+pub use polkadot_sdk::pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use polkadot_sdk::sp_api::impl_runtime_apis;
 use polkadot_sdk::sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use polkadot_sdk::sp_core::{
@@ -203,30 +203,30 @@ type NegativeImbalance = <Balances as Currency<AccountId>>::NegativeImbalance;
 
 /// Logic for the author to get a portion of fees.
 pub struct ToAuthor<R>(core::marker::PhantomData<R>);
-impl<R> OnUnbalanced<Credit<R::AccountId, pallet_balances::Pallet<R>>> for ToAuthor<R>
+impl<R> OnUnbalanced<Credit<R::AccountId, polkadot_sdk::pallet_balances::Pallet<R>>> for ToAuthor<R>
 where
-	R: pallet_balances::Config + pallet_authorship::Config,
+	R: polkadot_sdk::pallet_balances::Config + pallet_authorship::Config,
 	<R as polkadot_sdk::frame_system::Config>::AccountId: From<AccountId>,
 	<R as polkadot_sdk::frame_system::Config>::AccountId: Into<AccountId>,
 {
 	fn on_nonzero_unbalanced(
-		amount: Credit<<R as polkadot_sdk::frame_system::Config>::AccountId, pallet_balances::Pallet<R>>,
+		amount: Credit<<R as polkadot_sdk::frame_system::Config>::AccountId, polkadot_sdk::pallet_balances::Pallet<R>>,
 	) {
 		if let Some(author) = <pallet_authorship::Pallet<R>>::author() {
-			let _ = <pallet_balances::Pallet<R>>::resolve(&author, amount);
+			let _ = <polkadot_sdk::pallet_balances::Pallet<R>>::resolve(&author, amount);
 		}
 	}
 }
 
 pub struct DealWithFees<R>(core::marker::PhantomData<R>);
-impl<R> OnUnbalanced<Credit<R::AccountId, pallet_balances::Pallet<R>>> for DealWithFees<R>
+impl<R> OnUnbalanced<Credit<R::AccountId, polkadot_sdk::pallet_balances::Pallet<R>>> for DealWithFees<R>
 where
-	R: pallet_balances::Config + pallet_authorship::Config + pallet_treasury::Config,
+	R: polkadot_sdk::pallet_balances::Config + pallet_authorship::Config + pallet_treasury::Config,
 	<R as polkadot_sdk::frame_system::Config>::AccountId: From<AccountId>,
 	<R as polkadot_sdk::frame_system::Config>::AccountId: Into<AccountId>,
 {
 	fn on_unbalanceds(
-		mut fees_then_tips: impl Iterator<Item = Credit<R::AccountId, pallet_balances::Pallet<R>>>,
+		mut fees_then_tips: impl Iterator<Item = Credit<R::AccountId, polkadot_sdk::pallet_balances::Pallet<R>>>,
 	) {
 		if let Some(fees) = fees_then_tips.next() {
 			// for fees, 50% to treasury, 50% to author
@@ -235,7 +235,7 @@ where
 				// for tips, if any, 50% to author and 50% to treasury
 				tips.ration_merge_into(50, 50, &mut split);
 			}
-			ResolveTo::<TreasuryAccountId<R>, pallet_balances::Pallet<R>>::on_unbalanced(split.0);
+			ResolveTo::<TreasuryAccountId<R>, polkadot_sdk::pallet_balances::Pallet<R>>::on_unbalanced(split.0);
 			<ToAuthor<R> as OnUnbalanced<_>>::on_unbalanced(split.1);
 		}
 	}
@@ -299,7 +299,7 @@ impl polkadot_sdk::frame_system::Config for Runtime {
 	type Block = Block;
 	type BlockHashCount = BlockHashCount;
 	type Version = Version;
-	type AccountData = pallet_balances::AccountData<Balance>;
+	type AccountData = polkadot_sdk::pallet_balances::AccountData<Balance>;
 	type SS58Prefix = ConstU16<54>;
 	type MaxConsumers = ConstU32<16>;
 	type MultiBlockMigrator = MultiBlockMigrations;
@@ -501,7 +501,7 @@ parameter_types! {
 	pub const MaxReserves: u32 = 50;
 }
 
-impl pallet_balances::Config for Runtime {
+impl polkadot_sdk::pallet_balances::Config for Runtime {
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
@@ -510,7 +510,7 @@ impl pallet_balances::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = polkadot_sdk::frame_system::Pallet<Runtime>;
-	type WeightInfo = pallet_balances::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = polkadot_sdk::pallet_balances::weights::SubstrateWeight<Runtime>;
 	type FreezeIdentifier = RuntimeFreezeReason;
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type MaxFreezes = VariantCountOf<RuntimeFreezeReason>;
@@ -529,7 +529,7 @@ parameter_types! {
 
 // Can't use `FungibleAdapter` here until Treasury pallet migrates to fungibles
 // <https://github.com/paritytech/polkadot-sdk/issues/226>
-impl pallet_transaction_payment::Config for Runtime {
+impl polkadot_sdk::pallet_transaction_payment::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type OnChargeTransaction = FungibleAdapter<Balances, DealWithFees<Runtime>>;
 	type OperationalFeeMultiplier = OperationalFeeMultiplier;
@@ -542,22 +542,22 @@ impl pallet_transaction_payment::Config for Runtime {
 		MinimumMultiplier,
 		MaximumMultiplier,
 	>;
-	type WeightInfo = pallet_transaction_payment::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = polkadot_sdk::pallet_transaction_payment::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
 	pub const MinimumPeriod: Moment = SLOT_DURATION / 2;
 }
 
-impl pallet_timestamp::Config for Runtime {
+impl polkadot_sdk::pallet_timestamp::Config for Runtime {
 	type Moment = Moment;
 	type OnTimestampSet = Babe;
 	type MinimumPeriod = MinimumPeriod;
-	type WeightInfo = pallet_timestamp::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = polkadot_sdk::pallet_timestamp::weights::SubstrateWeight<Runtime>;
 }
 
 impl pallet_authorship::Config for Runtime {
-	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Babe>;
+	type FindAuthor = polkadot_sdk::pallet_session::FindAccountFromAuthorIndex<Self, Babe>;
 	type EventHandler = (Staking, ImOnline);
 }
 
@@ -580,26 +580,26 @@ impl_opaque_keys! {
 	}
 }
 
-impl pallet_session::Config for Runtime {
+impl polkadot_sdk::pallet_session::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type ValidatorId = <Self as polkadot_sdk::frame_system::Config>::AccountId;
 	type ValidatorIdOf = ConvertInto;
 	type ShouldEndSession = Babe;
 	type NextSessionRotation = Babe;
-	type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
+	type SessionManager = polkadot_sdk::pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
 	type SessionHandler = <SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
 	type Keys = SessionKeys;
-	type DisablingStrategy = pallet_session::disabling::UpToLimitDisablingStrategy;
-	type WeightInfo = pallet_session::weights::SubstrateWeight<Runtime>;
+	type DisablingStrategy = polkadot_sdk::pallet_session::disabling::UpToLimitDisablingStrategy;
+	type WeightInfo = polkadot_sdk::pallet_session::weights::SubstrateWeight<Runtime>;
 	type Currency = Balances;
 	type KeyDeposit = ConstU128<0>;
 }
 
-impl pallet_session::historical::Config for Runtime {
+impl polkadot_sdk::pallet_session::historical::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
+	type FullIdentification = polkadot_sdk::pallet_staking::Exposure<AccountId, Balance>;
 	#[allow(deprecated)]
-	type FullIdentificationOf = pallet_staking::ExposureOf<Self>;
+	type FullIdentificationOf = polkadot_sdk::pallet_staking::ExposureOf<Self>;
 }
 
 pallet_staking_reward_curve::build! {
@@ -626,15 +626,15 @@ parameter_types! {
 }
 
 pub struct StakingBenchmarkingConfig;
-impl pallet_staking::BenchmarkingConfig for StakingBenchmarkingConfig {
+impl polkadot_sdk::pallet_staking::BenchmarkingConfig for StakingBenchmarkingConfig {
 	type MaxNominators = ConstU32<1000>;
 	type MaxValidators = ConstU32<5000>;
 }
 
 type PositiveImbalanceOf<T> =
-	Debt<<T as polkadot_sdk::frame_system::Config>::AccountId, <T as pallet_staking::Config>::Currency>;
+	Debt<<T as polkadot_sdk::frame_system::Config>::AccountId, <T as polkadot_sdk::pallet_staking::Config>::Currency>;
 pub type NegativeImbalanceOf<T> =
-	Credit<<T as polkadot_sdk::frame_system::Config>::AccountId, <T as pallet_staking::Config>::Currency>;
+	Credit<<T as polkadot_sdk::frame_system::Config>::AccountId, <T as polkadot_sdk::pallet_staking::Config>::Currency>;
 
 pub struct BurnSource;
 
@@ -652,7 +652,7 @@ impl OnUnbalanced<PositiveImbalanceOf<Runtime>> for RewardSource {
 		let fee_pot_pallet_account: AccountId = FeeHandlerPalletId::get().into_account_truncating();
 
 		if let Ok(remaining_balance) =
-			<pallet_balances::Pallet<Runtime> as Balanced<AccountId>>::withdraw(
+			<polkadot_sdk::pallet_balances::Pallet<Runtime> as Balanced<AccountId>>::withdraw(
 				&fee_pot_pallet_account,
 				amount.peek(),
 				Precision::Exact,
@@ -668,7 +668,7 @@ impl OnUnbalanced<PositiveImbalanceOf<Runtime>> for RewardSource {
 	}
 }
 
-impl pallet_staking::Config for Runtime {
+impl polkadot_sdk::pallet_staking::Config for Runtime {
 	type OldCurrency = Balances;
 	type Currency = Balances;
 	type CurrencyBalance = Balance;
@@ -684,20 +684,20 @@ impl pallet_staking::Config for Runtime {
 	type SlashDeferDuration = SlashDeferDuration;
 	type AdminOrigin = EitherOf<EnsureRoot<Self::AccountId>, StakingAdmin>;
 	type SessionInterface = Self;
-	type EraPayout = pallet_staking::ConvertCurve<RewardCurve>;
+	type EraPayout = polkadot_sdk::pallet_staking::ConvertCurve<RewardCurve>;
 	type MaxExposurePageSize = MaxExposurePageSize;
 	type NextNewSession = Session;
 	type ElectionProvider = ElectionProviderMultiPhase;
 	type GenesisElectionProvider = onchain::OnChainExecution<OnChainSeqPhragmen>;
 	type VoterList = VoterList;
-	type TargetList = pallet_staking::UseValidatorsMap<Self>;
+	type TargetList = polkadot_sdk::pallet_staking::UseValidatorsMap<Self>;
 	type MaxUnlockingChunks = ConstU32<32>;
 	type MaxControllersInDeprecationBatch = MaxControllersInDeprecationBatch;
 	type HistoryDepth = polkadot_sdk::frame_support::traits::ConstU32<84>;
 	type EventListeners = (NominationPools, DelegatedStaking);
-	type WeightInfo = pallet_staking::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = polkadot_sdk::pallet_staking::weights::SubstrateWeight<Runtime>;
 	type BenchmarkingConfig = StakingBenchmarkingConfig;
-	type NominationsQuota = pallet_staking::FixedNominationsQuota<{ MaxNominations::get() }>;
+	type NominationsQuota = polkadot_sdk::pallet_staking::FixedNominationsQuota<{ MaxNominations::get() }>;
 	type Filter = Nothing;
 	type MaxValidatorSet = ConstU32<1000>;
 }
@@ -979,12 +979,12 @@ parameter_types! {
 		.get(DispatchClass::Normal)
 		.max_total
 		.unwrap_or(RuntimeBlockWeights::get().max_block);
-	pub Schedule: pallet_contracts::Schedule<Runtime> = Default::default();
+	pub Schedule: polkadot_sdk::pallet_contracts::Schedule<Runtime> = Default::default();
 	pub const CodeHashLockupDepositPercent: Perbill = Perbill::from_percent(0);
 	pub const MaxDelegateDependencies: u32 = 32;
 }
 
-impl pallet_contracts::Config for Runtime {
+impl polkadot_sdk::pallet_contracts::Config for Runtime {
 	type Time = Timestamp;
 	type Randomness = RandomnessCollectiveFlip;
 	type Currency = Balances;
@@ -1000,12 +1000,12 @@ impl pallet_contracts::Config for Runtime {
 	type DepositPerItem = DepositPerItem;
 	type DepositPerByte = DepositPerByte;
 	type DefaultDepositLimit = DefaultDepositLimit;
-	type CallStack = [pallet_contracts::Frame<Self>; 5];
-	type WeightPrice = pallet_transaction_payment::Pallet<Self>;
-	type WeightInfo = pallet_contracts::weights::SubstrateWeight<Self>;
+	type CallStack = [polkadot_sdk::pallet_contracts::Frame<Self>; 5];
+	type WeightPrice = polkadot_sdk::pallet_transaction_payment::Pallet<Self>;
+	type WeightInfo = polkadot_sdk::pallet_contracts::weights::SubstrateWeight<Self>;
 	type ChainExtension = CereChainExtension;
 	type Schedule = Schedule;
-	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
+	type AddressGenerator = polkadot_sdk::pallet_contracts::DefaultAddressGenerator;
 	type MaxCodeLen = ConstU32<{ 123 * 1024 }>;
 	type MaxStorageKeyLen = ConstU32<128>;
 	type UnsafeUnstableInterface = ConstBool<false>;
@@ -1108,7 +1108,7 @@ where
 			polkadot_sdk::frame_system::CheckEra::<Runtime>::from(era),
 			polkadot_sdk::frame_system::CheckNonce::<Runtime>::from(nonce),
 			polkadot_sdk::frame_system::CheckWeight::<Runtime>::new(),
-			pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
+			polkadot_sdk::pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
 			// frame_metadata_hash_extension removed — coupled to old hyperbridge wiring.
 			polkadot_sdk::frame_system::WeightReclaim::<Runtime>::new(),
 		);
@@ -1147,21 +1147,21 @@ where
 	type RuntimeCall = RuntimeCall;
 }
 
-impl pallet_im_online::Config for Runtime {
+impl polkadot_sdk::pallet_im_online::Config for Runtime {
 	type AuthorityId = ImOnlineId;
 	type RuntimeEvent = RuntimeEvent;
 	type NextSessionRotation = Babe;
 	type ValidatorSet = Historical;
 	type ReportUnresponsiveness = Offences;
 	type UnsignedPriority = ImOnlineUnsignedPriority;
-	type WeightInfo = pallet_im_online::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = polkadot_sdk::pallet_im_online::weights::SubstrateWeight<Runtime>;
 	type MaxKeys = MaxKeys;
 	type MaxPeerInHeartbeats = MaxPeerInHeartbeats;
 }
 
 impl pallet_offences::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type IdentificationTuple = pallet_session::historical::IdentificationTuple<Self>;
+	type IdentificationTuple = polkadot_sdk::pallet_session::historical::IdentificationTuple<Self>;
 	type OnOffenceHandler = Staking;
 }
 
@@ -1294,7 +1294,7 @@ impl pallet_erc721::Config for Runtime {
 impl pallet_erc20::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type BridgeOrigin = pallet_chainbridge::EnsureBridge<Runtime>;
-	type Currency = pallet_balances::Pallet<Runtime>;
+	type Currency = polkadot_sdk::pallet_balances::Pallet<Runtime>;
 	type HashId = HashId;
 	type NativeTokenId = NativeTokenId;
 	type Erc721Id = NFTTokenId;
@@ -1332,7 +1332,7 @@ impl pallet_nomination_pools::Config for Runtime {
 	type PostUnbondingPoolsWindow = polkadot_sdk::frame_support::traits::ConstU32<4>;
 	type MaxMetadataLen = polkadot_sdk::frame_support::traits::ConstU32<256>;
 	// we use the same number of allowed unlocking chunks as with staking.
-	type MaxUnbonding = <Self as pallet_staking::Config>::MaxUnlockingChunks;
+	type MaxUnbonding = <Self as polkadot_sdk::pallet_staking::Config>::MaxUnlockingChunks;
 	type BlockNumberProvider = System;
 	type Filter = Nothing;
 	type PalletId = PoolsPalletId;
@@ -1454,7 +1454,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type BucketManager = DdcCustomers;
 	type ClusterProtocol = DdcClusters;
 	type TreasuryVisitor = TreasuryWrapper;
-	type NominatorsAndValidatorsList = pallet_staking::UseNominatorsAndValidatorsMap<Self>;
+	type NominatorsAndValidatorsList = polkadot_sdk::pallet_staking::UseNominatorsAndValidatorsMap<Self>;
 	type VoteScoreToU64 = IdentityConvert;
 	type InspectorAuthority = DdcVerification;
 	type NodeManager = DdcNodes;
@@ -1569,7 +1569,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	type AuthorityId = ddc_primitives::sr25519::AuthorityId;
 	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
 	type Hasher = BlakeTwo256;
-	type ValidatorStaking = pallet_staking::Pallet<Runtime>;
+	type ValidatorStaking = polkadot_sdk::pallet_staking::Pallet<Runtime>;
 	type Currency = Balances;
 	type CustomerVisitor = DdcCustomers;
 	type BucketManager = DdcCustomers;
@@ -1653,7 +1653,7 @@ mod runtime {
 	pub type Babe = pallet_babe::Pallet<Runtime>;
 
 	#[runtime::pallet_index(3)]
-	pub type Timestamp = pallet_timestamp::Pallet<Runtime>;
+	pub type Timestamp = polkadot_sdk::pallet_timestamp::Pallet<Runtime>;
 
 	// Authorship must be before session in order to note author in the correct session and era
 	// for im-online and staking.
@@ -1664,19 +1664,19 @@ mod runtime {
 	pub type Indices = pallet_indices::Pallet<Runtime>;
 
 	#[runtime::pallet_index(6)]
-	pub type Balances = pallet_balances::Pallet<Runtime>;
+	pub type Balances = polkadot_sdk::pallet_balances::Pallet<Runtime>;
 
 	#[runtime::pallet_index(7)]
-	pub type TransactionPayment = pallet_transaction_payment::Pallet<Runtime>;
+	pub type TransactionPayment = polkadot_sdk::pallet_transaction_payment::Pallet<Runtime>;
 
 	#[runtime::pallet_index(8)]
 	pub type ElectionProviderMultiPhase = pallet_election_provider_multi_phase::Pallet<Runtime>;
 
 	#[runtime::pallet_index(9)]
-	pub type Staking = pallet_staking::Pallet<Runtime>;
+	pub type Staking = polkadot_sdk::pallet_staking::Pallet<Runtime>;
 
 	#[runtime::pallet_index(10)]
-	pub type Session = pallet_session::Pallet<Runtime>;
+	pub type Session = polkadot_sdk::pallet_session::Pallet<Runtime>;
 
 	#[runtime::pallet_index(11)]
 	pub type Grandpa = pallet_grandpa::Pallet<Runtime>;
@@ -1685,13 +1685,13 @@ mod runtime {
 	pub type Treasury = pallet_treasury::Pallet<Runtime>;
 
 	#[runtime::pallet_index(13)]
-	pub type Contracts = pallet_contracts::Pallet<Runtime>;
+	pub type Contracts = polkadot_sdk::pallet_contracts::Pallet<Runtime>;
 
 	#[runtime::pallet_index(14)]
 	pub type Sudo = pallet_sudo::Pallet<Runtime>;
 
 	#[runtime::pallet_index(15)]
-	pub type ImOnline = pallet_im_online::Pallet<Runtime>;
+	pub type ImOnline = polkadot_sdk::pallet_im_online::Pallet<Runtime>;
 
 	#[runtime::pallet_index(16)]
 	pub type AuthorityDiscovery = pallet_authority_discovery::Pallet<Runtime>;
@@ -1773,7 +1773,7 @@ mod runtime {
 	pub type ConvictionVoting = pallet_conviction_voting::Pallet<Runtime>;
 
 	#[runtime::pallet_index(42)]
-	pub type Referenda = pallet_referenda::Pallet<Runtime>;
+	pub type Referenda = polkadot_sdk::pallet_referenda::Pallet<Runtime>;
 
 	#[runtime::pallet_index(43)]
 	pub type Origins = pallet_origins::Pallet<Runtime>;
@@ -1839,7 +1839,7 @@ pub type TxExtension = (
 	polkadot_sdk::frame_system::CheckEra<Runtime>,
 	polkadot_sdk::frame_system::CheckNonce<Runtime>,
 	polkadot_sdk::frame_system::CheckWeight<Runtime>,
-	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+	polkadot_sdk::pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 	polkadot_sdk::frame_system::WeightReclaim<Runtime>,
 );
 
@@ -2101,7 +2101,7 @@ impl_runtime_apis! {
 	}
 
 
-	impl pallet_contracts::ContractsApi<Block, AccountId, Balance, BlockNumber, Hash, EventRecord> for Runtime
+	impl polkadot_sdk::pallet_contracts::ContractsApi<Block, AccountId, Balance, BlockNumber, Hash, EventRecord> for Runtime
 	{
 		fn call(
 			origin: AccountId,
@@ -2110,7 +2110,7 @@ impl_runtime_apis! {
 			gas_limit: Option<Weight>,
 			storage_deposit_limit: Option<Balance>,
 			input_data: Vec<u8>,
-		) -> pallet_contracts::ContractExecResult<Balance, EventRecord> {
+		) -> polkadot_sdk::pallet_contracts::ContractExecResult<Balance, EventRecord> {
 			let gas_limit = gas_limit.unwrap_or(RuntimeBlockWeights::get().max_block);
 			Contracts::bare_call(
 				origin,
@@ -2119,9 +2119,9 @@ impl_runtime_apis! {
 				gas_limit,
 				storage_deposit_limit,
 				input_data,
-				pallet_contracts::DebugInfo::Skip,
-				pallet_contracts::CollectEvents::Skip,
-				pallet_contracts::Determinism::Enforced,
+				polkadot_sdk::pallet_contracts::DebugInfo::Skip,
+				polkadot_sdk::pallet_contracts::CollectEvents::Skip,
+				polkadot_sdk::pallet_contracts::Determinism::Enforced,
 			)
 		}
 
@@ -2130,10 +2130,10 @@ impl_runtime_apis! {
 			value: Balance,
 			gas_limit: Option<Weight>,
 			storage_deposit_limit: Option<Balance>,
-			code: pallet_contracts::Code<Hash>,
+			code: polkadot_sdk::pallet_contracts::Code<Hash>,
 			data: Vec<u8>,
 			salt: Vec<u8>,
-		) -> pallet_contracts::ContractInstantiateResult<AccountId, Balance, EventRecord>
+		) -> polkadot_sdk::pallet_contracts::ContractInstantiateResult<AccountId, Balance, EventRecord>
 		{
 			let gas_limit = gas_limit.unwrap_or(RuntimeBlockWeights::get().max_block);
 			Contracts::bare_instantiate(
@@ -2144,8 +2144,8 @@ impl_runtime_apis! {
 				code,
 				data,
 				salt,
-				pallet_contracts::DebugInfo::Skip,
-				pallet_contracts::CollectEvents::Skip
+				polkadot_sdk::pallet_contracts::DebugInfo::Skip,
+				polkadot_sdk::pallet_contracts::CollectEvents::Skip
 			)
 		}
 
@@ -2154,7 +2154,7 @@ impl_runtime_apis! {
 			code: Vec<u8>,
 			storage_deposit_limit: Option<Balance>,
 			determinism: Determinism
-		) -> pallet_contracts::CodeUploadResult<Hash, Balance>
+		) -> polkadot_sdk::pallet_contracts::CodeUploadResult<Hash, Balance>
 		{
 			Contracts::bare_upload_code(origin, code, storage_deposit_limit, determinism)
 		}
@@ -2162,7 +2162,7 @@ impl_runtime_apis! {
 		fn get_storage(
 			address: AccountId,
 			key: Vec<u8>,
-		) -> pallet_contracts::GetStorageResult {
+		) -> polkadot_sdk::pallet_contracts::GetStorageResult {
 			Contracts::get_storage(address, key)
 		}
 	}

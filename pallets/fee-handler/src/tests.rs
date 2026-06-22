@@ -38,7 +38,7 @@ fn manual_topup_fails_with_insufficient_balance() {
         // Test manual topup should fail
         assert_noop!(
             FeeHandler::manual_topup(RuntimeOrigin::signed(user), amount),
-            pallet_balances::Error::<Test>::InsufficientBalance
+            polkadot_sdk::pallet_balances::Error::<Test>::InsufficientBalance
         );
     });
 }
@@ -88,7 +88,7 @@ fn burn_native_tokens_fails_with_insufficient_balance() {
         // Test burning tokens
         assert_noop!(
             FeeHandler::burn_native_tokens(RuntimeOrigin::root(), user, amount),
-            pallet_balances::Error::<Test>::InsufficientBalance
+            polkadot_sdk::pallet_balances::Error::<Test>::InsufficientBalance
         );
     });
 } 

@@ -34,7 +34,7 @@ ord_parameter_types! {
 	pub const One: u64 = 1;
 }
 
-impl pallet_balances::Config for Test {
+impl polkadot_sdk::pallet_balances::Config for Test {
 	type Balance = u64;
 	type DustRemoval = ();
 	type RuntimeEvent = RuntimeEvent;

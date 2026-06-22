@@ -901,7 +901,7 @@ pub mod v4_mbm {
 					<T as pallet::Config>::WeightInfo::migration_v4_ledgers_step()
 				},
 				MigrationState::TransferringBalance(_) => {
-					// This is copied from pallet_balances::WeightInfo::transfer_allow_death()
+					// This is copied from polkadot_sdk::pallet_balances::WeightInfo::transfer_allow_death()
 
 					// Proof Size summary in bytes:
 					//  Measured:  `0`

@@ -46,7 +46,7 @@ pub type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as polkadot_sdk::frame_system::Config>::AccountId>>::Balance;
 
 /// The balance type of contracts pallet.
-pub type ContractsBalanceOf<T> = <<T as pallet_contracts::Config>::Currency as Inspect<
+pub type ContractsBalanceOf<T> = <<T as polkadot_sdk::pallet_contracts::Config>::Currency as Inspect<
 	<T as polkadot_sdk::frame_system::Config>::AccountId,
 >>::Balance;
 
@@ -147,7 +147,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: polkadot_sdk::frame_system::Config + pallet_contracts::Config {
+	pub trait Config: polkadot_sdk::frame_system::Config + polkadot_sdk::pallet_contracts::Config {
 		/// The accounts's pallet id, used for deriving its sovereign account ID.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
@@ -1018,8 +1018,8 @@ pub mod pallet {
 			data: Vec<u8>,
 			salt: Vec<u8>,
 		) -> DispatchResult {
-			let instantiate_call: pallet_contracts::Call<T> =
-				pallet_contracts::Call::instantiate_with_code {
+			let instantiate_call: polkadot_sdk::pallet_contracts::Call<T> =
+				polkadot_sdk::pallet_contracts::Call::instantiate_with_code {
 					value,
 					gas_limit,
 					storage_deposit_limit: storage_deposit_limit.map(Into::into),
@@ -1048,7 +1048,7 @@ pub mod pallet {
 			storage_deposit_limit: Option<ContractsBalanceOf<T>>,
 			data: Vec<u8>,
 		) -> DispatchResult {
-			let call_call: pallet_contracts::Call<T> = pallet_contracts::Call::call {
+			let call_call: polkadot_sdk::pallet_contracts::Call<T> = polkadot_sdk::pallet_contracts::Call::call {
 				dest: dest.into(),
 				value,
 				gas_limit,

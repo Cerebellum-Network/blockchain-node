@@ -62,8 +62,8 @@ impl pallet_whitelist::Config for Runtime {
 	type Preimages = Preimage;
 }
 
-impl pallet_referenda::Config for Runtime {
-	type WeightInfo = pallet_referenda::weights::SubstrateWeight<Runtime>;
+impl polkadot_sdk::pallet_referenda::Config for Runtime {
+	type WeightInfo = polkadot_sdk::pallet_referenda::weights::SubstrateWeight<Runtime>;
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
 	type Scheduler = Scheduler;
@@ -98,7 +98,7 @@ where
 		let origin = <polkadot_sdk::frame_system::EnsureSigned<_> as EnsureOrigin<_>>::try_origin(o.clone())?;
 
 		let track_id =
-			match <TracksInfo as pallet_referenda::TracksInfo<Balance, BlockNumber>>::track_for(
+			match <TracksInfo as polkadot_sdk::pallet_referenda::TracksInfo<Balance, BlockNumber>>::track_for(
 				proposal_origin,
 			) {
 				Ok(track_id) => track_id,

@@ -29,7 +29,7 @@ use polkadot_sdk::frame_system::{
 use lazy_static::lazy_static;
 use pallet_ddc_clusters::cluster::Cluster;
 use pallet_ddc_nodes::StorageNode;
-use pallet_referenda::Curve;
+use polkadot_sdk::pallet_referenda::Curve;
 use parking_lot::{ReentrantMutex, ReentrantMutexGuard};
 use polkadot_sdk::sp_io::TestExternalities;
 use polkadot_sdk::sp_runtime::{
@@ -76,7 +76,7 @@ polkadot_sdk::frame_support::construct_runtime!(
 
 );
 
-pub type BalanceOf<T> = <<T as pallet_referenda::Config>::Currency as Currency<
+pub type BalanceOf<T> = <<T as polkadot_sdk::pallet_referenda::Config>::Currency as Currency<
 	<T as polkadot_sdk::frame_system::Config>::AccountId,
 >>::Balance;
 
@@ -92,11 +92,11 @@ impl polkadot_sdk::frame_system::Config for Test {
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type BlockHashCount = ConstU64<250>;
-	type AccountData = pallet_balances::AccountData<Balance>;
+	type AccountData = polkadot_sdk::pallet_balances::AccountData<Balance>;
 	type MaxConsumers = ConstU32<16>;
 }
 
-impl pallet_timestamp::Config for Test {
+impl polkadot_sdk::pallet_timestamp::Config for Test {
 	type Moment = u64;
 	type OnTimestampSet = ();
 	type MinimumPeriod = ConstU64<5>;
@@ -107,7 +107,7 @@ parameter_types! {
 	pub static ExistentialDeposit: Balance = 1;
 }
 
-impl pallet_balances::Config for Test {
+impl polkadot_sdk::pallet_balances::Config for Test {
 	type MaxLocks = ConstU32<1024>;
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
@@ -150,7 +150,7 @@ parameter_types! {
 	pub const UndecidingTimeout: BlockNumber = 5 * MINUTES;
 }
 
-impl pallet_referenda::Config for Test {
+impl polkadot_sdk::pallet_referenda::Config for Test {
 	type WeightInfo = ();
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
@@ -212,19 +212,19 @@ parameter_types! {
 	pub const SurchargeReward: Balance = 150;
 	pub const MaxDepth: u32 = 100;
 	pub const MaxValueSize: u32 = 16_384;
-	pub Schedule: pallet_contracts::Schedule<Test> = Default::default();
+	pub Schedule: polkadot_sdk::pallet_contracts::Schedule<Test> = Default::default();
 	pub static DefaultDepositLimit: Balance = 10_000_000;
 	pub const CodeHashLockupDepositPercent: Perbill = Perbill::from_percent(0);
 	pub const MaxDelegateDependencies: u32 = 32;
 }
 
-impl pallet_contracts::Config for Test {
+impl polkadot_sdk::pallet_contracts::Config for Test {
 	type Time = Timestamp;
 	type Randomness = Randomness;
 	type Currency = Balances;
 	type RuntimeEvent = RuntimeEvent;
-	type CallStack = [pallet_contracts::Frame<Self>; 5];
-	type WeightPrice = Self; //pallet_transaction_payment::Module<Self>;
+	type CallStack = [polkadot_sdk::pallet_contracts::Frame<Self>; 5];
+	type WeightPrice = Self; //polkadot_sdk::pallet_transaction_payment::Module<Self>;
 	type WeightInfo = ();
 	type ChainExtension = ();
 	type Schedule = Schedule;
@@ -233,7 +233,7 @@ impl pallet_contracts::Config for Test {
 	type DepositPerByte = DepositPerByte;
 	type DepositPerItem = DepositPerItem;
 	type DefaultDepositLimit = DefaultDepositLimit;
-	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
+	type AddressGenerator = polkadot_sdk::pallet_contracts::DefaultAddressGenerator;
 	type MaxCodeLen = ConstU32<{ 123 * 1024 }>;
 	type MaxStorageKeyLen = ConstU32<128>;
 	type UnsafeUnstableInterface = ConstBool<false>;
@@ -457,7 +457,7 @@ where
 		let origin = <polkadot_sdk::frame_system::EnsureSigned<_> as EnsureOrigin<_>>::try_origin(o.clone())?;
 
 		let track_id =
-			match <TracksInfo as pallet_referenda::TracksInfo<Balance, BlockNumber>>::track_for(
+			match <TracksInfo as polkadot_sdk::pallet_referenda::TracksInfo<Balance, BlockNumber>>::track_for(
 				proposal_origin,
 			) {
 				Ok(track_id) => track_id,
@@ -504,10 +504,10 @@ pub const CLUSTER_PROTOCOL_UPDATER_DECISION_DEPOSIT: Balance = 20 * DOLLARS;
 pub const CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID: u16 = 100;
 pub const CLUSTER_PROTOCOL_UPDATER_TRACK_ID: u16 = 101;
 
-const TRACKS_DATA: [pallet_referenda::Track<u16, Balance, BlockNumber>; 2] = [
-	pallet_referenda::Track {
+const TRACKS_DATA: [polkadot_sdk::pallet_referenda::Track<u16, Balance, BlockNumber>; 2] = [
+	polkadot_sdk::pallet_referenda::Track {
 		id: CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID,
-		info: pallet_referenda::TrackInfo {
+		info: polkadot_sdk::pallet_referenda::TrackInfo {
 			name: s("cluster_protocol_activatr"),
 			max_deciding: 50,
 			decision_deposit: CLUSTER_PROTOCOL_ACTIVATOR_DECISION_DEPOSIT,
@@ -519,9 +519,9 @@ const TRACKS_DATA: [pallet_referenda::Track<u16, Balance, BlockNumber>; 2] = [
 			min_support: SUP_CLUSTER_PROTOCOL_ACTIVATOR,
 		},
 	},
-	pallet_referenda::Track {
+	polkadot_sdk::pallet_referenda::Track {
 		id: CLUSTER_PROTOCOL_UPDATER_TRACK_ID,
-		info: pallet_referenda::TrackInfo {
+		info: polkadot_sdk::pallet_referenda::TrackInfo {
 			name: s("cluster_protocol_updater"),
 			max_deciding: 50,
 			decision_deposit: CLUSTER_PROTOCOL_UPDATER_DECISION_DEPOSIT,
@@ -536,11 +536,11 @@ const TRACKS_DATA: [pallet_referenda::Track<u16, Balance, BlockNumber>; 2] = [
 ];
 
 pub struct TracksInfo;
-impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
+impl polkadot_sdk::pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 	type Id = u16;
 	type RuntimeOrigin = <RuntimeOrigin as polkadot_sdk::frame_support::traits::OriginTrait>::PalletsOrigin;
 	fn tracks(
-	) -> impl Iterator<Item = Cow<'static, pallet_referenda::Track<Self::Id, Balance, BlockNumber>>>
+	) -> impl Iterator<Item = Cow<'static, polkadot_sdk::pallet_referenda::Track<Self::Id, Balance, BlockNumber>>>
 	{
 		TRACKS_DATA.iter().map(Cow::Borrowed)
 	}
@@ -738,7 +738,7 @@ impl ExtBuilder {
 		// endow system account to allow dispatching transaction
 		balances.push((DdcClustersGov::account_id(), ENDOWMENT));
 
-		let _ = pallet_balances::GenesisConfig::<Test> { balances, ..Default::default() }
+		let _ = polkadot_sdk::pallet_balances::GenesisConfig::<Test> { balances, ..Default::default() }
 			.assimilate_storage(&mut storage);
 
 		let _ = pallet_ddc_nodes::GenesisConfig::<Test> { storage_nodes }

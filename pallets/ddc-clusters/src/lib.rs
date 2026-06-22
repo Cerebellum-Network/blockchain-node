@@ -77,7 +77,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: polkadot_sdk::frame_system::Config + pallet_contracts::Config {
+	pub trait Config: polkadot_sdk::frame_system::Config + polkadot_sdk::pallet_contracts::Config {
 		#[allow(deprecated)]
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as polkadot_sdk::frame_system::Config>::RuntimeEvent>;
 		type NodeRepository: NodeRepository<Self>; // todo: get rid of tight coupling with nodes-pallet

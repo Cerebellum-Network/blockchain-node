@@ -32,8 +32,8 @@ construct_runtime!(
 	pub enum Test
 	{
 		System: polkadot_sdk::frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+		Timestamp: polkadot_sdk::pallet_timestamp::{Pallet, Call, Storage, Inherent},
+		Balances: polkadot_sdk::pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		DdcNodes: pallet_ddc_nodes::{Pallet, Call, Storage, Event<T>},
 	}
 );
@@ -47,10 +47,10 @@ impl polkadot_sdk::frame_system::Config for Test {
 	type Block = Block;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type AccountData = pallet_balances::AccountData<Balance>;
+	type AccountData = polkadot_sdk::pallet_balances::AccountData<Balance>;
 }
 
-impl pallet_balances::Config for Test {
+impl polkadot_sdk::pallet_balances::Config for Test {
 	type MaxLocks = ConstU32<1024>;
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
@@ -67,7 +67,7 @@ impl pallet_balances::Config for Test {
 	type DoneSlashHandler = ();
 }
 
-impl pallet_timestamp::Config for Test {
+impl polkadot_sdk::pallet_timestamp::Config for Test {
 	type Moment = u64;
 	type OnTimestampSet = ();
 	type MinimumPeriod = ConstU64<5>;
@@ -111,7 +111,7 @@ impl ExtBuilder {
 		let mut t = polkadot_sdk::frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
 		let account_id1 = AccountId::from([1; 32]);
 		let account_id2 = AccountId::from([2; 32]);
-		let _ = pallet_balances::GenesisConfig::<Test> {
+		let _ = polkadot_sdk::pallet_balances::GenesisConfig::<Test> {
 			balances: vec![(account_id1, 100), (account_id2, 100)],
 			..Default::default()
 		}

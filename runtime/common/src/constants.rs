@@ -84,7 +84,7 @@ pub mod tracks {
 	pub const fn percent_perbill(x: Perbill) -> polkadot_sdk::sp_arithmetic::FixedI64 {
 		polkadot_sdk::sp_arithmetic::FixedI64::from_perbill(x)
 	}
-	pub use pallet_referenda::Curve;
+	pub use polkadot_sdk::pallet_referenda::Curve;
 	use polkadot_sdk::sp_runtime::Perbill;
 
 	pub const APP_ROOT: Curve =

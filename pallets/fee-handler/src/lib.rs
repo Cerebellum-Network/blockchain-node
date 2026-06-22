@@ -26,13 +26,11 @@ pub mod weights;
 mod mock;
 
 use ddc_primitives::traits::FeeHandler;
-use polkadot_sdk::frame_support::{
-	polkadot_sdk::sp_runtime::SaturatedConversion,
-	traits::{
-		fungible::{Inspect, Mutate},
-		tokens::{Fortitude, Precision, Preservation},
-	},
+use polkadot_sdk::frame_support::traits::{
+	fungible::{Inspect, Mutate},
+	tokens::{Fortitude, Precision, Preservation},
 };
+use polkadot_sdk::sp_runtime::SaturatedConversion;
 pub use pallet::*;
 use weights::WeightInfo;
 

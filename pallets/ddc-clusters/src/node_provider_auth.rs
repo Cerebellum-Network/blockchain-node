@@ -49,16 +49,16 @@ where
 			args.encode()
 		};
 
-		let is_authorized = pallet_contracts::Pallet::<T>::bare_call(
+		let is_authorized = polkadot_sdk::pallet_contracts::Pallet::<T>::bare_call(
 			self.caller_id.clone(),
 			self.contract_id.clone(),
 			Default::default(),
 			EXTENSION_CALL_GAS_LIMIT,
 			None,
 			call_data,
-			pallet_contracts::DebugInfo::Skip,
-			pallet_contracts::CollectEvents::Skip,
-			pallet_contracts::Determinism::Enforced,
+			polkadot_sdk::pallet_contracts::DebugInfo::Skip,
+			polkadot_sdk::pallet_contracts::CollectEvents::Skip,
+			polkadot_sdk::pallet_contracts::Determinism::Enforced,
 		)
 		.result
 		.map_err(|_| NodeProviderAuthContractError::ContractCallFailed)?
@@ -92,26 +92,26 @@ where
 		let contract_args = encode_constructor();
 
 		// upload and instantiate the contract
-		let code_hash = pallet_contracts::Pallet::<T>::bare_upload_code(
+		let code_hash = polkadot_sdk::pallet_contracts::Pallet::<T>::bare_upload_code(
 			caller_id.clone(),
 			wasm.to_vec(),
 			None,
-			pallet_contracts::Determinism::Enforced,
+			polkadot_sdk::pallet_contracts::Determinism::Enforced,
 		)
 		.unwrap()
 		.code_hash;
 
 		// Deploy the contract.
-		let contract_id = pallet_contracts::Pallet::<T>::bare_instantiate(
+		let contract_id = polkadot_sdk::pallet_contracts::Pallet::<T>::bare_instantiate(
 			caller_id.clone(),
 			Default::default(),
 			EXTENSION_CALL_GAS_LIMIT,
 			None,
-			pallet_contracts::Code::Existing(code_hash),
+			polkadot_sdk::pallet_contracts::Code::Existing(code_hash),
 			contract_args,
 			vec![],
-			pallet_contracts::DebugInfo::Skip,
-			pallet_contracts::CollectEvents::Skip,
+			polkadot_sdk::pallet_contracts::DebugInfo::Skip,
+			polkadot_sdk::pallet_contracts::CollectEvents::Skip,
 		)
 		.result
 		.map_err(|_| NodeProviderAuthContractError::ContractDeployFailed)?
@@ -135,16 +135,16 @@ where
 			args.encode()
 		};
 
-		let _ = pallet_contracts::Pallet::<T>::bare_call(
+		let _ = polkadot_sdk::pallet_contracts::Pallet::<T>::bare_call(
 			self.caller_id.clone(),
 			self.contract_id.clone(),
 			Default::default(),
 			EXTENSION_CALL_GAS_LIMIT,
 			None,
 			call_data,
-			pallet_contracts::DebugInfo::Skip,
-			pallet_contracts::CollectEvents::Skip,
-			pallet_contracts::Determinism::Enforced,
+			polkadot_sdk::pallet_contracts::DebugInfo::Skip,
+			polkadot_sdk::pallet_contracts::CollectEvents::Skip,
+			polkadot_sdk::pallet_contracts::Determinism::Enforced,
 		)
 		.result
 		.map_err(|_| NodeProviderAuthContractError::NodeAuthorizationNotSuccessful)?;

@@ -41,8 +41,8 @@ construct_runtime!(
 	{
 		Contracts: contracts::{Pallet, Call, Storage, Event<T>, HoldReason},
 		System: polkadot_sdk::frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+		Timestamp: polkadot_sdk::pallet_timestamp::{Pallet, Call, Storage, Inherent},
+		Balances: polkadot_sdk::pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		DdcNodes: pallet_ddc_nodes::{Pallet, Call, Storage, Event<T>},
 		DdcClusters: pallet_ddc_clusters::{Pallet, Call, Storage, Event<T>},
 		Randomness: pallet_insecure_randomness_collective_flip::{Pallet, Storage},
@@ -60,7 +60,7 @@ parameter_types! {
 	pub const SurchargeReward: Balance = 150;
 	pub const MaxDepth: u32 = 100;
 	pub const MaxValueSize: u32 = 16_384;
-	pub Schedule: pallet_contracts::Schedule<Test> = Default::default();
+	pub Schedule: polkadot_sdk::pallet_contracts::Schedule<Test> = Default::default();
 	pub static DefaultDepositLimit: Balance = 10_000_000;
 	pub const CodeHashLockupDepositPercent: Perbill = Perbill::from_percent(0);
 	pub const MaxDelegateDependencies: u32 = 32;
@@ -81,8 +81,8 @@ impl contracts::Config for Test {
 	type Randomness = Randomness;
 	type Currency = Balances;
 	type RuntimeEvent = RuntimeEvent;
-	type CallStack = [pallet_contracts::Frame<Self>; 5];
-	type WeightPrice = Self; //pallet_transaction_payment::Module<Self>;
+	type CallStack = [polkadot_sdk::pallet_contracts::Frame<Self>; 5];
+	type WeightPrice = Self; //polkadot_sdk::pallet_transaction_payment::Module<Self>;
 	type WeightInfo = ();
 	type ChainExtension = ();
 	type Schedule = Schedule;
@@ -91,7 +91,7 @@ impl contracts::Config for Test {
 	type DepositPerByte = DepositPerByte;
 	type DepositPerItem = DepositPerItem;
 	type DefaultDepositLimit = DefaultDepositLimit;
-	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
+	type AddressGenerator = polkadot_sdk::pallet_contracts::DefaultAddressGenerator;
 	type MaxCodeLen = ConstU32<{ 123 * 1024 }>;
 	type MaxStorageKeyLen = ConstU32<128>;
 	type UnsafeUnstableInterface = ConstBool<false>;
@@ -163,12 +163,12 @@ impl polkadot_sdk::frame_system::Config for Test {
 	type Block = Block;
 	type AccountId = AccountId;
 	type BlockHashCount = ConstU64<250>;
-	type AccountData = pallet_balances::AccountData<Balance>;
+	type AccountData = polkadot_sdk::pallet_balances::AccountData<Balance>;
 	type MaxConsumers = ConstU32<16>;
 	type Lookup = IdentityLookup<Self::AccountId>;
 }
 
-impl pallet_balances::Config for Test {
+impl polkadot_sdk::pallet_balances::Config for Test {
 	type MaxLocks = ConstU32<1024>;
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
@@ -185,7 +185,7 @@ impl pallet_balances::Config for Test {
 	type DoneSlashHandler = ();
 }
 
-impl pallet_timestamp::Config for Test {
+impl polkadot_sdk::pallet_timestamp::Config for Test {
 	type Moment = u64;
 	type OnTimestampSet = ();
 	type MinimumPeriod = ConstU64<5>;
@@ -261,7 +261,7 @@ impl ExtBuilder {
 
 		let mut t = polkadot_sdk::frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
 
-		let _ = pallet_balances::GenesisConfig::<Test> {
+		let _ = polkadot_sdk::pallet_balances::GenesisConfig::<Test> {
 			balances: vec![
 				(AccountId::from([1; 32]), 100),
 				(AccountId::from([2; 32]), 100),

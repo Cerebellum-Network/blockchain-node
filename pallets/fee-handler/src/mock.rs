@@ -48,7 +48,7 @@ impl system::Config for Test {
 	type BlockHashCount = BlockHashCount;
 	type Version = ();
 	type PalletInfo = PalletInfo;
-	type AccountData = pallet_balances::AccountData<u128>;
+	type AccountData = polkadot_sdk::pallet_balances::AccountData<u128>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
@@ -69,7 +69,7 @@ parameter_types! {
 	pub const MaxReserves: u32 = 50;
 }
 
-impl pallet_balances::Config for Test {
+impl polkadot_sdk::pallet_balances::Config for Test {
 	type Balance = u128;
 	type DustRemoval = ();
 	type RuntimeEvent = RuntimeEvent;
@@ -150,7 +150,7 @@ mod tests {
 		type BlockHashCount = ConstU64<250>;
 		type Version = ();
 		type PalletInfo = PalletInfo;
-		type AccountData = pallet_balances::AccountData<u64>;
+		type AccountData = polkadot_sdk::pallet_balances::AccountData<u64>;
 		type OnNewAccount = ();
 		type OnKilledAccount = ();
 		type SystemWeightInfo = ();
@@ -170,7 +170,7 @@ mod tests {
 		pub const ExistentialDeposit: u64 = 1;
 	}
 
-	impl pallet_balances::Config for Test {
+	impl polkadot_sdk::pallet_balances::Config for Test {
 		type Balance = u64;
 		type DustRemoval = ();
 		type RuntimeEvent = RuntimeEvent;
