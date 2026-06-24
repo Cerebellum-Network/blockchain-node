@@ -4537,7 +4537,7 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.3"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=feat%2Fstaging-polkadot-sdk-migration#417d63ed2e45409a92e5d7adc1c63690fc43c6ae"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=staging#8259c98cd673ea0d89e17e4af5267fba1332d748"
 dependencies = [
  "blake2 0.10.6",
  "ddc-primitives",
@@ -4557,7 +4557,7 @@ dependencies = [
 [[package]]
 name = "ddc-dac-host"
 version = "0.1.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=feat%2Fstaging-polkadot-sdk-migration#7003da0f0ad623cc074ee525053f43fb403db749"
+source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=staging#fce6cb482697e05dae707671e6feaf92418fddf8"
 dependencies = [
  "ddc-api",
  "log",
@@ -4572,7 +4572,7 @@ dependencies = [
 [[package]]
 name = "ddc-primitives"
 version = "7.3.3"
-source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=chore%2Fstaging-2512.3.2-umbrella#464498b716f8ba0b90ff22744cd446d2e6247e60"
+source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=staging#9aaac1ae283ad5f1d9e976377515055a4e7e0d2a"
 dependencies = [
  "blake2 0.10.6",
  "hex",
@@ -10167,7 +10167,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Fstaging-polkadot-sdk-migration#4582b98c572e34f941afd13bc2fe5e28ec1427fb"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Fstaging-polkadot-sdk-migration#398d0513079bb3ee31bbd68821565d4f1a56ebf4"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
@@ -10207,7 +10207,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "8.0.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=feat%2Fstaging-polkadot-sdk-migration#898cd2660bbfe7ac6d91585db3e59aad4451a7a6"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=staging#e247b64d5182b30cf707a2f00640d0f968e58444"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
