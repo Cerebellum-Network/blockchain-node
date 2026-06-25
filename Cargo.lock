@@ -10167,7 +10167,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Fstaging-polkadot-sdk-migration#398d0513079bb3ee31bbd68821565d4f1a56ebf4"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=staging#66ff5f08273177bdc9601718f59d647e1bf60523"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
