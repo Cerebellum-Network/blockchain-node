@@ -175,10 +175,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 80011,
+	spec_version: 80012,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 27,
+	transaction_version: 28,
 	system_version: 0,
 };
 
@@ -1113,7 +1113,7 @@ where
 			polkadot_sdk::pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(
 				tip,
 			),
-			// frame_metadata_hash_extension removed — coupled to old hyperbridge wiring.
+			polkadot_sdk::frame_metadata_hash_extension::CheckMetadataHash::<Runtime>::new(false),
 			polkadot_sdk::frame_system::WeightReclaim::<Runtime>::new(),
 		);
 		let raw_payload = SignedPayload::new(call, tx_ext)
@@ -1872,6 +1872,7 @@ pub type TxExtension = (
 	polkadot_sdk::frame_system::CheckNonce<Runtime>,
 	polkadot_sdk::frame_system::CheckWeight<Runtime>,
 	polkadot_sdk::pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+	polkadot_sdk::frame_metadata_hash_extension::CheckMetadataHash<Runtime>,
 	polkadot_sdk::frame_system::WeightReclaim<Runtime>,
 );
 
