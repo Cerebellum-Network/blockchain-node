@@ -37,20 +37,20 @@ use ddc_primitives::traits::{
 	staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 };
 pub use ddc_primitives::{ClusterId, ClusterNodesCount, NodePubKey, NodeType};
-use frame_support::{
+pub use pallet::*;
+use polkadot_sdk::frame_support::{
 	assert_ok,
 	pallet_prelude::*,
 	parameter_types,
 	traits::{Currency, DefensiveSaturating, LockIdentifier, LockableCurrency, WithdrawReasons},
 };
-use frame_system::pallet_prelude::*;
-pub use pallet::*;
-use scale_info::TypeInfo;
-use sp_runtime::{
+use polkadot_sdk::frame_system::pallet_prelude::*;
+use polkadot_sdk::sp_runtime::{
 	traits::{AtLeast32BitUnsigned, CheckedAdd, CheckedSub, Saturating, StaticLookup, Zero},
 	RuntimeDebug, SaturatedConversion,
 };
-use sp_std::prelude::*;
+use polkadot_sdk::sp_std::prelude::*;
+use scale_info::TypeInfo;
 
 use crate::weights::WeightInfo;
 
@@ -58,8 +58,9 @@ const DDC_CLUSTER_STAKING_ID: LockIdentifier = *b"clrstake"; // DDC clusters sta
 const DDC_NODE_STAKING_ID: LockIdentifier = *b"ddcstake"; // DDC clusters maintainer's stake
 
 /// The balance type of this pallet.
-pub type BalanceOf<T> =
-	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+pub type BalanceOf<T> = <<T as Config>::Currency as Currency<
+	<T as polkadot_sdk::frame_system::Config>::AccountId,
+>>::Balance;
 
 parameter_types! {
 	/// A limit to the number of pending unlocks an account may have in parallel.
@@ -149,15 +150,15 @@ impl<
 	}
 }
 
-#[frame_support::pallet]
+#[polkadot_sdk::frame_support::pallet]
 pub mod pallet {
 	use ddc_primitives::traits::cluster::ClusterManager;
 
 	use super::*;
 
 	/// The current storage version.
-	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-		frame_support::traits::StorageVersion::new(1);
+	const STORAGE_VERSION: polkadot_sdk::frame_support::traits::StorageVersion =
+		polkadot_sdk::frame_support::traits::StorageVersion::new(1);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -165,10 +166,11 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: polkadot_sdk::frame_system::Config {
 		type Currency: LockableCurrency<Self::AccountId, Moment = BlockNumberFor<Self>>;
 		#[allow(deprecated)]
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+		type RuntimeEvent: From<Event<Self>>
+			+ IsType<<Self as polkadot_sdk::frame_system::Config>::RuntimeEvent>;
 
 		/// Weight information for extrinsics in this pallet.
 		type WeightInfo: WeightInfo;
@@ -276,7 +278,7 @@ pub mod pallet {
 					"Cluster Stash do not have enough balance to participate in storage network."
 				);
 
-				assert_ok!(frame_system::Pallet::<T>::inc_consumers(cluster_stash));
+				assert_ok!(polkadot_sdk::frame_system::Pallet::<T>::inc_consumers(cluster_stash));
 
 				<ClusterBonded<T>>::insert(cluster_stash, cluster_controller);
 
@@ -413,7 +415,8 @@ pub mod pallet {
 			// Checks that the node is registered in the network
 			ensure!(T::NodeVisitor::exists(&node), Error::<T>::NodeIsNotFound);
 
-			frame_system::Pallet::<T>::inc_consumers(&stash).map_err(|_| Error::<T>::BadState)?;
+			polkadot_sdk::frame_system::Pallet::<T>::inc_consumers(&stash)
+				.map_err(|_| Error::<T>::BadState)?;
 
 			Nodes::<T>::insert(&node, &stash);
 			Providers::<T>::insert(&stash, &node);
@@ -516,8 +519,9 @@ pub mod pallet {
 						// cluster eventually, we keep its stake till the end of unbonding period.
 						if ledger.active < min_bond_size.saturated_into::<BalanceOf<T>>() {
 							match node_pub_key {
-								NodePubKey::StoragePubKey(_) =>
-									LeavingStorages::<T>::insert(ledger.stash.clone(), cluster_id),
+								NodePubKey::StoragePubKey(_) => {
+									LeavingStorages::<T>::insert(ledger.stash.clone(), cluster_id)
+								},
 							};
 
 							Self::deposit_event(Event::<T>::LeaveSoon(ledger.stash.clone()));
@@ -536,7 +540,8 @@ pub mod pallet {
 				};
 
 				// block number + configuration -> no overflow
-				let block = <frame_system::Pallet<T>>::block_number() + unbonding_delay;
+				let block =
+					<polkadot_sdk::frame_system::Pallet<T>>::block_number() + unbonding_delay;
 				if let Some(chunk) =
 					ledger.unlocking.last_mut().filter(|chunk| chunk.block == block)
 				{
@@ -576,7 +581,8 @@ pub mod pallet {
 			let (stash, old_total) = (ledger.stash.clone(), ledger.total);
 			let node_pub_key = <Providers<T>>::get(stash.clone()).ok_or(Error::<T>::BadState)?;
 
-			ledger = ledger.consolidate_unlocked(<frame_system::Pallet<T>>::block_number());
+			ledger = ledger
+				.consolidate_unlocked(<polkadot_sdk::frame_system::Pallet<T>>::block_number());
 
 			if ledger.unlocking.is_empty() && ledger.active < T::Currency::minimum_balance() {
 				// This account must have called `unbond()` with some value that caused the active
@@ -688,7 +694,7 @@ pub mod pallet {
 		pub fn chill(origin: OriginFor<T>) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
 			let ledger = Ledger::<T>::get(&controller).ok_or(Error::<T>::NotController)?;
-			let current_block = <frame_system::Pallet<T>>::block_number();
+			let current_block = <polkadot_sdk::frame_system::Pallet<T>>::block_number();
 
 			// Extract delay from the cluster settings.
 			let (cluster, delay) = if let Some(cluster) = Storages::<T>::get(&ledger.stash) {
@@ -807,8 +813,8 @@ pub mod pallet {
 			ensure!(!is_cluster_node, Error::<T>::FastChillProhibited);
 
 			// block number + 1 => no overflow
-			let can_chill_from =
-				<frame_system::Pallet<T>>::block_number() + BlockNumberFor::<T>::from(1u32);
+			let can_chill_from = <polkadot_sdk::frame_system::Pallet<T>>::block_number()
+				+ BlockNumberFor::<T>::from(1u32);
 			Self::chill_stash_soon(&stash, &controller, cluster_id, can_chill_from);
 
 			Ok(())
@@ -840,7 +846,8 @@ pub mod pallet {
 
 			T::ClusterProtocol::bond_cluster(&cluster_id)?;
 
-			frame_system::Pallet::<T>::inc_consumers(&stash).map_err(|_| Error::<T>::BadState)?;
+			polkadot_sdk::frame_system::Pallet::<T>::inc_consumers(&stash)
+				.map_err(|_| Error::<T>::BadState)?;
 
 			<ClusterBonded<T>>::insert(&stash, &controller);
 
@@ -886,7 +893,7 @@ pub mod pallet {
 			let unbonding_delay = T::ClusterUnboningDelay::get();
 
 			// block number + configuration -> no overflow
-			let block = <frame_system::Pallet<T>>::block_number() + unbonding_delay;
+			let block = <polkadot_sdk::frame_system::Pallet<T>>::block_number() + unbonding_delay;
 			if let Some(chunk) = ledger.unlocking.last_mut().filter(|chunk| chunk.block == block) {
 				// To keep the chunk count down, we only keep one chunk per block. Since
 				// `unlocking` is a FiFo queue, if a chunk exists for `block` we know that it
@@ -920,7 +927,8 @@ pub mod pallet {
 				ClusterLedger::<T>::get(&controller).ok_or(Error::<T>::NotController)?;
 			let (stash, old_total) = (ledger.stash.clone(), ledger.total);
 
-			ledger = ledger.consolidate_unlocked(<frame_system::Pallet<T>>::block_number());
+			ledger = ledger
+				.consolidate_unlocked(<polkadot_sdk::frame_system::Pallet<T>>::block_number());
 
 			if ledger.unlocking.is_empty() && ledger.active < T::Currency::minimum_balance() {
 				// This account must have called `unbond_cluster()` with some value that caused the
@@ -1022,7 +1030,7 @@ pub mod pallet {
 
 			Self::do_remove_storage(stash);
 
-			frame_system::Pallet::<T>::dec_consumers(stash);
+			polkadot_sdk::frame_system::Pallet::<T>::dec_consumers(stash);
 
 			Ok(())
 		}
@@ -1037,7 +1045,7 @@ pub mod pallet {
 			<ClusterBonded<T>>::remove(stash);
 			<ClusterLedger<T>>::remove(&controller);
 
-			frame_system::Pallet::<T>::dec_consumers(stash);
+			polkadot_sdk::frame_system::Pallet::<T>::dec_consumers(stash);
 
 			Ok(())
 		}

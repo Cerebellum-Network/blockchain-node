@@ -1,6 +1,6 @@
 //! Tests for the module.
 
-use frame_support::{assert_noop, assert_ok};
+use polkadot_sdk::frame_support::{assert_noop, assert_ok};
 
 use super::{mock::*, *};
 

@@ -1,0 +1,182 @@
+name: "Manual Build"
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Image tag (e.g., dev, v8.0.0-rc1, feature-xyz)'
+        required: true
+        type: string
+        default: 'manual'
+
+      platforms:
+        description: 'Build platforms'
+        required: true
+        type: choice
+        options:
+          - linux/amd64
+          - linux/amd64,linux/arm64
+        default: 'linux/amd64'
+
+env:
+  PROFILE: release
+  DOCKERHUB_REPOSITORY: cerebellumnetwork
+  PACKAGE_NAME: pos-node
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  prepare:
+    name: "Prepare build matrix"
+    runs-on: ubuntu-latest
+    outputs:
+      platforms: ${{ steps.set.outputs.platforms }}
+    steps:
+      - id: set
+        run: |
+          if [[ "${{ inputs.platforms }}" == "linux/amd64,linux/arm64" ]]; then
+            echo 'platforms=["linux/amd64","linux/arm64"]' >> $GITHUB_OUTPUT
+          else
+            echo 'platforms=["linux/amd64"]' >> $GITHUB_OUTPUT
+          fi
+
+  build:
+    name: "Build (${{ matrix.platform }})"
+    needs: prepare
+    runs-on: cere-network-large-disk
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: ${{ fromJSON(needs.prepare.outputs.platforms) }}
+    steps:
+      - name: "Reclaim disk on self-hosted runner"
+        run: |
+          set -x
+          df -h /
+          # Print a full breakdown so future failures show exactly
+          # where disk is going.
+          docker system df || true
+          docker volume ls --filter 'name=buildx_buildkit_' || true
+
+          # Drop stopped containers + dangling images + unused networks.
+          docker container prune --force || true
+          docker image prune --force || true
+
+          # Buildkit state volumes from prior `Set up Docker Buildx`
+          # runs accumulate when builders aren't cleanly removed
+          # (post-step skipped on cancelled jobs, etc.). Drop the ones
+          # not currently in use.
+          docker volume ls --filter 'name=buildx_buildkit_' --filter 'dangling=true' -q \
+            | xargs -r docker volume rm || true
+
+          # Across-the-board buildx cache cap (covers any builder still
+          # referenced by another running job).
+          for b in $(docker buildx ls --format '{{.Name}}' 2>/dev/null | tail -n +2 | awk '{print $1}'); do
+            docker buildx prune --builder "$b" --keep-storage 30g --force || true
+          done
+
+          df -h /
+          docker system df || true
+
+      - name: "Checkout code"
+        uses: actions/checkout@v4
+
+      - name: "Configure Git"
+        run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+
+      - name: "Cache cargo registry"
+        uses: actions/cache@v4
+        continue-on-error: false
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ matrix.platform }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ matrix.platform }}-
+            ${{ runner.os }}-cargo-
+
+      - name: "Set up QEMU"
+        if: matrix.platform != 'linux/amd64'
+        uses: docker/setup-qemu-action@v3
+
+      - name: "Set up Docker Buildx"
+        uses: docker/setup-buildx-action@v3
+
+      - name: "Install toolchain and rust-src"
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.91.0
+          override: true
+          target: wasm32-unknown-unknown
+          components: rust-src
+
+      - name: "Login to Docker Hub"
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: "Compute platform slug"
+        id: slug
+        run: echo "slug=$(echo ${{ matrix.platform }} | tr '/' '-')" >> $GITHUB_OUTPUT
+
+      - name: "Build and push per-platform image"
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          platforms: ${{ matrix.platform }}
+          provenance: false
+          build-args: |
+            GH_READ_TOKEN=${{ secrets.GH_READ_TOKEN }}
+          tags: |
+            ${{ env.DOCKERHUB_REPOSITORY }}/${{ env.PACKAGE_NAME }}:${{ inputs.version }}-${{ steps.slug.outputs.slug }}
+
+  manifest:
+    name: "Create multi-arch manifest"
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Login to Docker Hub"
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: "Set up Docker Buildx"
+        uses: docker/setup-buildx-action@v3
+
+      - name: "Configure short SHA"
+        run: echo "GITHUB_SHA_SHORT=${GITHUB_SHA:0:7}" >> ${GITHUB_ENV}
+
+      - name: "Create and push manifest"
+        run: |
+          set -euo pipefail
+          IMAGES=""
+          if [[ "${{ inputs.platforms }}" == *"linux/amd64"* ]]; then
+            IMAGES="$IMAGES ${{ env.DOCKERHUB_REPOSITORY }}/${{ env.PACKAGE_NAME }}:${{ inputs.version }}-linux-amd64"
+          fi
+          if [[ "${{ inputs.platforms }}" == *"linux/arm64"* ]]; then
+            IMAGES="$IMAGES ${{ env.DOCKERHUB_REPOSITORY }}/${{ env.PACKAGE_NAME }}:${{ inputs.version }}-linux-arm64"
+          fi
+
+          docker buildx imagetools create \
+            -t ${{ env.DOCKERHUB_REPOSITORY }}/${{ env.PACKAGE_NAME }}:${{ inputs.version }} \
+            -t ${{ env.DOCKERHUB_REPOSITORY }}/${{ env.PACKAGE_NAME }}:${{ env.GITHUB_SHA_SHORT }} \
+            $IMAGES
+
+      - name: "Summary"
+        run: |
+          echo "✅ Blockchain Node built and tagged successfully!"
+          echo ""
+          echo "🌿 Branch: ${{ github.ref_name }}"
+          echo "🏷️  Version: ${{ inputs.version }}"
+          echo "🔧 Platforms: ${{ inputs.platforms }}"
+          echo "📝 Commit: ${{ github.sha }}"
+          echo ""
+          echo "🐳 Docker images (multi-arch manifest):"
+          echo "  - ${{ env.DOCKERHUB_REPOSITORY }}/${{ env.PACKAGE_NAME }}:${{ inputs.version }}"
+          echo "  - ${{ env.DOCKERHUB_REPOSITORY }}/${{ env.PACKAGE_NAME }}:${{ env.GITHUB_SHA_SHORT }}"

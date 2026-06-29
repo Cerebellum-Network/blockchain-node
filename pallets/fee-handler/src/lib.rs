@@ -21,17 +21,16 @@
 // todo! Add Unit tests and Benchmarking
 
 use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
-use frame_support::{
+pub use pallet::*;
+use polkadot_sdk::frame_support::{
 	__private::RuntimeDebug,
 	pallet_prelude::TypeInfo,
-	sp_runtime::SaturatedConversion,
 	traits::{
 		fungible::Mutate,
 		tokens::{Fortitude, Precision, Preservation},
 	},
 };
-pub use pallet::*;
-use sp_runtime::{Permill, Saturating};
+use polkadot_sdk::sp_runtime::{Permill, SaturatedConversion, Saturating};
 
 #[derive(
 	PartialEq,
@@ -65,18 +64,21 @@ impl FeeDistributionProportion {
 
 pub trait FeeHandler<T: Config> {
 	/// Handles the distribution of fees to the treasury and fee pot accounts.
-	fn handle_fee(source: T::AccountId, fee_amount: u128) -> sp_runtime::DispatchResult;
+	fn handle_fee(
+		source: T::AccountId,
+		fee_amount: u128,
+	) -> polkadot_sdk::sp_runtime::DispatchResult;
 }
 
 // todo! Fixed clippy warnings
 #[allow(deprecated)]
 #[allow(clippy::let_unit_value)]
 #[allow(clippy::manual_inspect)]
-#[frame_support::pallet]
+#[polkadot_sdk::frame_support::pallet]
 pub mod pallet {
-	use frame_support::{pallet_prelude::*, PalletId};
-	use frame_system::pallet_prelude::*;
-	use sp_runtime::traits::AccountIdConversion;
+	use polkadot_sdk::frame_support::{pallet_prelude::*, PalletId};
+	use polkadot_sdk::frame_system::pallet_prelude::*;
+	use polkadot_sdk::sp_runtime::traits::AccountIdConversion;
 
 	use super::*;
 
@@ -84,10 +86,11 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: polkadot_sdk::frame_system::Config {
 		/// The overarching runtime event type.
 		#[allow(deprecated)]
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+		type RuntimeEvent: From<Event<Self>>
+			+ IsType<<Self as polkadot_sdk::frame_system::Config>::RuntimeEvent>;
 		/// Native Currency Support.
 		type Currency: Mutate<Self::AccountId>;
 		/// Governance origin for privileged calls.

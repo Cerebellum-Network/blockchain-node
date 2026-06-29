@@ -4,13 +4,13 @@
 
 pub use pallet::*;
 
-#[frame_support::pallet]
+#[polkadot_sdk::frame_support::pallet]
 pub mod pallet {
 	use cere_runtime_common::constants::currency::{Balance, DOLLARS, GRAND};
-	use frame_support::pallet_prelude::*;
-	use sp_core::DecodeWithMemTracking;
+	use polkadot_sdk::frame_support::pallet_prelude::*;
+	use polkadot_sdk::sp_core::DecodeWithMemTracking;
 	#[pallet::config]
-	pub trait Config: frame_system::Config {}
+	pub trait Config: polkadot_sdk::frame_system::Config {}
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);

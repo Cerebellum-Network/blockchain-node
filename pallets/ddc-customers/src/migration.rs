@@ -1,20 +1,20 @@
+use log::info;
 #[cfg(feature = "try-runtime")]
-use frame_support::ensure;
-use frame_support::{
+use polkadot_sdk::frame_support::ensure;
+use polkadot_sdk::frame_support::{
 	storage_alias,
 	traits::{Get, GetStorageVersion, OnRuntimeUpgrade, StorageVersion},
 	weights::Weight,
 };
-use log::info;
 #[cfg(feature = "try-runtime")]
-use sp_runtime::DispatchError;
+use polkadot_sdk::sp_runtime::DispatchError;
 
 use super::*;
 
 const LOG_TARGET: &str = "ddc-customers";
 
 pub mod v0 {
-	use frame_support::pallet_prelude::*;
+	use polkadot_sdk::frame_support::pallet_prelude::*;
 
 	use super::*;
 
@@ -34,7 +34,7 @@ pub mod v0 {
 		crate::Pallet<T>,
 		Twox64Concat,
 		BucketId,
-		Bucket<<T as frame_system::Config>::AccountId>,
+		Bucket<<T as polkadot_sdk::frame_system::Config>::AccountId>,
 		OptionQuery,
 	>;
 }
@@ -78,7 +78,7 @@ pub fn migrate_to_v1<T: Config>() -> Weight {
 	}
 }
 
-pub struct MigrateToV1<T>(sp_std::marker::PhantomData<T>);
+pub struct MigrateToV1<T>(polkadot_sdk::sp_std::marker::PhantomData<T>);
 impl<T: Config> OnRuntimeUpgrade for MigrateToV1<T> {
 	fn on_runtime_upgrade() -> Weight {
 		migrate_to_v1::<T>()
@@ -112,7 +112,7 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV1<T> {
 		let current_version = Pallet::<T>::in_code_storage_version();
 		let on_chain_version = Pallet::<T>::on_chain_storage_version();
 
-		frame_support::ensure!(current_version == 1, "must_upgrade");
+		polkadot_sdk::frame_support::ensure!(current_version == 1, "must_upgrade");
 		ensure!(
 			current_version == on_chain_version,
 			"after migration, the current_version and on_chain_version should be the same"

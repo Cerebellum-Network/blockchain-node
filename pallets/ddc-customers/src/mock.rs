@@ -5,13 +5,13 @@ use ddc_primitives::{
 	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterParams, ClusterPricingParams,
 	ClusterProtocolParams, ClusterStatus, NodeType,
 };
-use frame_support::{
+use polkadot_sdk::frame_support::{
 	construct_runtime, derive_impl, parameter_types,
 	traits::{ConstU32, ConstU64},
 };
-use frame_system::mocking::MockBlock;
-use sp_io::TestExternalities;
-use sp_runtime::{
+use polkadot_sdk::frame_system::mocking::MockBlock;
+use polkadot_sdk::sp_io::TestExternalities;
+use polkadot_sdk::sp_runtime::{
 	traits::IdentityLookup, BuildStorage, DispatchError, DispatchResult, Perquintill,
 };
 
@@ -27,9 +27,9 @@ type Block = MockBlock<Test>;
 construct_runtime!(
 	pub enum Test
 	{
-		System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+		System: polkadot_sdk::frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
+		Timestamp: polkadot_sdk::pallet_timestamp::{Pallet, Call, Storage, Inherent},
+		Balances: polkadot_sdk::pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		DdcCustomers: pallet_ddc_customers::{Pallet, Call, Storage, Config<T>, Event<T>},
 	}
 );
@@ -38,18 +38,18 @@ parameter_types! {
 	pub static ExistentialDeposit: Balance = 1;
 }
 
-#[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
-impl frame_system::Config for Test {
+#[derive_impl(polkadot_sdk::frame_system::config_preludes::TestDefaultConfig)]
+impl polkadot_sdk::frame_system::Config for Test {
 	type Block = Block;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
-	type AccountData = pallet_balances::AccountData<Balance>;
+	type AccountData = polkadot_sdk::pallet_balances::AccountData<Balance>;
 	type MaxConsumers = ConstU32<16>;
 }
 
-impl pallet_balances::Config for Test {
+impl polkadot_sdk::pallet_balances::Config for Test {
 	type MaxLocks = ConstU32<1024>;
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
@@ -66,7 +66,7 @@ impl pallet_balances::Config for Test {
 	type DoneSlashHandler = ();
 }
 
-impl pallet_timestamp::Config for Test {
+impl polkadot_sdk::pallet_timestamp::Config for Test {
 	type Moment = u64;
 	type OnTimestampSet = ();
 	type MinimumPeriod = ConstU64<5>;
@@ -211,11 +211,13 @@ pub struct ExtBuilder;
 
 impl ExtBuilder {
 	pub fn build(self) -> TestExternalities {
-		sp_tracing::try_init_simple();
+		polkadot_sdk::sp_tracing::try_init_simple();
 
-		let mut storage = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
+		let mut storage = polkadot_sdk::frame_system::GenesisConfig::<Test>::default()
+			.build_storage()
+			.unwrap();
 
-		let _balance_genesis = pallet_balances::GenesisConfig::<Test> {
+		let _balance_genesis = polkadot_sdk::pallet_balances::GenesisConfig::<Test> {
 			balances: vec![(1, 100), (2, 100), (3, 1000)],
 			..Default::default()
 		}
@@ -230,7 +232,7 @@ impl ExtBuilder {
 		TestExternalities::new(storage)
 	}
 	pub fn build_and_execute(self, test: impl FnOnce()) {
-		sp_tracing::try_init_simple();
+		polkadot_sdk::sp_tracing::try_init_simple();
 		let mut ext = self.build();
 		ext.execute_with(test);
 	}

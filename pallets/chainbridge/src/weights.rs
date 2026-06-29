@@ -2,8 +2,8 @@
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
-use frame_support::{traits::Get, weights::{Weight, constants::RocksDbWeight}};
-use sp_std::marker::PhantomData;
+use polkadot_sdk::frame_support::{traits::Get, weights::{Weight, constants::RocksDbWeight}};
+use polkadot_sdk::sp_std::marker::PhantomData;
 
 /// Weight functions needed for pallet_erc20.
 pub trait WeightInfo {
@@ -19,7 +19,7 @@ pub trait WeightInfo {
 }
 
 pub struct SubstrateWeight<T>(PhantomData<T>);
-impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
+impl<T: polkadot_sdk::frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn set_threshold() -> Weight {
 		Weight::from_parts(195_000_000u64, 0)
 	}

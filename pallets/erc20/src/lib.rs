@@ -2,30 +2,31 @@
 // Ensure we're `no_std` when compiling for Wasm.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{
+pub use pallet::*;
+use pallet_chainbridge as bridge;
+use pallet_erc721 as erc721;
+use pallet_erc721::Tokens;
+use polkadot_sdk::frame_support::{
 	dispatch::DispatchResult,
 	ensure,
 	pallet_prelude::*,
 	traits::{Currency, EnsureOrigin, ExistenceRequirement::AllowDeath, Get},
 };
-use frame_system::{ensure_signed, pallet_prelude::*};
-pub use pallet::*;
-use pallet_chainbridge as bridge;
-use pallet_erc721 as erc721;
-use pallet_erc721::Tokens;
-use sp_arithmetic::traits::SaturatedConversion;
-use sp_core::U256;
-use sp_std::prelude::*;
+use polkadot_sdk::frame_system::{ensure_signed, pallet_prelude::*};
+use polkadot_sdk::sp_arithmetic::traits::SaturatedConversion;
+use polkadot_sdk::sp_core::U256;
+use polkadot_sdk::sp_std::prelude::*;
 
 pub mod weights;
 use crate::weights::WeightInfo;
 
 type ResourceId = bridge::ResourceId;
 
-pub type BalanceOf<T> =
-	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+pub type BalanceOf<T> = <<T as Config>::Currency as Currency<
+	<T as polkadot_sdk::frame_system::Config>::AccountId,
+>>::Balance;
 
-#[frame_support::pallet]
+#[polkadot_sdk::frame_support::pallet]
 pub mod pallet {
 	use super::*;
 
@@ -34,9 +35,10 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + bridge::Config + erc721::Config {
+	pub trait Config: polkadot_sdk::frame_system::Config + bridge::Config + erc721::Config {
 		#[allow(deprecated)]
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+		type RuntimeEvent: From<Event<Self>>
+			+ IsType<<Self as polkadot_sdk::frame_system::Config>::RuntimeEvent>;
 		/// Specifies the origin check provided by the bridge for calls that can only be called by
 		/// the bridge pallet
 		type BridgeOrigin: EnsureOrigin<Self::RuntimeOrigin, Success = Self::AccountId>;
@@ -62,7 +64,7 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		Remark(<T as frame_system::Config>::Hash),
+		Remark(<T as polkadot_sdk::frame_system::Config>::Hash),
 	}
 
 	#[pallet::call]

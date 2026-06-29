@@ -4,15 +4,15 @@ use ddc_primitives::{
 	ClusterId, ClusterParams, ClusterProtocolParams, NodeParams, NodePubKey, StorageNodeMode,
 	StorageNodeParams,
 };
-pub use frame_benchmarking::{
+use pallet_ddc_nodes::Node;
+pub use polkadot_sdk::frame_benchmarking::{
 	account, benchmarks, impl_benchmark_test_suite, whitelist_account, whitelisted_caller,
 	BenchmarkError,
 };
-use frame_system::RawOrigin;
-use pallet_ddc_nodes::Node;
-use sp_core::crypto::UncheckedFrom;
-use sp_runtime::Perquintill;
-use sp_std::prelude::*;
+use polkadot_sdk::frame_system::RawOrigin;
+use polkadot_sdk::sp_core::crypto::UncheckedFrom;
+use polkadot_sdk::sp_runtime::Perquintill;
+use polkadot_sdk::sp_std::prelude::*;
 
 use crate::{Pallet as DdcClusters, *};
 
@@ -139,12 +139,15 @@ where
 impl From<NodeProviderAuthContractError> for Box<BenchmarkError> {
 	fn from(error: NodeProviderAuthContractError) -> Self {
 		match error {
-			NodeProviderAuthContractError::ContractCallFailed =>
-				Box::new(BenchmarkError::Stop("NodeAuthContractCallFailed")),
-			NodeProviderAuthContractError::ContractDeployFailed =>
-				Box::new(BenchmarkError::Stop("NodeAuthContractDeployFailed")),
-			NodeProviderAuthContractError::NodeAuthorizationNotSuccessful =>
-				Box::new(BenchmarkError::Stop("NodeAuthNodeAuthorizationNotSuccessful")),
+			NodeProviderAuthContractError::ContractCallFailed => {
+				Box::new(BenchmarkError::Stop("NodeAuthContractCallFailed"))
+			},
+			NodeProviderAuthContractError::ContractDeployFailed => {
+				Box::new(BenchmarkError::Stop("NodeAuthContractDeployFailed"))
+			},
+			NodeProviderAuthContractError::NodeAuthorizationNotSuccessful => {
+				Box::new(BenchmarkError::Stop("NodeAuthNodeAuthorizationNotSuccessful"))
+			},
 		}
 	}
 }

@@ -10,25 +10,25 @@ use std::sync::Arc;
 use ddc_primitives::{AccountId, Balance, Block, BlockNumber, Hash, Nonce};
 use jsonrpsee::RpcModule;
 use pallet_ismp_rpc::{IsmpApiServer, IsmpRpcHandler};
-use sc_client_api::{AuxStore, BlockBackend, ProofProvider};
-use sc_consensus_grandpa::{
+use polkadot_sdk::sc_client_api::{AuxStore, BlockBackend, ProofProvider};
+use polkadot_sdk::sc_consensus_grandpa::{
 	FinalityProofProvider, GrandpaJustificationStream, SharedAuthoritySet, SharedVoterState,
 };
-use sc_consensus_grandpa_rpc::Grandpa;
-use sc_rpc::SubscriptionTaskExecutor;
-use sc_transaction_pool_api::TransactionPool;
-use sp_api::ProvideRuntimeApi;
-use sp_block_builder::BlockBuilder;
-use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
-use sp_consensus::SelectChain;
-use sp_consensus_babe::BabeApi;
-use sp_core::H256;
-use sp_keystore::KeystorePtr;
+use polkadot_sdk::sc_consensus_grandpa_rpc::Grandpa;
+use polkadot_sdk::sc_rpc::SubscriptionTaskExecutor;
+use polkadot_sdk::sc_transaction_pool_api::TransactionPool;
+use polkadot_sdk::sp_api::ProvideRuntimeApi;
+use polkadot_sdk::sp_block_builder::BlockBuilder;
+use polkadot_sdk::sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
+use polkadot_sdk::sp_consensus::SelectChain;
+use polkadot_sdk::sp_consensus_babe::BabeApi;
+use polkadot_sdk::sp_core::H256;
+use polkadot_sdk::sp_keystore::KeystorePtr;
 
 /// Extra dependencies for BABE.
 pub struct BabeDeps {
 	/// A handle to the BABE worker for issuing requests.
-	pub babe_worker_handle: sc_consensus_babe::BabeWorkerHandle<Block>,
+	pub babe_worker_handle: polkadot_sdk::sc_consensus_babe::BabeWorkerHandle<Block>,
 	/// The keystore that manages the keys of the node.
 	pub keystore: KeystorePtr,
 }
@@ -55,7 +55,7 @@ pub struct FullDeps<C, P, SC, B> {
 	/// The SelectChain Strategy
 	pub select_chain: SC,
 	/// A copy of the chain spec.
-	pub chain_spec: Box<dyn sc_chain_spec::ChainSpec>,
+	pub chain_spec: Box<dyn polkadot_sdk::sc_chain_spec::ChainSpec>,
 	/// BABE specific dependencies.
 	pub babe: BabeDeps,
 	/// GRANDPA specific dependencies.
@@ -71,7 +71,7 @@ pub fn create_full<C, P, SC, B>(
 ) -> Result<RpcModule<()>, Box<dyn std::error::Error + Send + Sync>>
 where
 	C: ProvideRuntimeApi<Block>
-		+ sc_client_api::BlockBackend<Block>
+		+ polkadot_sdk::sc_client_api::BlockBackend<Block>
 		+ HeaderBackend<Block>
 		+ AuxStore
 		+ HeaderMetadata<Block, Error = BlockChainError>
@@ -80,23 +80,28 @@ where
 		+ 'static,
 	C: BlockBackend<Block>,
 	C: ProofProvider<Block>,
-	C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>,
-	C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
+	C::Api: polkadot_sdk::substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>,
+	C::Api:
+		polkadot_sdk::pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
 	C::Api: BabeApi<Block>,
 	C::Api: BlockBuilder<Block>,
 	C::Api: pallet_ismp_runtime_api::IsmpRuntimeApi<Block, H256>,
 	P: TransactionPool + 'static,
 	SC: SelectChain<Block> + 'static,
-	B: sc_client_api::Backend<Block> + Send + Sync + 'static,
-	B::State: sc_client_api::backend::StateBackend<sp_runtime::traits::HashingFor<Block>>,
+	B: polkadot_sdk::sc_client_api::Backend<Block> + Send + Sync + 'static,
+	B::State: polkadot_sdk::sc_client_api::backend::StateBackend<
+		polkadot_sdk::sp_runtime::traits::HashingFor<Block>,
+	>,
 {
-	use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
-	use sc_consensus_babe_rpc::{Babe, BabeApiServer};
-	use sc_consensus_grandpa_rpc::GrandpaApiServer;
-	use sc_rpc::dev::{Dev, DevApiServer};
-	use sc_sync_state_rpc::{SyncState, SyncStateApiServer};
-	use substrate_frame_rpc_system::{System, SystemApiServer};
-	use substrate_state_trie_migration_rpc::StateMigrationApiServer;
+	use polkadot_sdk::pallet_transaction_payment_rpc::{
+		TransactionPayment, TransactionPaymentApiServer,
+	};
+	use polkadot_sdk::sc_consensus_babe_rpc::{Babe, BabeApiServer};
+	use polkadot_sdk::sc_consensus_grandpa_rpc::GrandpaApiServer;
+	use polkadot_sdk::sc_rpc::dev::{Dev, DevApiServer};
+	use polkadot_sdk::sc_sync_state_rpc::{SyncState, SyncStateApiServer};
+	use polkadot_sdk::substrate_frame_rpc_system::{System, SystemApiServer};
+	use polkadot_sdk::substrate_state_trie_migration_rpc::StateMigrationApiServer;
 
 	let mut io = RpcModule::new(());
 	let FullDeps { client, pool, select_chain, chain_spec, babe, grandpa, backend } = deps;
@@ -135,8 +140,11 @@ where
 	)?;
 
 	io.merge(
-		substrate_state_trie_migration_rpc::StateMigration::new(client.clone(), backend.clone())
-			.into_rpc(),
+		polkadot_sdk::substrate_state_trie_migration_rpc::StateMigration::new(
+			client.clone(),
+			backend.clone(),
+		)
+		.into_rpc(),
 	)?;
 	io.merge(Dev::new(client.clone()).into_rpc())?;
 	io.merge(IsmpRpcHandler::new(client, backend)?.into_rpc())?;

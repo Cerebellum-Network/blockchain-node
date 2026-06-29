@@ -4,11 +4,11 @@ use ddc_primitives::{
 	ClusterBondingParams, ClusterId, ClusterNodeKind, ClusterParams, ClusterProtocolParams,
 	NodeParams, StorageNodeMode, StorageNodeParams, StorageNodePubKey,
 };
-use frame_benchmarking::{account, benchmarks};
-use frame_system::RawOrigin;
-use pallet_referenda::Pallet as Referenda;
-use sp_runtime::{Perquintill, SaturatedConversion};
-use sp_std::prelude::*;
+use polkadot_sdk::frame_benchmarking::{account, benchmarks};
+use polkadot_sdk::frame_system::RawOrigin;
+use polkadot_sdk::pallet_referenda::Pallet as Referenda;
+use polkadot_sdk::sp_runtime::{Perquintill, SaturatedConversion};
+use polkadot_sdk::sp_std::prelude::*;
 
 use super::*;
 use crate::Pallet as DdcClustersGov;
@@ -20,15 +20,15 @@ pub fn create_funded_user_with_balance<T: Config>(
 	balance_factor: u128,
 ) -> T::AccountId {
 	let user = account(name, n, 0);
-	let balance = <T as pallet::Config>::Currency::minimum_balance() *
-		balance_factor.saturated_into::<BalanceOf<T>>();
+	let balance = <T as pallet::Config>::Currency::minimum_balance()
+		* balance_factor.saturated_into::<BalanceOf<T>>();
 	let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
 	user
 }
 
 pub fn fund_user<T: Config>(user: T::AccountId, balance_factor: u128) -> T::AccountId {
-	let balance = <T as pallet::Config>::Currency::minimum_balance() *
-		balance_factor.saturated_into::<BalanceOf<T>>();
+	let balance = <T as pallet::Config>::Currency::minimum_balance()
+		* balance_factor.saturated_into::<BalanceOf<T>>();
 	let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
 	user
 }
@@ -114,23 +114,23 @@ pub fn create_cluster_with_nodes<T: Config>(
 }
 
 fn next_block<T: Config>() {
-	frame_system::Pallet::<T>::set_block_number(
-		frame_system::Pallet::<T>::block_number() + BlockNumberFor::<T>::from(1_u32),
+	polkadot_sdk::frame_system::Pallet::<T>::set_block_number(
+		polkadot_sdk::frame_system::Pallet::<T>::block_number() + BlockNumberFor::<T>::from(1_u32),
 	);
 }
 
 fn fast_forward_to<T: Config>(n: BlockNumberFor<T>) {
-	while frame_system::Pallet::<T>::block_number() < n {
+	while polkadot_sdk::frame_system::Pallet::<T>::block_number() < n {
 		next_block::<T>();
 	}
 }
 
 fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
-	frame_system::Pallet::<T>::assert_last_event(generic_event.into());
+	polkadot_sdk::frame_system::Pallet::<T>::assert_last_event(generic_event.into());
 }
 
 fn assert_has_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
-	frame_system::Pallet::<T>::assert_has_event(generic_event.into());
+	polkadot_sdk::frame_system::Pallet::<T>::assert_has_event(generic_event.into());
 }
 
 benchmarks! {
@@ -465,7 +465,7 @@ benchmarks! {
 
 		DdcClustersGov::<T>::close_proposal(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterMember::ClusterManager).expect("Could not close proposal");
 
-		let referenda_index = pallet_referenda::ReferendumCount::<T>::get() - 1;
+		let referenda_index = polkadot_sdk::pallet_referenda::ReferendumCount::<T>::get() - 1;
 
 		assert!(SubmissionDeposits::<T>::contains_key(referenda_index));
 

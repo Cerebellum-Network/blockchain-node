@@ -1,11 +1,13 @@
 #![cfg(test)]
 
-use frame_support::{derive_impl, ord_parameter_types, parameter_types, weights::Weight};
-use frame_system::{self as system, mocking::MockBlock};
 pub use pallet_balances as balances;
 use pallet_chainbridge as bridge;
-use sp_core::hashing::blake2_128;
-use sp_runtime::{BuildStorage, Perbill};
+use polkadot_sdk::frame_support::{
+	derive_impl, ord_parameter_types, parameter_types, weights::Weight,
+};
+use polkadot_sdk::frame_system::{self as system, mocking::MockBlock};
+use polkadot_sdk::sp_core::hashing::blake2_128;
+use polkadot_sdk::sp_runtime::{BuildStorage, Perbill};
 
 use crate::{self as erc721, Config};
 
@@ -16,12 +18,12 @@ parameter_types! {
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
 }
 
-#[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
-impl frame_system::Config for Test {
+#[derive_impl(polkadot_sdk::frame_system::config_preludes::TestDefaultConfig)]
+impl polkadot_sdk::frame_system::Config for Test {
 	type Block = Block;
 	type AccountId = u64;
 	type AccountData = balances::AccountData<u64>;
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type MaxConsumers = polkadot_sdk::frame_support::traits::ConstU32<16>;
 }
 
 parameter_types! {
@@ -32,7 +34,7 @@ ord_parameter_types! {
 	pub const One: u64 = 1;
 }
 
-impl pallet_balances::Config for Test {
+impl polkadot_sdk::pallet_balances::Config for Test {
 	type Balance = u64;
 	type DustRemoval = ();
 	type RuntimeEvent = RuntimeEvent;
@@ -61,7 +63,7 @@ impl Config for Test {
 
 type Block = MockBlock<Test>;
 
-frame_support::construct_runtime!(
+polkadot_sdk::frame_support::construct_runtime!(
 	pub enum Test
 	{
 		System: system::{Pallet, Call, Event<T>},
@@ -75,7 +77,7 @@ pub const USER_B: u64 = 0x2;
 pub const USER_C: u64 = 0x3;
 pub const ENDOWED_BALANCE: u64 = 100_000_000;
 
-pub fn new_test_ext() -> sp_io::TestExternalities {
+pub fn new_test_ext() -> polkadot_sdk::sp_io::TestExternalities {
 	RuntimeGenesisConfig {
 		balances: balances::GenesisConfig {
 			balances: vec![(USER_A, ENDOWED_BALANCE)],

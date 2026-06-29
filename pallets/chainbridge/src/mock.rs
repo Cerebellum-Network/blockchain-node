@@ -1,9 +1,9 @@
-use frame_support::{
+pub use pallet_balances as balances;
+use polkadot_sdk::frame_support::{
 	assert_ok, derive_impl, ord_parameter_types, parameter_types, weights::Weight,
 };
-use frame_system::{self as system};
-pub use pallet_balances as balances;
-use sp_runtime::{traits::AccountIdConversion, BuildStorage, Perbill};
+use polkadot_sdk::frame_system::{self as system};
+use polkadot_sdk::sp_runtime::{traits::AccountIdConversion, BuildStorage, Perbill};
 
 use crate::{self as bridge, *};
 
@@ -15,12 +15,12 @@ parameter_types! {
 	pub const MaxLocks: u32 = 50;
 }
 
-#[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
-impl frame_system::Config for Test {
+#[derive_impl(polkadot_sdk::frame_system::config_preludes::TestDefaultConfig)]
+impl polkadot_sdk::frame_system::Config for Test {
 	type Block = Block;
 	type BlockHashCount = BlockHashCount;
-	type AccountData = pallet_balances::AccountData<u64>;
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type AccountData = polkadot_sdk::pallet_balances::AccountData<u64>;
+	type MaxConsumers = polkadot_sdk::frame_support::traits::ConstU32<16>;
 }
 
 parameter_types! {
@@ -31,7 +31,7 @@ ord_parameter_types! {
 	pub const One: u64 = 1;
 }
 
-impl pallet_balances::Config for Test {
+impl polkadot_sdk::pallet_balances::Config for Test {
 	type Balance = u64;
 	type DustRemoval = ();
 	type RuntimeEvent = RuntimeEvent;
@@ -56,7 +56,7 @@ parameter_types! {
 
 impl crate::pallet::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
-	type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
+	type AdminOrigin = polkadot_sdk::frame_system::EnsureRoot<Self::AccountId>;
 	type Proposal = RuntimeCall;
 	type ChainIdentity = TestChainId;
 	type ProposalLifetime = ProposalLifetime;
@@ -64,9 +64,9 @@ impl crate::pallet::Config for Test {
 	type WeightInfo = ();
 }
 
-type Block = frame_system::mocking::MockBlock<Test>;
+type Block = polkadot_sdk::frame_system::mocking::MockBlock<Test>;
 
-frame_support::construct_runtime!(
+polkadot_sdk::frame_support::construct_runtime!(
 	pub enum Test
 	{
 		System: system::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -82,16 +82,18 @@ pub const RELAYER_C: u64 = 0x4;
 pub const ENDOWED_BALANCE: u64 = 100_000_000;
 pub const TEST_THRESHOLD: u32 = 2;
 
-pub fn new_test_ext() -> sp_io::TestExternalities {
+pub fn new_test_ext() -> polkadot_sdk::sp_io::TestExternalities {
 	let bridge_id = AccountIdConversion::into_account_truncating(&MODULE_ID);
-	let mut t = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
-	pallet_balances::GenesisConfig::<Test> {
+	let mut t = polkadot_sdk::frame_system::GenesisConfig::<Test>::default()
+		.build_storage()
+		.unwrap();
+	polkadot_sdk::pallet_balances::GenesisConfig::<Test> {
 		balances: vec![(bridge_id, ENDOWED_BALANCE)],
 		..Default::default()
 	}
 	.assimilate_storage(&mut t)
 	.unwrap();
-	let mut ext = sp_io::TestExternalities::new(t);
+	let mut ext = polkadot_sdk::sp_io::TestExternalities::new(t);
 	ext.execute_with(|| System::set_block_number(1));
 	ext
 }
@@ -100,7 +102,7 @@ pub fn new_test_ext_initialized(
 	src_id: ChainId,
 	r_id: ResourceId,
 	resource: Vec<u8>,
-) -> sp_io::TestExternalities {
+) -> polkadot_sdk::sp_io::TestExternalities {
 	let mut t = new_test_ext();
 	t.execute_with(|| {
 		// Set and check threshold

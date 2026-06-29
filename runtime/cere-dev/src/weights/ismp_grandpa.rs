@@ -25,12 +25,12 @@
 #![allow(unused_imports)]
 #![allow(missing_docs)]
 
-use frame_support::{traits::Get, weights::Weight};
+use polkadot_sdk::frame_support::{traits::Get, weights::Weight};
 use core::marker::PhantomData;
 
 /// Weight functions for `ismp_grandpa`.
 pub struct WeightInfo<T>(PhantomData<T>);
-impl<T: frame_system::Config> ismp_grandpa::WeightInfo for WeightInfo<T> {
+impl<T: polkadot_sdk::frame_system::Config> ismp_grandpa::WeightInfo for WeightInfo<T> {
     /// Storage: `IsmpGrandpa::SupportedStateMachines` (r:0 w:100)
     /// Proof: `IsmpGrandpa::SupportedStateMachines` (`max_values`: None, `max_size`: None, mode: `Measured`)
     /// The range of component `n` is `[1, 100]`.

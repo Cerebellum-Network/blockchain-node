@@ -1,9 +1,9 @@
-use frame_support::{parameter_types, weights::WeightToFee};
-use frame_system::EnsureRoot;
 use ismp::{error::Error, host::StateMachine, module::IsmpModule, router::IsmpRouter};
 use ismp_grandpa::consensus::GrandpaConsensusClient;
 use pallet_token_gateway::types::EvmToSubstrate;
-use sp_core::H160;
+use polkadot_sdk::frame_support::{parameter_types, weights::WeightToFee};
+use polkadot_sdk::frame_system::EnsureRoot;
+use polkadot_sdk::sp_core::H160;
 
 use super::*;
 
@@ -19,7 +19,9 @@ impl WeightToFee for IsmpWeightToFee {
 	type Balance = Balance;
 
 	fn weight_to_fee(weight: &Weight) -> Self::Balance {
-		<Runtime as pallet_transaction_payment::Config>::WeightToFee::weight_to_fee(weight)
+		<Runtime as polkadot_sdk::pallet_transaction_payment::Config>::WeightToFee::weight_to_fee(
+			weight,
+		)
 	}
 }
 
@@ -31,7 +33,7 @@ impl pallet_ismp::Config for Runtime {
 	// The pallet_timestamp pallet
 	type TimestampProvider = Timestamp;
 	// The currency implementation that is offered to relayers
-	// this could also be `frame_support::traits::tokens::fungible::ItemOf`
+	// this could also be `polkadot_sdk::frame_support::traits::tokens::fungible::ItemOf`
 	type Currency = Balances;
 	// The balance type for the currency implementation
 	type Balance = Balance;
@@ -70,8 +72,9 @@ impl IsmpRouter for ModuleRouter {
 	fn module_for_id(&self, id: Vec<u8>) -> Result<Box<dyn IsmpModule>, anyhow::Error> {
 		match id.as_slice() {
 			id if TokenGateway::is_token_gateway(id) => Ok(Box::new(TokenGateway::default())),
-			pallet_hyperbridge::PALLET_HYPERBRIDGE_ID =>
-				Ok(Box::new(pallet_hyperbridge::Pallet::<Runtime>::default())),
+			pallet_hyperbridge::PALLET_HYPERBRIDGE_ID => {
+				Ok(Box::new(pallet_hyperbridge::Pallet::<Runtime>::default()))
+			},
 			_ => Err(Error::ModuleNotFound(id).into()),
 		}
 	}
@@ -198,7 +201,7 @@ impl fungibles::metadata::Mutate<AccountId> for MockAssets {
 		_name: Vec<u8>,
 		_symbol: Vec<u8>,
 		_decimals: u8,
-	) -> frame_support::dispatch::DispatchResult {
+	) -> polkadot_sdk::frame_support::dispatch::DispatchResult {
 		Ok(())
 	}
 }
