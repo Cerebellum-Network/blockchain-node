@@ -37,7 +37,7 @@ polkadot-sdk = { version = "=2512.3.2", default-features = false }
 anyhow = { version = "1.0", default-features = false }
 async-trait = { version = "0.1" }
 base64ct = { version = "1.6.0" }
-blake2 = { version = "0.10.6", default-features = false }
+blake2 = { version = "0.10.4", default-features = false }
 byte-unit = { version = "4.0.19", default-features = false, features = ["u128"] }
 chrono = { version = "0.4.31", default-features = false }
 clap = { version = "4.5.1", features = ["derive"] }
@@ -199,11 +199,7 @@ pallet-origins = { path = "pallets/origins", default-features = false }
 pallet-pool-withdrawal-fix = { path = "pallets/pool-withdrawal-fix", default-features = false }
 pallet-fee-handler = { path = "pallets/fee-handler", default-features = false }
 
-# Hyperbridge (polkadot-stable2512)
-# All pinned to 2512.0.0 — pallet-hyperbridge & pallet-token-gateway only ship at .0
-# and reference the older `IsmpDispatcher` API. Bumping pallet-ismp alone breaks
-# their impl. Bumps deferred until the hyperbridge ecosystem ships a coordinated
-# 2512.x patch release.
+# Hyperbridge — pallet-hyperbridge & pallet-token-gateway only ship at 2512.0.0; bumping pallet-ismp alone breaks their IsmpDispatcher impl.
 ismp = { default-features = false, version = "2512.0.0" }
 ismp-grandpa = { default-features = false, version = "2512.0.0" }
 pallet-hyperbridge = { default-features = false, version = "2512.0.0" }

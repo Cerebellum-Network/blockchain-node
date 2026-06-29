@@ -36,9 +36,6 @@ jobs:
   check:
     name: Cargo check
     needs: format
-    # Self-hosted Hetzner runner — same labels as `tests`. The wasm build
-    # graph + 25-min mainnet state scrape blows past ubuntu-24.04 disk/RAM
-    # limits and runs ~3x faster here.
     runs-on: ["self-hosted", "cere-network-memory-large"]
     steps:
       - uses: actions/checkout@v3

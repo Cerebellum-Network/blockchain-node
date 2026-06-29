@@ -22,10 +22,7 @@
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "512"]
 
-// Bring polkadot-sdk sub-crates (frame_support, frame_system, sp_*, pallet_*,
-// sc_*) into scope so macro expansions (`construct_runtime!`,
-// `#[frame_support::runtime]`, runtime-API impls) can resolve their unqualified
-// references through the umbrella's re-exports.
+// Bring umbrella sub-crates into scope unqualified for macro expansions to resolve.
 use polkadot_sdk::*;
 
 use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
