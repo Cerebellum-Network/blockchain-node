@@ -21,6 +21,8 @@ use polkadot_sdk::sp_runtime::{
 	traits::{Convert, IdentifyAccount, IdentityLookup, Verify},
 	BuildStorage, MultiSignature, Perbill, Perquintill,
 };
+#[allow(unused_imports)]
+use polkadot_sdk::*;
 
 use crate::{self as pallet_ddc_staking, *};
 
@@ -65,7 +67,7 @@ type BalanceOf<T> = <<T as crate::pallet::Config>::Currency as Currency<
 	<T as polkadot_sdk::frame_system::Config>::AccountId,
 >>::Balance;
 
-#[derive_impl(polkadot_sdk::frame_system::config_preludes::TestDefaultConfig)]
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl polkadot_sdk::frame_system::Config for Test {
 	type Block = Block;
 	type AccountId = AccountId;

@@ -9,6 +9,8 @@ use polkadot_sdk::frame_system::RawOrigin;
 use polkadot_sdk::pallet_referenda::Pallet as Referenda;
 use polkadot_sdk::sp_runtime::{Perquintill, SaturatedConversion};
 use polkadot_sdk::sp_std::prelude::*;
+#[allow(unused_imports)]
+use polkadot_sdk::*;
 
 use super::*;
 use crate::Pallet as DdcClustersGov;

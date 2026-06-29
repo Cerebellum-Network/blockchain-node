@@ -9,6 +9,8 @@ use polkadot_sdk::frame_support::traits::Currency;
 use polkadot_sdk::frame_system::RawOrigin;
 use polkadot_sdk::sp_runtime::{traits::StaticLookup, Perquintill};
 use polkadot_sdk::sp_std::prelude::*;
+#[allow(unused_imports)]
+use polkadot_sdk::*;
 
 use crate::{Pallet as DdcStaking, *};
 

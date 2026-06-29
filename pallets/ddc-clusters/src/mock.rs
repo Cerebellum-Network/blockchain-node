@@ -21,6 +21,8 @@ use polkadot_sdk::sp_runtime::{
 	traits::{Convert, IdentifyAccount, IdentityLookup, Verify},
 	BuildStorage, DispatchResult, MultiSignature, Perbill, Perquintill,
 };
+#[allow(unused_imports)]
+use polkadot_sdk::*;
 
 use crate::{self as pallet_ddc_clusters, *};
 
@@ -155,7 +157,7 @@ parameter_types! {
 	pub static ExistentialDeposit: Balance = 1;
 }
 
-#[derive_impl(polkadot_sdk::frame_system::config_preludes::TestDefaultConfig)]
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl polkadot_sdk::frame_system::Config for Test {
 	type Nonce = u64;
 	type Block = Block;

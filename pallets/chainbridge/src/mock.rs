@@ -1,9 +1,11 @@
-pub use pallet_balances as balances;
 use polkadot_sdk::frame_support::{
 	assert_ok, derive_impl, ord_parameter_types, parameter_types, weights::Weight,
 };
 use polkadot_sdk::frame_system::{self as system};
+pub use polkadot_sdk::pallet_balances as balances;
 use polkadot_sdk::sp_runtime::{traits::AccountIdConversion, BuildStorage, Perbill};
+#[allow(unused_imports)]
+use polkadot_sdk::*;
 
 use crate::{self as bridge, *};
 
@@ -15,7 +17,7 @@ parameter_types! {
 	pub const MaxLocks: u32 = 50;
 }
 
-#[derive_impl(polkadot_sdk::frame_system::config_preludes::TestDefaultConfig)]
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl polkadot_sdk::frame_system::Config for Test {
 	type Block = Block;
 	type BlockHashCount = BlockHashCount;

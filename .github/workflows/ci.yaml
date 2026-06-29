@@ -24,7 +24,7 @@ jobs:
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2024-06-10
+          toolchain: 1.91.0
           override: true
           components: rustfmt
       - name: Check TOML
@@ -36,39 +36,61 @@ jobs:
   check:
     name: Cargo check
     needs: format
-    runs-on: ubuntu-24.04
+    # Self-hosted Hetzner runner — same labels as `tests`. The wasm build
+    # graph + 25-min mainnet state scrape blows past ubuntu-24.04 disk/RAM
+    # limits and runs ~3x faster here.
+    runs-on: ["self-hosted", "cere-network-memory-large"]
     steps:
       - uses: actions/checkout@v3
       - name: Install linux dependencies
-        run: sudo apt update && sudo apt install -y cargo clang libclang-dev libssl-dev llvm libudev-dev protobuf-compiler
+        run: sudo apt update && sudo apt install -y cargo clang libclang-dev libssl-dev llvm libudev-dev protobuf-compiler make pkg-config
+      - name: Install Rust and Use It
+        shell: bash
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          . "$HOME/.cargo/env"
+          rustup toolchain install 1.91.0
+          rustup default 1.91.0
+          rustup show
       - name: Install toolchain and rust-src
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.90.0
+          toolchain: 1.91.0
           override: true
           target: wasm32-unknown-unknown
           components: rust-src
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
       - name: Install try-runtime
-        run: cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.8.0 --locked
-      - name: Check Build
+        shell: bash
         run: |
+          . "$HOME/.cargo/env"
+          cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.8.0 --locked
+      - name: Check Build
+        shell: bash
+        run: |
+          . "$HOME/.cargo/env"
           cargo build --release --features try-runtime
 #      - name: Check Try-Runtime Testnet
 #        run: |
 #          try-runtime --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
 #          on-runtime-upgrade --blocktime 6000 --disable-idempotency-checks live --uri wss://archive.testnet.cere.network:443
       - name: Check Try-Runtime Mainnet
+        shell: bash
         run: |
+          . "$HOME/.cargo/env"
           try-runtime --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
           on-runtime-upgrade --blocktime 6000 --disable-idempotency-checks live --uri wss://archive.mainnet.cere.network:443
       - name: Run dev chain
+        shell: bash
         run: |
+          . "$HOME/.cargo/env"
           timeout --preserve-status 30s ./target/release/cere --dev
       - name: Check Build for Benchmarking
-        run: >
-          pushd node &&
+        shell: bash
+        run: |
+          . "$HOME/.cargo/env"
+          pushd node
           cargo check --features=runtime-benchmarks --release
 
   clippy:
@@ -82,7 +104,7 @@ jobs:
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.90.0
+          toolchain: 1.91.0
           override: true
           target: wasm32-unknown-unknown
           components: rust-src
@@ -107,13 +129,13 @@ jobs:
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           . "$HOME/.cargo/env"
-          rustup toolchain install 1.90.0
-          rustup default 1.90.0
+          rustup toolchain install 1.91.0
+          rustup default 1.91.0
           rustup show
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.90.0
+          toolchain: 1.91.0
           override: true
           target: wasm32-unknown-unknown
           components: rust-src

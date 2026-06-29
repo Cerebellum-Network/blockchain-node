@@ -28,6 +28,8 @@ use polkadot_sdk::sp_runtime::{
 	BuildStorage, DispatchError, Perquintill,
 };
 use polkadot_sdk::sp_std::prelude::*;
+#[allow(unused_imports)]
+use polkadot_sdk::*;
 
 use crate::{self as pallet_ddc_payouts, *};
 
@@ -73,7 +75,7 @@ impl Randomness<H256, BlockNumber> for MockRandomness {
 	}
 }
 
-#[derive_impl(polkadot_sdk::frame_system::config_preludes::TestDefaultConfig)]
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl polkadot_sdk::frame_system::Config for Test {
 	type Block = Block;
 	type AccountId = AccountId;

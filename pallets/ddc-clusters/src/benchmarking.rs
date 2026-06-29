@@ -11,6 +11,8 @@ use polkadot_sdk::frame_system::RawOrigin;
 use polkadot_sdk::sp_core::crypto::UncheckedFrom;
 use polkadot_sdk::sp_runtime::{AccountId32, Perquintill};
 use polkadot_sdk::sp_std::prelude::*;
+#[allow(unused_imports)]
+use polkadot_sdk::*;
 use testing_utils::*;
 
 use super::*;

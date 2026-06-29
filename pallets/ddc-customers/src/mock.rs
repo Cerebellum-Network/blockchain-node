@@ -14,6 +14,8 @@ use polkadot_sdk::sp_io::TestExternalities;
 use polkadot_sdk::sp_runtime::{
 	traits::IdentityLookup, BuildStorage, DispatchError, DispatchResult, Perquintill,
 };
+#[allow(unused_imports)]
+use polkadot_sdk::*;
 
 use crate::{self as pallet_ddc_customers, *};
 
@@ -38,7 +40,7 @@ parameter_types! {
 	pub static ExistentialDeposit: Balance = 1;
 }
 
-#[derive_impl(polkadot_sdk::frame_system::config_preludes::TestDefaultConfig)]
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl polkadot_sdk::frame_system::Config for Test {
 	type Block = Block;
 	type AccountId = AccountId;

@@ -4,6 +4,8 @@ use polkadot_sdk::frame_benchmarking::{account, benchmarks, whitelist_account};
 use polkadot_sdk::frame_support::traits::Currency;
 use polkadot_sdk::sp_runtime::Perquintill;
 use polkadot_sdk::sp_std::prelude::*;
+#[allow(unused_imports)]
+use polkadot_sdk::*;
 
 use super::*;
 use crate::Pallet as DdcCustomers;

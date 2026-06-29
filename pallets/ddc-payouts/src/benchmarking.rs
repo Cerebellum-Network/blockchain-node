@@ -5,6 +5,8 @@ pub use polkadot_sdk::frame_benchmarking::{account, benchmarks, whitelist_accoun
 use polkadot_sdk::frame_system::RawOrigin;
 use polkadot_sdk::sp_runtime::Perquintill;
 use polkadot_sdk::sp_std::prelude::*;
+#[allow(unused_imports)]
+use polkadot_sdk::*;
 
 use super::*;
 use crate::Pallet as DdcPayouts;
