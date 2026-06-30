@@ -1741,8 +1741,37 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Tx
 parameter_types! {
 			pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
 }
+
+// One-shot cleanup migrations for the hyperbridge rewire. Remove from this tuple
+// in the next runtime upgrade after this one ships — `RemovePallet` is not
+// self-gating, it clears the prefix every time it runs.
+parameter_types! {
+	// `pallet_hyperbridge` (was pallet_index 48) was dropped wholesale because its
+	// IsmpDispatcher impl is incompatible with `pallet-ismp` 2512.2.0. Its only
+	// main-trie item, `Hyperbridge::HostParams`, would otherwise orphan.
+	pub const HyperbridgePalletName: &'static str = "Hyperbridge";
+	// The `TokenGateway` construct_runtime alias now backs `pallet_hyper_fungible_token`
+	// instead of `pallet_token_gateway`. The new pallet has different storage items
+	// (`TokenContracts`/`ContractToAsset`) and different key encoding (u128 → H256)
+	// for shared item names (`NativeAssets`/`Precisions`). At runtime-upgrade time
+	// the trie under `twox128("TokenGateway")` contains only old-pallet data
+	// (no genesis re-runs on `set_code`, no new-pallet extrinsic has executed),
+	// so clearing the entire prefix is safe — the new pallet starts with fresh
+	// storage matching its new layout.
+	pub const OldTokenGatewayPalletName: &'static str = "TokenGateway";
+}
+
 /// Runtime migrations
-type Migrations = ();
+type Migrations = (
+	polkadot_sdk::frame_support::migrations::RemovePallet<
+		HyperbridgePalletName,
+		<Runtime as polkadot_sdk::frame_system::Config>::DbWeight,
+	>,
+	polkadot_sdk::frame_support::migrations::RemovePallet<
+		OldTokenGatewayPalletName,
+		<Runtime as polkadot_sdk::frame_system::Config>::DbWeight,
+	>,
+);
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = polkadot_sdk::frame_executive::Executive<

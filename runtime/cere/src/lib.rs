@@ -1740,6 +1740,26 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Tx
 parameter_types! {
 			pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
 }
+
+// One-shot cleanup migrations for the hyperbridge rewire. Remove from this tuple
+// in the next runtime upgrade after this one ships — `RemovePallet` is not
+// self-gating, it clears the prefix every time it runs.
+parameter_types! {
+	// `pallet_hyperbridge` (was pallet_index 48) was dropped wholesale because its
+	// IsmpDispatcher impl is incompatible with `pallet-ismp` 2512.2.0. Its only
+	// main-trie item, `Hyperbridge::HostParams`, would otherwise orphan.
+	pub const HyperbridgePalletName: &'static str = "Hyperbridge";
+	// The `TokenGateway` construct_runtime alias now backs `pallet_hyper_fungible_token`
+	// instead of `pallet_token_gateway`. The new pallet has different storage items
+	// (`TokenContracts`/`ContractToAsset`) and different key encoding (u128 → H256)
+	// for shared item names (`NativeAssets`/`Precisions`). At runtime-upgrade time
+	// the trie under `twox128("TokenGateway")` contains only old-pallet data
+	// (no genesis re-runs on `set_code`, no new-pallet extrinsic has executed),
+	// so clearing the entire prefix is safe — the new pallet starts with fresh
+	// storage matching its new layout.
+	pub const OldTokenGatewayPalletName: &'static str = "TokenGateway";
+}
+
 // All migrations executed on runtime upgrade as a nested tuple of types implementing
 // `OnRuntimeUpgrade`. Note: These are examples and do not need to be run directly
 // after the genesis block.
@@ -1748,6 +1768,14 @@ type Migrations = (
 	polkadot_sdk::pallet_session::migrations::v1::MigrateV0ToV1<
 		Runtime,
 		polkadot_sdk::pallet_staking::migrations::v17::MigrateDisabledToSession<Runtime>,
+	>,
+	polkadot_sdk::frame_support::migrations::RemovePallet<
+		HyperbridgePalletName,
+		<Runtime as polkadot_sdk::frame_system::Config>::DbWeight,
+	>,
+	polkadot_sdk::frame_support::migrations::RemovePallet<
+		OldTokenGatewayPalletName,
+		<Runtime as polkadot_sdk::frame_system::Config>::DbWeight,
 	>,
 );
 //

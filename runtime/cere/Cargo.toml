@@ -112,6 +112,7 @@ try-runtime = [
   "pallet-ddc-clusters-gov/try-runtime",
   "pallet-ismp/try-runtime",
   "ismp-grandpa/try-runtime",
+  "pallet-hyper-fungible-token/try-runtime",
 ]
 
 # Enable the metadata hash generation in the wasm builder.
