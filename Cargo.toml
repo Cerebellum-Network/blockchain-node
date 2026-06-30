@@ -199,14 +199,15 @@ pallet-origins = { path = "pallets/origins", default-features = false }
 pallet-pool-withdrawal-fix = { path = "pallets/pool-withdrawal-fix", default-features = false }
 pallet-fee-handler = { path = "pallets/fee-handler", default-features = false }
 
-# Hyperbridge — pallet-hyperbridge & pallet-token-gateway only ship at 2512.0.0; bumping pallet-ismp alone breaks their IsmpDispatcher impl.
-ismp = { default-features = false, version = "2512.0.0" }
-ismp-grandpa = { default-features = false, version = "2512.0.0" }
-pallet-hyperbridge = { default-features = false, version = "2512.0.0" }
-pallet-ismp = { default-features = false, version = "2512.0.0" }
-pallet-ismp-rpc = { default-features = false, version = "2512.0.0" }
-pallet-ismp-runtime-api = { default-features = false, version = "2512.0.0" }
-pallet-token-gateway = { default-features = false, version = "2512.0.0" }
+# Hyperbridge (polkadot-stable2512). Only these pallets are wired into the
+# runtime; `ismp` and `pallet-ismp-runtime-api` are required transitively to
+# spell out the Config impls and the IsmpRuntimeApi runtime API.
+ismp = { default-features = false, version = "2512.1.0" }
+ismp-grandpa = { default-features = false, version = "2512.1.0" }
+pallet-ismp = { default-features = false, version = "2512.2.0" }
+pallet-ismp-rpc = { default-features = false, version = "2512.1.0" }
+pallet-ismp-runtime-api = { default-features = false, version = "2512.1.0" }
+pallet-hyper-fungible-token = { default-features = false, version = "2512.0.0" }
 
 [profile.release]
 panic = "unwind"

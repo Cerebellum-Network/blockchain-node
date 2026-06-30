@@ -38,14 +38,13 @@ pallet-fee-handler.workspace = true
 pallet-origins.workspace = true
 pallet-pool-withdrawal-fix.workspace = true
 
-# Hyperbridge Depedencies
+# Hyperbridge dependencies
 anyhow.workspace = true
 ismp.workspace = true
 ismp-grandpa.workspace = true
-pallet-hyperbridge.workspace = true
+pallet-hyper-fungible-token.workspace = true
 pallet-ismp.workspace = true
 pallet-ismp-runtime-api.workspace = true
-pallet-token-gateway.workspace = true
 
 [build-dependencies]
 substrate-wasm-builder = { workspace = true, default-features = true }
@@ -71,13 +70,12 @@ std = [
   "pallet-ddc-clusters-gov/std",
   "pallet-origins/std",
   "pallet-pool-withdrawal-fix/std",
-  "pallet-hyperbridge/std",
   "ismp/std",
   "pallet-ismp/std",
   "pallet-ismp-runtime-api/std",
   "ismp-grandpa/std",
   "anyhow/std",
-  "pallet-token-gateway/std",
+  "pallet-hyper-fungible-token/std",
   "pallet-fee-handler/std",
 ]
 runtime-benchmarks = [
@@ -97,7 +95,6 @@ runtime-benchmarks = [
   "pallet-fee-handler/runtime-benchmarks",
   # Hyperbridge crates aren't in the umbrella — forward runtime-benchmarks explicitly.
   "pallet-ismp/runtime-benchmarks",
-  "pallet-token-gateway/runtime-benchmarks",
   "ismp-grandpa/runtime-benchmarks",
 ]
 try-runtime = [
@@ -114,9 +111,7 @@ try-runtime = [
   "pallet-pool-withdrawal-fix/try-runtime",
   "pallet-ddc-clusters-gov/try-runtime",
   "pallet-ismp/try-runtime",
-  "pallet-hyperbridge/try-runtime",
   "ismp-grandpa/try-runtime",
-  "pallet-token-gateway/try-runtime",
 ]
 
 # Enable the metadata hash generation in the wasm builder.

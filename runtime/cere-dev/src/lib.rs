@@ -49,11 +49,9 @@ use polkadot_sdk::frame_support::{
 	parameter_types,
 	traits::{
 		fungible::{Balanced, Credit, Debt, HoldConsideration},
-		fungibles,
-		fungibles::{Dust, Inspect, Unbalanced},
 		tokens::{
-			imbalance::ResolveTo, DepositConsequence, Fortitude, PayFromAccount, Precision,
-			Preservation, Provenance, UnityAssetBalanceConversion, WithdrawConsequence,
+			imbalance::ResolveTo, Fortitude, PayFromAccount, Precision, Preservation,
+			UnityAssetBalanceConversion,
 		},
 		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
 		EqualPrivilegeOnly, Imbalance, InstanceFilter, KeyOwnerProofSystem, LinearStoragePrice,
@@ -108,8 +106,8 @@ use polkadot_sdk::sp_runtime::{
 		StaticLookup, Verify,
 	},
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, DispatchError, DispatchResult, FixedPointNumber, FixedU128, Perbill,
-	Percent, Permill, Perquintill, RuntimeDebug,
+	ApplyExtrinsicResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill, Perquintill,
+	RuntimeDebug,
 };
 use polkadot_sdk::sp_std::{marker::PhantomData, prelude::*};
 #[cfg(any(feature = "std", test))]
@@ -138,7 +136,9 @@ mod voter_bags;
 use ismp::{
 	consensus::{ConsensusClientId, StateMachineHeight, StateMachineId},
 	host::StateMachine,
-	router::{Request, Response},
+	// `Response` was removed in ismp 2512.1+; the runtime API now operates on
+	// `GetResponse`.
+	router::{GetResponse, Request},
 };
 use polkadot_sdk::sp_core::H256;
 mod hyperbridge_ismp;
@@ -1683,11 +1683,10 @@ mod runtime {
 	#[runtime::pallet_index(47)]
 	pub type IsmpGrandpa = ismp_grandpa::Pallet<Runtime>;
 
-	#[runtime::pallet_index(48)]
-	pub type Hyperbridge = pallet_hyperbridge::Pallet<Runtime>;
-
+	// pallet_index 48 was `pallet_hyperbridge`; dropped when bumping pallet-ismp to
+	// 2512.2.0 (its IsmpDispatcher impl no longer compiles against the new host).
 	#[runtime::pallet_index(49)]
-	pub type TokenGateway = pallet_token_gateway::Pallet<Runtime>;
+	pub type TokenGateway = pallet_hyper_fungible_token::Pallet<Runtime>;
 
 	#[runtime::pallet_index(50)]
 	pub type FeeHandler = pallet_fee_handler::Pallet<Runtime>;
@@ -1800,7 +1799,6 @@ mod benches {
 		[pallet_whitelist, Whitelist]
 		[pallet_collective, TechComm]
 		[pallet_ddc_clusters_gov, DdcClustersGov]
-		[pallet_token_gateway, TokenGateway]
 		[pallet_migrations, MultiBlockMigrations]
 	);
 }
@@ -2087,7 +2085,7 @@ impl_runtime_apis! {
 			pallet_ismp::Pallet::<Runtime>::requests(commitments)
 		}
 
-		fn responses(commitments: Vec<H256>) -> Vec<Response> {
+		fn responses(commitments: Vec<H256>) -> Vec<GetResponse> {
 			pallet_ismp::Pallet::<Runtime>::responses(commitments)
 		}
 	}
