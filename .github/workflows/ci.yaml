@@ -139,16 +139,19 @@ jobs:
 
   # Expensive try-runtime live check — streams the entire on-chain state from
   # archive.testnet.cere.network, then replays the runtime upgrade locally.
-  # Gated behind manual workflow_dispatch + the `run_try_runtime_live` input
-  # so it only runs when a maintainer explicitly requests it (e.g. before a
-  # release, or after pallet ordering / storage layout changes). Runs on the
-  # large self-hosted Hetzner runner used by Generate Weights.
+  # Mandatory for anything heading into the staging branch: PRs targeting
+  # staging and direct pushes to staging both auto-run. Manual
+  # workflow_dispatch (with `run_try_runtime_live=true`) is kept as an opt-in
+  # for ad-hoc checks from other branches. Runs on the large self-hosted
+  # Hetzner runner used by Generate Weights.
   check-try-runtime:
     name: Try-Runtime Check (live, testnet)
     needs: format
-    if: github.event_name == 'workflow_dispatch' && inputs.run_try_runtime_live
+    if: |
+      (github.event_name == 'pull_request' && github.base_ref == 'staging') ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/staging') ||
+      (github.event_name == 'workflow_dispatch' && inputs.run_try_runtime_live)
     runs-on: ["self-hosted", "cere-network-memory-large"]
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - name: Install linux dependencies
