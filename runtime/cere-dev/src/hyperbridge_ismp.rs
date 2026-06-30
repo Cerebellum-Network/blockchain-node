@@ -109,7 +109,10 @@ impl pallet_hyper_fungible_token::Config for Runtime {
 	type Assets = MockAssets;
 	type NativeCurrency = Balances;
 	type NativeAssetId = HftNativeAssetId;
-	type CreateOrigin = EnsureRoot<AccountId>;
+	// cere-dev is the devnet runtime — permissive so any signed account can
+	// register an asset for testing without needing sudo. cere mainnet keeps
+	// EnsureRoot. Preserved from the runtime baseline.
+	type CreateOrigin = polkadot_sdk::frame_system::EnsureSigned<AccountId>;
 	type Decimals = HftDecimals;
 	type EvmToSubstrate = ();
 	type WeightInfo = ();
