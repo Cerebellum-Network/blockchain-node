@@ -42,10 +42,15 @@ parameter_types! {
 	pub const HostStateMachine: StateMachine = StateMachine::Substrate(*b"cere");
 }
 
+// Coprocessor is the trusted state-machine that pallet-ismp uses both for
+// addressing outgoing requests and for gating the withdrawal-source check on
+// incoming coprocessor-originated messages. cere-dev pairs with the Hyperbridge
+// parachain on Kusama (paraId 4009); preserved from the runtime baseline that
+// predates the polkadot-sdk umbrella swap.
 pub struct Coprocessor;
 impl Get<Option<StateMachine>> for Coprocessor {
 	fn get() -> Option<StateMachine> {
-		Some(HostStateMachine::get())
+		Some(StateMachine::Kusama(4009))
 	}
 }
 
