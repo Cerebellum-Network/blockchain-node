@@ -16,39 +16,8 @@ jsonrpsee.workspace = true
 rand = { workspace = true, default-features = true }
 serde = { workspace = true, default-features = true }
 
-# Substrate dependencies
-frame-benchmarking-cli.workspace = true
-pallet-im-online.workspace = true
-sc-authority-discovery.workspace = true
-sc-basic-authorship.workspace = true
-sc-chain-spec.workspace = true
-sc-client-api.workspace = true
-sc-consensus.workspace = true
-sc-consensus-babe.workspace = true
-sc-consensus-grandpa.workspace = true
-sc-consensus-slots.workspace = true
-sc-executor.workspace = true
-sc-network.workspace = true
-sc-network-common.workspace = true
-sc-offchain.workspace = true
-sc-rpc.workspace = true
-sc-service.workspace = true
-sc-sync-state-rpc.workspace = true
-sc-sysinfo.workspace = true
-sc-telemetry.workspace = true
-sc-transaction-pool.workspace = true
-sc-transaction-pool-api.workspace = true
-sp-api.workspace = true
-sp-authority-discovery.workspace = true
-sp-blockchain.workspace = true
-sp-consensus-babe.workspace = true
-sp-consensus-grandpa.workspace = true
-sp-core.workspace = true
-sp-inherents.workspace = true
-sp-runtime.workspace = true
-sp-timestamp.workspace = true
-sp-transaction-storage-proof.workspace = true
-sp-trie.workspace = true
+# Polkadot SDK
+polkadot-sdk = { workspace = true, features = ["frame-benchmarking-cli", "pallet-im-online", "sc-authority-discovery", "sc-basic-authorship", "sc-chain-spec", "sc-client-api", "sc-consensus", "sc-consensus-babe", "sc-consensus-grandpa", "sc-consensus-slots", "sc-executor", "sc-network", "sc-network-common", "sc-offchain", "sc-rpc", "sc-service", "sc-sync-state-rpc", "sc-sysinfo", "sc-telemetry", "sc-transaction-pool", "sc-transaction-pool-api", "sp-api", "sp-authority-discovery", "sp-blockchain", "sp-consensus-babe", "sp-consensus-grandpa", "sp-core", "sp-inherents", "sp-runtime", "sp-timestamp", "sp-transaction-storage-proof", "sp-trie"] }
 
 # Cere dependencies
 cere-client = { workspace = true, optional = true }
@@ -66,7 +35,7 @@ cere-dev-native = ["cere-dev-runtime", "cere-runtime-common", "cere-client/cere-
 runtime-benchmarks = [
   "cere-runtime/runtime-benchmarks",
   "cere-dev-runtime/runtime-benchmarks",
-  "sc-service/runtime-benchmarks",
+  "polkadot-sdk/runtime-benchmarks",
 ]
 
 try-runtime = [

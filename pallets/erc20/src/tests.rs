@@ -6,12 +6,12 @@ use super::mock::{
 	ENDOWED_BALANCE, RELAYER_A, RELAYER_B, RELAYER_C,
 };
 use super::*;
-use frame_support::dispatch::DispatchError;
-use frame_support::{assert_noop, assert_ok};
+use polkadot_sdk::frame_support::dispatch::DispatchError;
+use polkadot_sdk::frame_support::{assert_noop, assert_ok};
 
 use codec::Encode;
 use example_erc721::Erc721Token;
-use sp_core::{blake2_256, H256};
+use polkadot_sdk::sp_core::{blake2_256, H256};
 
 const TEST_THRESHOLD: u32 = 2;
 

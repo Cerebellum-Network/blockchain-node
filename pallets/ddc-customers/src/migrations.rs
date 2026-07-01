@@ -1,9 +1,9 @@
 #![allow(clippy::unnecessary_unwrap)]
 #![allow(clippy::collapsible_else_if)]
 
-use frame_support::{storage_alias, traits::OnRuntimeUpgrade};
 use hex_literal::hex;
 use log::{info, warn};
+use polkadot_sdk::frame_support::{storage_alias, traits::OnRuntimeUpgrade};
 
 use super::*;
 
@@ -11,7 +11,7 @@ const LOG_TARGET: &str = "ddc-customers";
 pub const PALLET_MIGRATIONS_ID: &[u8; 20] = b"pallet-ddc-customers";
 
 pub mod v0 {
-	use frame_support::pallet_prelude::*;
+	use polkadot_sdk::frame_support::pallet_prelude::*;
 
 	use super::*;
 
@@ -31,13 +31,13 @@ pub mod v0 {
 		crate::Pallet<T>,
 		Twox64Concat,
 		BucketId,
-		Bucket<<T as frame_system::Config>::AccountId>,
+		Bucket<<T as polkadot_sdk::frame_system::Config>::AccountId>,
 		OptionQuery,
 	>;
 }
 
 pub mod v1 {
-	use frame_support::pallet_prelude::*;
+	use polkadot_sdk::frame_support::pallet_prelude::*;
 
 	use super::*;
 
@@ -49,7 +49,7 @@ pub mod v1 {
 		crate::Pallet<T>,
 		Twox64Concat,
 		BucketId,
-		Bucket<<T as frame_system::Config>::AccountId>,
+		Bucket<<T as polkadot_sdk::frame_system::Config>::AccountId>,
 		OptionQuery,
 	>;
 
@@ -110,7 +110,7 @@ pub mod v1 {
 		}
 	}
 
-	pub struct MigrateToV1<T>(sp_std::marker::PhantomData<T>);
+	pub struct MigrateToV1<T>(polkadot_sdk::sp_std::marker::PhantomData<T>);
 	impl<T: Config> OnRuntimeUpgrade for MigrateToV1<T> {
 		fn on_runtime_upgrade() -> Weight {
 			migrate_to_v1::<T>()
@@ -144,7 +144,10 @@ pub mod v1 {
 			let current_version = Pallet::<T>::in_code_storage_version();
 			let on_chain_version = Pallet::<T>::on_chain_storage_version();
 
-			frame_support::ensure!(current_version == 1, "must_upgrade to 1st version");
+			polkadot_sdk::frame_support::ensure!(
+				current_version == 1,
+				"must_upgrade to 1st version"
+			);
 			ensure!(
 				current_version == on_chain_version,
 				"after migration, the current_version and on_chain_version should be the same"
@@ -164,7 +167,7 @@ pub mod v1 {
 
 pub mod v2 {
 
-	use frame_support::pallet_prelude::*;
+	use polkadot_sdk::frame_support::pallet_prelude::*;
 
 	use super::*;
 
@@ -207,7 +210,7 @@ pub mod v2 {
 		crate::Pallet<T>,
 		Twox64Concat,
 		BucketId,
-		Bucket<<T as frame_system::Config>::AccountId>,
+		Bucket<<T as polkadot_sdk::frame_system::Config>::AccountId>,
 		OptionQuery,
 	>;
 
@@ -260,7 +263,7 @@ pub mod v2 {
 		}
 	}
 
-	pub struct MigrateToV2<T>(sp_std::marker::PhantomData<T>);
+	pub struct MigrateToV2<T>(polkadot_sdk::sp_std::marker::PhantomData<T>);
 	impl<T: Config> OnRuntimeUpgrade for MigrateToV2<T> {
 		fn on_runtime_upgrade() -> Weight {
 			migrate_to_v2::<T>()
@@ -294,7 +297,10 @@ pub mod v2 {
 			let current_version = Pallet::<T>::in_code_storage_version();
 			let on_chain_version = Pallet::<T>::on_chain_storage_version();
 
-			frame_support::ensure!(current_version == 2, "must_upgrade to 2nd version");
+			polkadot_sdk::frame_support::ensure!(
+				current_version == 2,
+				"must_upgrade to 2nd version"
+			);
 			ensure!(
 				current_version == on_chain_version,
 				"after migration, the current_version and on_chain_version should be the same"
@@ -314,7 +320,7 @@ pub mod v2 {
 }
 
 pub mod v3 {
-	use frame_support::pallet_prelude::*;
+	use polkadot_sdk::frame_support::pallet_prelude::*;
 
 	use super::*;
 
@@ -323,7 +329,7 @@ pub mod v3 {
 		crate::Pallet<T>,
 		Twox64Concat,
 		BucketId,
-		Bucket<<T as frame_system::Config>::AccountId>,
+		Bucket<<T as polkadot_sdk::frame_system::Config>::AccountId>,
 		OptionQuery,
 	>;
 
@@ -385,7 +391,7 @@ pub mod v3 {
 		}
 	}
 
-	pub struct MigrateToV3<T>(sp_std::marker::PhantomData<T>);
+	pub struct MigrateToV3<T>(polkadot_sdk::sp_std::marker::PhantomData<T>);
 	impl<T: Config> OnRuntimeUpgrade for MigrateToV3<T> {
 		fn on_runtime_upgrade() -> Weight {
 			migrate_to_v3::<T>()
@@ -434,7 +440,7 @@ pub mod v3 {
 			let current_version = Pallet::<T>::in_code_storage_version();
 			let on_chain_version = Pallet::<T>::on_chain_storage_version();
 
-			frame_support::ensure!(current_version == 3, "must_upgrade");
+			polkadot_sdk::frame_support::ensure!(current_version == 3, "must_upgrade");
 
 			ensure!(
 				current_version == on_chain_version,
@@ -447,7 +453,7 @@ pub mod v3 {
 }
 
 pub mod v3_mbm {
-	use frame_support::{
+	use polkadot_sdk::frame_support::{
 		migrations::{MigrationId, SteppedMigration, SteppedMigrationError},
 		pallet_prelude::*,
 		weights::WeightMeter,
@@ -526,7 +532,7 @@ pub mod v3_mbm {
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::TryRuntimeError> {
+		fn pre_upgrade() -> Result<Vec<u8>, polkadot_sdk::sp_runtime::TryRuntimeError> {
 			info!(
 				target: LOG_TARGET,
 				"PRE-CHECK Step in v3 migration"
@@ -578,7 +584,10 @@ pub mod v3_mbm {
 			let current_version = Pallet::<T>::in_code_storage_version();
 			let on_chain_version = Pallet::<T>::on_chain_storage_version();
 
-			frame_support::ensure!(current_version >= 3, "must_upgrade to 3rd version or higher");
+			polkadot_sdk::frame_support::ensure!(
+				current_version >= 3,
+				"must_upgrade to 3rd version or higher"
+			);
 
 			ensure!(
 				on_chain_version == 3,
@@ -630,7 +639,7 @@ pub mod v3_mbm {
 	impl<T: Config> LazyMigrationV2ToV3<T> {
 		pub(crate) fn setup_benchmark_env_for_migration() -> BenchmarkingSetupV2ToV3 {
 			let bucket_id = 0;
-			let owner_id: T::AccountId = frame_benchmarking::account("account", 1, 0);
+			let owner_id: T::AccountId = polkadot_sdk::frame_benchmarking::account("account", 1, 0);
 			let cluster_id = ClusterId::from([0; 20]);
 
 			let bucket = v2::Bucket {
@@ -650,7 +659,7 @@ pub mod v3_mbm {
 }
 
 pub mod v4_mbm {
-	use frame_support::{
+	use polkadot_sdk::frame_support::{
 		migrations::{MigrationId, SteppedMigration, SteppedMigrationError},
 		pallet_prelude::*,
 		weights::WeightMeter,
@@ -668,7 +677,7 @@ pub mod v4_mbm {
 	pub type Ledger<T: Config> = StorageMap<
 		crate::Pallet<T>,
 		Blake2_128Concat,
-		<T as frame_system::Config>::AccountId,
+		<T as polkadot_sdk::frame_system::Config>::AccountId,
 		CustomerLedger<T>,
 	>;
 
@@ -747,7 +756,7 @@ pub mod v4_mbm {
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::TryRuntimeError> {
+		fn pre_upgrade() -> Result<Vec<u8>, polkadot_sdk::sp_runtime::TryRuntimeError> {
 			info!(
 				target: LOG_TARGET,
 				"PRE-CHECK Step in v4 migration"
@@ -792,7 +801,10 @@ pub mod v4_mbm {
 			let current_version = Pallet::<T>::in_code_storage_version();
 			let on_chain_version = Pallet::<T>::on_chain_storage_version();
 
-			frame_support::ensure!(current_version >= 4, "must_upgrade to 4th version or higher");
+			polkadot_sdk::frame_support::ensure!(
+				current_version >= 4,
+				"must_upgrade to 4th version or higher"
+			);
 
 			ensure!(
 				on_chain_version == 4,
@@ -901,7 +913,7 @@ pub mod v4_mbm {
 					<T as pallet::Config>::WeightInfo::migration_v4_ledgers_step()
 				},
 				MigrationState::TransferringBalance(_) => {
-					// This is copied from pallet_balances::WeightInfo::transfer_allow_death()
+					// This is copied from polkadot_sdk::pallet_balances::WeightInfo::transfer_allow_death()
 
 					// Proof Size summary in bytes:
 					//  Measured:  `0`
@@ -927,12 +939,16 @@ pub mod v4_mbm {
 	impl<T: Config> LazyMigrationV3ToV4<T> {
 		pub(crate) fn setup_benchmark_env_for_migration() -> BenchmarkingSetupV3ToV4<T::AccountId> {
 			use ddc_primitives::{ClusterParams, ClusterProtocolParams};
-			use sp_runtime::Perquintill;
+			use polkadot_sdk::sp_runtime::Perquintill;
 
 			let cluster_id = ClusterId::from(DEFAULT_CLUSTER);
-			let cluster_owner: T::AccountId = frame_benchmarking::account("account", 1, 0);
-			let customer_deposit_contract =
-				frame_benchmarking::account::<T::AccountId>("customer_deposit_contract", 1, 0);
+			let cluster_owner: T::AccountId =
+				polkadot_sdk::frame_benchmarking::account("account", 1, 0);
+			let customer_deposit_contract = polkadot_sdk::frame_benchmarking::account::<T::AccountId>(
+				"customer_deposit_contract",
+				1,
+				0,
+			);
 
 			// note(yahortsaryk): it's not critical to use upgraded cluster protocol params in the benchmark, because the migration will be performed after the benchmark
 			let cluster_protocol_params: ClusterProtocolParams<
@@ -972,7 +988,7 @@ pub mod v4_mbm {
 				cluster_protocol_params,
 			);
 
-			let owner: T::AccountId = frame_benchmarking::account("account", 2, 0);
+			let owner: T::AccountId = polkadot_sdk::frame_benchmarking::account("account", 2, 0);
 			let ledger = CustomerLedger::default_from(owner.clone());
 
 			v4_mbm::Ledger::<T>::insert(&owner, &ledger);
@@ -986,13 +1002,13 @@ pub mod v5_mbm {
 
 	use codec::{Decode, Encode};
 	use ddc_primitives::DOLLARS as CERE;
-	use frame_support::traits::Currency;
-	use frame_support::{
+	use polkadot_sdk::frame_support::traits::Currency;
+	use polkadot_sdk::frame_support::{
 		migrations::{MigrationId, SteppedMigration, SteppedMigrationError},
 		pallet_prelude::*,
 		weights::WeightMeter,
 	};
-	use sp_io::storage;
+	use polkadot_sdk::sp_io::storage;
 
 	const DEVNET_CLUSTER: [u8; 20] = hex!("7f82864e4f097e63d04cc279e4d8d2eb45a42ffa");
 	const TESTNET_CLUSTER: [u8; 20] = hex!("825c4b2352850de9986d9d28568db6f0c023a1e3");
@@ -1077,7 +1093,7 @@ pub mod v5_mbm {
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::TryRuntimeError> {
+		fn pre_upgrade() -> Result<Vec<u8>, polkadot_sdk::sp_runtime::TryRuntimeError> {
 			info!(
 				target: LOG_TARGET,
 				"PRE-CHECK Step in v5 migration"
@@ -1111,7 +1127,10 @@ pub mod v5_mbm {
 			let current_version = Pallet::<T>::in_code_storage_version();
 			let on_chain_version = Pallet::<T>::on_chain_storage_version();
 
-			frame_support::ensure!(current_version >= 5, "must_upgrade to 5th version or higher");
+			polkadot_sdk::frame_support::ensure!(
+				current_version >= 5,
+				"must_upgrade to 5th version or higher"
+			);
 
 			ensure!(
 				v5_mbm::ClusterLedger::<T>::iter_values().count() == 0,
@@ -1331,14 +1350,17 @@ pub mod v5_mbm {
 	impl<T: Config> LazyMigrationV4ToV5<T> {
 		pub(crate) fn setup_benchmark_env_for_migration() -> BenchmarkingSetupV4ToV5<T::AccountId> {
 			use ddc_primitives::{ClusterParams, ClusterProtocolParams, DOLLARS as CERE};
-			use sp_runtime::Perquintill;
+			use polkadot_sdk::sp_runtime::Perquintill;
 
-			frame_system::Pallet::<T>::set_block_number(BlockNumberFor::<T>::from(1u32));
+			polkadot_sdk::frame_system::Pallet::<T>::set_block_number(BlockNumberFor::<T>::from(
+				1u32,
+			));
 
 			let cluster_id = ClusterId::from(DEFAULT_CLUSTER);
 			let cluster_vault_id = crate::Pallet::<T>::cluster_vault_id(&cluster_id);
 
-			let cluster_owner = frame_benchmarking::account::<T::AccountId>("account", 1, 0); // 6PrZPs13WDfipuKAqpvx3T5usCC5VG7RYCsVMJXRosnSXV3q / 0x0f34e9208feb46b0e1c36d759ebd0886ac73ba8054147a9618a526f5872b83b1
+			let cluster_owner =
+				polkadot_sdk::frame_benchmarking::account::<T::AccountId>("account", 1, 0); // 6PrZPs13WDfipuKAqpvx3T5usCC5VG7RYCsVMJXRosnSXV3q / 0x0f34e9208feb46b0e1c36d759ebd0886ac73ba8054147a9618a526f5872b83b1
 			endow_account::<T>(&cluster_owner, 1000000 * CERE);
 
 			let contract_code = &include_bytes!("./benchmarking_customer_deposit.wasm")[..];
@@ -1359,7 +1381,7 @@ pub mod v5_mbm {
 			);
 
 			assert!(deploy_result.is_ok(), "Failed to deploy customer deposit contract");
-			frame_system::Pallet::<T>::events().iter().for_each(|_event| {
+			polkadot_sdk::frame_system::Pallet::<T>::events().iter().for_each(|_event| {
 				// To learn contract address, look for `Contracts(Event::Instantiated { deployer: 0f34e9208feb46b0e1c36d759ebd0886ac73ba8054147a9618a526f5872b83b1 (5CQeHxWC...), contract: 2174df6b9ad98a8b1412a4a9e0f175ebef3e06141a0fdd6479bedc7e280c6cd1 (5Cpa9zQ4...) }), topics: [] }` event
 				// log::info!("emitted event {:?}", _event);
 			});
@@ -1411,7 +1433,8 @@ pub mod v5_mbm {
 			);
 			assert!(create_cluster_result.is_ok(), "Failed to create cluster");
 
-			let customer = frame_benchmarking::account::<T::AccountId>("customer", 1, 0);
+			let customer =
+				polkadot_sdk::frame_benchmarking::account::<T::AccountId>("customer", 1, 0);
 			let customer_endowment = 100_u128 * CERE;
 			endow_account::<T>(&customer, customer_endowment);
 

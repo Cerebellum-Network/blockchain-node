@@ -6,7 +6,7 @@ on:
       branch:
         description: 'Git branch to build from'
         required: true
-        default: 'dev'
+        default: 'staging'
 
 jobs:
   build:
@@ -17,9 +17,18 @@ jobs:
 
     env:
       HCLOUD_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
+      HCLOUD_VERSION: 1.50.0
 
     steps:
       - uses: actions/checkout@v3
+
+      - name: Install hcloud CLI
+        run: |
+          curl -fsSL \
+            "https://github.com/hetznercloud/cli/releases/download/v${HCLOUD_VERSION}/hcloud-linux-amd64.tar.gz" \
+            -o /tmp/hcloud-linux-amd64.tar.gz
+          tar xzf /tmp/hcloud-linux-amd64.tar.gz -C /tmp
+          sudo install -m 0755 /tmp/hcloud /usr/local/bin/hcloud
 
       - name: Configure GitHub token for private deps
         run: |
@@ -33,25 +42,13 @@ jobs:
           echo "PUBLIC_SSH=$(cat id_rsa.pub)" >> $GITHUB_ENV
 
       - name: Upload SSH key to Hetzner
-        uses: jawher/action-hcloud@v1.50.0
-        env:
-          HCLOUD_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
-        with:
-          args: ssh-key create --name weights-key --public-key "${{ env.PUBLIC_SSH }}"
+        run: hcloud ssh-key create --name weights-key --public-key "$PUBLIC_SSH"
 
       - name: Create Hetzner Server
-        uses: jawher/action-hcloud@v1.50.0
-        env:
-          HCLOUD_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
-        with:
-          args: server create --name weights-${{ github.run_id }} --type=cpx31 --image=ubuntu-22.04 --ssh-key=weights-key --location=fsn1
+        run: hcloud server create --name weights-${{ github.run_id }} --type=cpx32 --image=ubuntu-24.04 --ssh-key=weights-key --location=fsn1
 
       - name: Fetch server IP
-        uses: jawher/action-hcloud@v1.50.0
-        env:
-          HCLOUD_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
-        with:
-          args: server describe weights-${{ github.run_id }} -o json
+        run: hcloud server describe weights-${{ github.run_id }} -o json > hcloud.output
 
       - name: Extract IP and prepare SSH
         run: |
@@ -72,25 +69,25 @@ jobs:
           set -eux
           export GH_TOKEN="${{ secrets.GH_READ_TOKEN }}"
           export BRANCH="${{ github.event.inputs.branch }}"
-          
+
           apt update && apt install -y \
             curl git build-essential jq protobuf-compiler \
             llvm-dev libclang-dev clang pkg-config libssl-dev
-          
+
           curl https://sh.rustup.rs -sSf | bash -s -- -y
           source \$HOME/.cargo/env
-          
-          rustup install 1.90.0
-          rustup default 1.90.0
+
+          rustup install 1.91.0
+          rustup default 1.91.0
           rustup component add clippy rustfmt rust-src
           rustup target add wasm32-unknown-unknown
-          
+
           git config --global url."https://\${GH_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
           git clone --branch "\$BRANCH" --single-branch https://github.com/Cerebellum-Network/blockchain-node.git
           cd blockchain-node
-          
+
           cargo build --release --features=runtime-benchmarks --verbose
-          
+
           # Benchmark the external pallet_ddc_clusters
           ./target/release/cere benchmark pallet \
             --chain=dev \
@@ -100,7 +97,7 @@ jobs:
             --repeat=20 \
             --template=./.maintain/frame-weight-template.hbs \
             --output=./pallet_ddc_clusters_weights.rs
-          
+
           # Benchmark the external pallet_ddc_clusters_gov
           ./target/release/cere benchmark pallet \
             --chain=dev \
@@ -110,7 +107,7 @@ jobs:
             --repeat=20 \
             --template=./.maintain/frame-weight-template.hbs \
             --output=./pallet_ddc_clusters_gov_weights.rs
-          
+
           # Benchmark the external pallet_ddc_customers
           ./target/release/cere benchmark pallet \
             --chain=dev \
@@ -120,7 +117,7 @@ jobs:
             --repeat=20 \
             --template=./.maintain/frame-weight-template.hbs \
             --output=./pallet_ddc_customers_weights.rs
-          
+
           # Benchmark the external pallet_ddc_nodes
           ./target/release/cere benchmark pallet \
             --chain=dev \
@@ -130,7 +127,7 @@ jobs:
             --repeat=20 \
             --template=./.maintain/frame-weight-template.hbs \
             --output=./pallet_ddc_nodes_weights.rs
-          
+
           # Benchmark the external pallet_ddc_staking
           ./target/release/cere benchmark pallet \
             --chain=dev \
@@ -140,12 +137,19 @@ jobs:
             --repeat=20 \
             --template=./.maintain/frame-weight-template.hbs \
             --output=./pallet_ddc_staking_weights.rs
-          
+
           # Benchmark the external pallet_ddc_payouts
+          # send_charging_customers_batch is excluded because its benchmark
+          # path invokes the customer-deposit ink! contract via
+          # PalletContractsExecutor, and the contract isn't deployed in the
+          # benchmark setup (results in PayerContractCallUnexpectedResult).
+          # The existing static weight in pallet_ddc_payouts_weights.rs is
+          # retained for that extrinsic.
           ./target/release/cere benchmark pallet \
             --chain=dev \
             --pallet="pallet_ddc_payouts" \
             --extrinsic="*" \
+            --exclude-extrinsics="pallet_ddc_payouts::send_charging_customers_batch" \
             --steps=50 \
             --repeat=20 \
             --template=./.maintain/frame-weight-template.hbs \
@@ -169,17 +173,9 @@ jobs:
           path: weights/
 
       - name: Delete Hetzner server
-        uses: jawher/action-hcloud@v1.50.0
         if: always()
-        env:
-          HCLOUD_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
-        with:
-          args: server delete weights-${{ github.run_id }}
+        run: hcloud server delete weights-${{ github.run_id }} || true
 
       - name: Delete Hetzner SSH key
-        uses: jawher/action-hcloud@v1.50.0
         if: always()
-        env:
-          HCLOUD_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
-        with:
-          args: ssh-key delete weights-key
+        run: hcloud ssh-key delete weights-key || true

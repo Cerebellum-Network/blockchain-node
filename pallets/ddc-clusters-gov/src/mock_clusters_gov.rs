@@ -2,6 +2,8 @@
 
 #![allow(dead_code)]
 
+use polkadot_sdk::*;
+
 use std::{borrow::Cow, cell::RefCell};
 
 use ddc_primitives::{
@@ -12,7 +14,11 @@ use ddc_primitives::{
 	ClusterId, ClusterNodeKind, ClusterParams, ClusterProtocolParams, NodeParams, NodePubKey,
 	StorageNodeParams, DOLLARS,
 };
-use frame_support::{
+use lazy_static::lazy_static;
+use pallet_ddc_clusters::cluster::Cluster;
+use pallet_ddc_nodes::StorageNode;
+use parking_lot::{ReentrantMutex, ReentrantMutexGuard};
+use polkadot_sdk::frame_support::{
 	derive_impl, parameter_types,
 	traits::{
 		fungible::HoldConsideration, ConstBool, ConstU32, ConstU64, EnsureOriginWithArg,
@@ -20,17 +26,13 @@ use frame_support::{
 	},
 	PalletId,
 };
-use frame_system::{
+use polkadot_sdk::frame_system::{
 	mocking::{MockBlock, MockUncheckedExtrinsic},
 	EnsureRoot, EnsureSigned,
 };
-use lazy_static::lazy_static;
-use pallet_ddc_clusters::cluster::Cluster;
-use pallet_ddc_nodes::StorageNode;
-use pallet_referenda::Curve;
-use parking_lot::{ReentrantMutex, ReentrantMutexGuard};
-use sp_io::TestExternalities;
-use sp_runtime::{
+use polkadot_sdk::pallet_referenda::Curve;
+use polkadot_sdk::sp_io::TestExternalities;
+use polkadot_sdk::sp_runtime::{
 	str_array as s,
 	traits::{Convert, IdentifyAccount, IdentityLookup, Verify},
 	BuildStorage, MultiSignature, Perbill,
@@ -53,7 +55,7 @@ pub type Signature = MultiSignature;
 type UncheckedExtrinsic = MockUncheckedExtrinsic<Test>;
 type Block = MockBlock<Test>;
 
-frame_support::construct_runtime!(
+polkadot_sdk::frame_support::construct_runtime!(
 	pub enum Test
 	{
 		System: frame_system,
@@ -74,8 +76,8 @@ frame_support::construct_runtime!(
 
 );
 
-pub type BalanceOf<T> = <<T as pallet_referenda::Config>::Currency as Currency<
-	<T as frame_system::Config>::AccountId,
+pub type BalanceOf<T> = <<T as polkadot_sdk::pallet_referenda::Config>::Currency as Currency<
+	<T as polkadot_sdk::frame_system::Config>::AccountId,
 >>::Balance;
 
 impl Convert<Weight, BalanceOf<Self>> for Test {
@@ -85,16 +87,16 @@ impl Convert<Weight, BalanceOf<Self>> for Test {
 }
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
-impl frame_system::Config for Test {
+impl polkadot_sdk::frame_system::Config for Test {
 	type Block = Block;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type BlockHashCount = ConstU64<250>;
-	type AccountData = pallet_balances::AccountData<Balance>;
+	type AccountData = polkadot_sdk::pallet_balances::AccountData<Balance>;
 	type MaxConsumers = ConstU32<16>;
 }
 
-impl pallet_timestamp::Config for Test {
+impl polkadot_sdk::pallet_timestamp::Config for Test {
 	type Moment = u64;
 	type OnTimestampSet = ();
 	type MinimumPeriod = ConstU64<5>;
@@ -105,7 +107,7 @@ parameter_types! {
 	pub static ExistentialDeposit: Balance = 1;
 }
 
-impl pallet_balances::Config for Test {
+impl polkadot_sdk::pallet_balances::Config for Test {
 	type MaxLocks = ConstU32<1024>;
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
@@ -148,7 +150,7 @@ parameter_types! {
 	pub const UndecidingTimeout: BlockNumber = 5 * MINUTES;
 }
 
-impl pallet_referenda::Config for Test {
+impl polkadot_sdk::pallet_referenda::Config for Test {
 	type WeightInfo = ();
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
@@ -158,8 +160,8 @@ impl pallet_referenda::Config for Test {
 	type CancelOrigin = EnsureRoot<AccountId>;
 	type KillOrigin = EnsureRoot<AccountId>;
 	type Slash = ();
-	type Votes = pallet_conviction_voting::VotesOf<Test>;
-	type Tally = pallet_conviction_voting::TallyOf<Test>;
+	type Votes = polkadot_sdk::pallet_conviction_voting::VotesOf<Test>;
+	type Tally = polkadot_sdk::pallet_conviction_voting::TallyOf<Test>;
 	type SubmissionDeposit = SubmissionDeposit;
 	type MaxQueued = ConstU32<100>;
 	type UndecidingTimeout = UndecidingTimeout;
@@ -173,15 +175,16 @@ parameter_types! {
 	pub const VoteLockingPeriod: BlockNumber = 3 * MINUTES;
 }
 
-impl pallet_conviction_voting::Config for Test {
+impl polkadot_sdk::pallet_conviction_voting::Config for Test {
 	type WeightInfo = ();
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type VoteLockingPeriod = VoteLockingPeriod;
 	type MaxVotes = ConstU32<512>;
-	type MaxTurnout = frame_support::traits::TotalIssuanceOf<Balances, Self::AccountId>;
+	type MaxTurnout =
+		polkadot_sdk::frame_support::traits::TotalIssuanceOf<Balances, Self::AccountId>;
 	type Polls = Referenda;
-	type BlockNumberProvider = frame_system::Pallet<Test>;
+	type BlockNumberProvider = polkadot_sdk::frame_system::Pallet<Test>;
 	type VotingHooks = ();
 }
 
@@ -196,7 +199,7 @@ impl pallet_scheduler::Config for Test {
 	type WeightInfo = ();
 	type OriginPrivilegeCmp = EqualPrivilegeOnly;
 	type Preimages = Preimage;
-	type BlockNumberProvider = frame_system::Pallet<Test>;
+	type BlockNumberProvider = polkadot_sdk::frame_system::Pallet<Test>;
 }
 
 parameter_types! {
@@ -210,19 +213,19 @@ parameter_types! {
 	pub const SurchargeReward: Balance = 150;
 	pub const MaxDepth: u32 = 100;
 	pub const MaxValueSize: u32 = 16_384;
-	pub Schedule: pallet_contracts::Schedule<Test> = Default::default();
+	pub Schedule: polkadot_sdk::pallet_contracts::Schedule<Test> = Default::default();
 	pub static DefaultDepositLimit: Balance = 10_000_000;
 	pub const CodeHashLockupDepositPercent: Perbill = Perbill::from_percent(0);
 	pub const MaxDelegateDependencies: u32 = 32;
 }
 
-impl pallet_contracts::Config for Test {
+impl polkadot_sdk::pallet_contracts::Config for Test {
 	type Time = Timestamp;
 	type Randomness = Randomness;
 	type Currency = Balances;
 	type RuntimeEvent = RuntimeEvent;
-	type CallStack = [pallet_contracts::Frame<Self>; 5];
-	type WeightPrice = Self; //pallet_transaction_payment::Module<Self>;
+	type CallStack = [polkadot_sdk::pallet_contracts::Frame<Self>; 5];
+	type WeightPrice = Self; //polkadot_sdk::pallet_transaction_payment::Module<Self>;
 	type WeightInfo = ();
 	type ChainExtension = ();
 	type Schedule = Schedule;
@@ -231,7 +234,7 @@ impl pallet_contracts::Config for Test {
 	type DepositPerByte = DepositPerByte;
 	type DepositPerItem = DepositPerItem;
 	type DefaultDepositLimit = DefaultDepositLimit;
-	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
+	type AddressGenerator = polkadot_sdk::pallet_contracts::DefaultAddressGenerator;
 	type MaxCodeLen = ConstU32<{ 123 * 1024 }>;
 	type MaxStorageKeyLen = ConstU32<128>;
 	type UnsafeUnstableInterface = ConstBool<false>;
@@ -432,7 +435,7 @@ impl SeatsConsensus for MockedSeatsConsensus {
 }
 
 pub struct DdcOriginAsNative<DdcOrigin, RuntimeOrigin>(PhantomData<(DdcOrigin, RuntimeOrigin)>);
-impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
+impl<DdcOrigin: Get<T::RuntimeOrigin>, T: polkadot_sdk::frame_system::Config> GetDdcOrigin<T>
 	for DdcOriginAsNative<DdcOrigin, T>
 {
 	fn get() -> T::RuntimeOrigin {
@@ -441,10 +444,11 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
 }
 
 pub struct EnsureOfPermittedReferendaOrigin<T>(PhantomData<T>);
-impl<T: frame_system::Config> EnsureOriginWithArg<T::RuntimeOrigin, PalletsOriginOf<T>>
-	for EnsureOfPermittedReferendaOrigin<T>
+impl<T: polkadot_sdk::frame_system::Config>
+	EnsureOriginWithArg<T::RuntimeOrigin, PalletsOriginOf<T>> for EnsureOfPermittedReferendaOrigin<T>
 where
-	<T as frame_system::Config>::RuntimeOrigin: OriginTrait<PalletsOrigin = OriginCaller>,
+	<T as polkadot_sdk::frame_system::Config>::RuntimeOrigin:
+		OriginTrait<PalletsOrigin = OriginCaller>,
 {
 	type Success = T::AccountId;
 
@@ -452,15 +456,18 @@ where
 		o: T::RuntimeOrigin,
 		proposal_origin: &PalletsOriginOf<T>,
 	) -> Result<Self::Success, T::RuntimeOrigin> {
-		let origin = <frame_system::EnsureSigned<_> as EnsureOrigin<_>>::try_origin(o.clone())?;
+		let origin = <polkadot_sdk::frame_system::EnsureSigned<_> as EnsureOrigin<_>>::try_origin(
+			o.clone(),
+		)?;
 
-		let track_id =
-			match <TracksInfo as pallet_referenda::TracksInfo<Balance, BlockNumber>>::track_for(
-				proposal_origin,
-			) {
-				Ok(track_id) => track_id,
-				Err(_) => return Err(o),
-			};
+		let track_id = match <TracksInfo as polkadot_sdk::pallet_referenda::TracksInfo<
+			Balance,
+			BlockNumber,
+		>>::track_for(proposal_origin)
+		{
+			Ok(track_id) => track_id,
+			Err(_) => return Err(o),
+		};
 
 		if track_id == CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID
 			|| track_id == CLUSTER_PROTOCOL_UPDATER_TRACK_ID
@@ -480,13 +487,14 @@ where
 	fn try_successful_origin(
 		_proposal_origin: &PalletsOriginOf<T>,
 	) -> Result<T::RuntimeOrigin, ()> {
-		let origin = frame_benchmarking::account::<T::AccountId>("successful_origin", 0, 0);
-		Ok(frame_system::RawOrigin::Signed(origin).into())
+		let origin =
+			polkadot_sdk::frame_benchmarking::account::<T::AccountId>("successful_origin", 0, 0);
+		Ok(polkadot_sdk::frame_system::RawOrigin::Signed(origin).into())
 	}
 }
 
-const fn percent(x: i32) -> sp_arithmetic::FixedI64 {
-	sp_arithmetic::FixedI64::from_rational(x as u128, 100)
+const fn percent(x: i32) -> polkadot_sdk::sp_arithmetic::FixedI64 {
+	polkadot_sdk::sp_arithmetic::FixedI64::from_rational(x as u128, 100)
 }
 
 const APP_CLUSTER_PROTOCOL_ACTIVATOR: Curve = Curve::make_linear(10, 28, percent(0), percent(10));
@@ -502,10 +510,10 @@ pub const CLUSTER_PROTOCOL_UPDATER_DECISION_DEPOSIT: Balance = 20 * DOLLARS;
 pub const CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID: u16 = 100;
 pub const CLUSTER_PROTOCOL_UPDATER_TRACK_ID: u16 = 101;
 
-const TRACKS_DATA: [pallet_referenda::Track<u16, Balance, BlockNumber>; 2] = [
-	pallet_referenda::Track {
+const TRACKS_DATA: [polkadot_sdk::pallet_referenda::Track<u16, Balance, BlockNumber>; 2] = [
+	polkadot_sdk::pallet_referenda::Track {
 		id: CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID,
-		info: pallet_referenda::TrackInfo {
+		info: polkadot_sdk::pallet_referenda::TrackInfo {
 			name: s("cluster_protocol_activatr"),
 			max_deciding: 50,
 			decision_deposit: CLUSTER_PROTOCOL_ACTIVATOR_DECISION_DEPOSIT,
@@ -517,9 +525,9 @@ const TRACKS_DATA: [pallet_referenda::Track<u16, Balance, BlockNumber>; 2] = [
 			min_support: SUP_CLUSTER_PROTOCOL_ACTIVATOR,
 		},
 	},
-	pallet_referenda::Track {
+	polkadot_sdk::pallet_referenda::Track {
 		id: CLUSTER_PROTOCOL_UPDATER_TRACK_ID,
-		info: pallet_referenda::TrackInfo {
+		info: polkadot_sdk::pallet_referenda::TrackInfo {
 			name: s("cluster_protocol_updater"),
 			max_deciding: 50,
 			decision_deposit: CLUSTER_PROTOCOL_UPDATER_DECISION_DEPOSIT,
@@ -534,12 +542,13 @@ const TRACKS_DATA: [pallet_referenda::Track<u16, Balance, BlockNumber>; 2] = [
 ];
 
 pub struct TracksInfo;
-impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
+impl polkadot_sdk::pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 	type Id = u16;
-	type RuntimeOrigin = <RuntimeOrigin as frame_support::traits::OriginTrait>::PalletsOrigin;
-	fn tracks(
-	) -> impl Iterator<Item = Cow<'static, pallet_referenda::Track<Self::Id, Balance, BlockNumber>>>
-	{
+	type RuntimeOrigin =
+		<RuntimeOrigin as polkadot_sdk::frame_support::traits::OriginTrait>::PalletsOrigin;
+	fn tracks() -> impl Iterator<
+		Item = Cow<'static, polkadot_sdk::pallet_referenda::Track<Self::Id, Balance, BlockNumber>>,
+	> {
 		TRACKS_DATA.iter().map(Cow::Borrowed)
 	}
 	fn track_for(id: &Self::RuntimeOrigin) -> Result<Self::Id, ()> {
@@ -559,12 +568,12 @@ impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 }
 
 #[allow(unused_imports)]
-#[frame_support::pallet]
+#[polkadot_sdk::frame_support::pallet]
 mod pallet_mock_origins {
-	use frame_support::pallet_prelude::*;
+	use polkadot_sdk::frame_support::pallet_prelude::*;
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {}
+	pub trait Config: polkadot_sdk::frame_system::Config {}
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -716,7 +725,9 @@ pub struct ExtBuilder;
 impl ExtBuilder {
 	pub fn build(self, cluster: BuiltCluster, cluster_nodes: Vec<BuiltNode>) -> TestExternalities {
 		sp_tracing::try_init_simple();
-		let mut storage = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
+		let mut storage = polkadot_sdk::frame_system::GenesisConfig::<Test>::default()
+			.build_storage()
+			.unwrap();
 
 		let mut balances: Vec<(AccountId, Balance)> = Vec::new();
 		let mut storage_nodes: Vec<StorageNode<Test>> = Vec::new();
@@ -736,8 +747,9 @@ impl ExtBuilder {
 		// endow system account to allow dispatching transaction
 		balances.push((DdcClustersGov::account_id(), ENDOWMENT));
 
-		let _ = pallet_balances::GenesisConfig::<Test> { balances, ..Default::default() }
-			.assimilate_storage(&mut storage);
+		let _ =
+			polkadot_sdk::pallet_balances::GenesisConfig::<Test> { balances, ..Default::default() }
+				.assimilate_storage(&mut storage);
 
 		let _ = pallet_ddc_nodes::GenesisConfig::<Test> { storage_nodes }
 			.assimilate_storage(&mut storage);

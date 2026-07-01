@@ -6,10 +6,10 @@ use ddc_primitives::{
 	ClusterParams, ClusterPricingParams, NodeParams, NodePubKey, StorageNodeMode,
 	StorageNodeParams,
 };
-use frame_support::{assert_noop, assert_ok};
-use frame_system::Config;
 use hex_literal::hex;
-use sp_runtime::{traits::Hash, Perquintill};
+use polkadot_sdk::frame_support::{assert_noop, assert_ok};
+use polkadot_sdk::frame_system::Config;
+use polkadot_sdk::sp_runtime::{traits::Hash, Perquintill};
 
 use super::{mock::*, *};
 
@@ -418,7 +418,7 @@ fn add_join_and_delete_node_works() {
 			let contract_args = encode_constructor();
 
 			// Deploy the contract.
-			const GAS_LIMIT: frame_support::weights::Weight =
+			const GAS_LIMIT: polkadot_sdk::frame_support::weights::Weight =
 				Weight::from_parts(100_000_000_000, 0).set_proof_size(u64::MAX);
 			const ENDOWMENT: Balance = 0;
 			Contracts::instantiate_with_code(
