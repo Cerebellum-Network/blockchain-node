@@ -1893,7 +1893,25 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Tx
 // 	>,
 // );
 
-type Migrations = ();
+// One-shot cleanup for the dropped `pallet_hyperbridge` (was pallet_index 48)
+// and the `TokenGateway` prefix swap to `pallet_hyper_fungible_token`. Remove
+// from `Migrations` in the next runtime upgrade after this one ships —
+// RemovePallet is not self-gating.
+parameter_types! {
+	pub const HyperbridgePalletName: &'static str = "Hyperbridge";
+	pub const OldTokenGatewayPalletName: &'static str = "TokenGateway";
+}
+
+type Migrations = (
+	polkadot_sdk::frame_support::migrations::RemovePallet<
+		HyperbridgePalletName,
+		<Runtime as polkadot_sdk::frame_system::Config>::DbWeight,
+	>,
+	polkadot_sdk::frame_support::migrations::RemovePallet<
+		OldTokenGatewayPalletName,
+		<Runtime as polkadot_sdk::frame_system::Config>::DbWeight,
+	>,
+);
 
 parameter_types! {
 	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();

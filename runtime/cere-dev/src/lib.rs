@@ -1874,7 +1874,25 @@ parameter_types! {
 	pub const MaxPoolsToMigrate: u32 = 250;
 }
 
-type Migrations = ();
+// One-shot cleanup for the dropped `pallet_hyperbridge` (was pallet_index 48)
+// and the `TokenGateway` prefix swap to `pallet_hyper_fungible_token`. Remove
+// from `Migrations` in the next runtime upgrade after this one ships —
+// RemovePallet is not self-gating.
+parameter_types! {
+	pub const HyperbridgePalletName: &'static str = "Hyperbridge";
+	pub const OldTokenGatewayPalletName: &'static str = "TokenGateway";
+}
+
+type Migrations = (
+	polkadot_sdk::frame_support::migrations::RemovePallet<
+		HyperbridgePalletName,
+		<Runtime as polkadot_sdk::frame_system::Config>::DbWeight,
+	>,
+	polkadot_sdk::frame_support::migrations::RemovePallet<
+		OldTokenGatewayPalletName,
+		<Runtime as polkadot_sdk::frame_system::Config>::DbWeight,
+	>,
+);
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = polkadot_sdk::frame_executive::Executive<

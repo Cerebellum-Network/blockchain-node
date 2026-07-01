@@ -42,10 +42,12 @@ parameter_types! {
 	pub const HostStateMachine: StateMachine = StateMachine::Substrate(*b"cere");
 }
 
+// Hyperbridge parachain on Kusama (paraId 4009). Preserved from the runtime
+// baseline that predates the polkadot-sdk umbrella swap.
 pub struct Coprocessor;
 impl Get<Option<StateMachine>> for Coprocessor {
 	fn get() -> Option<StateMachine> {
-		Some(HostStateMachine::get())
+		Some(StateMachine::Kusama(4009))
 	}
 }
 
@@ -104,7 +106,9 @@ impl pallet_hyper_fungible_token::Config for Runtime {
 	type Assets = MockAssets;
 	type NativeCurrency = Balances;
 	type NativeAssetId = HftNativeAssetId;
-	type CreateOrigin = EnsureRoot<AccountId>;
+	// cere-dev = devnet, permissive so any signed account can register a test
+	// asset without sudo. cere mainnet keeps EnsureRoot.
+	type CreateOrigin = polkadot_sdk::frame_system::EnsureSigned<AccountId>;
 	type Decimals = HftDecimals;
 	type EvmToSubstrate = ();
 	type WeightInfo = ();

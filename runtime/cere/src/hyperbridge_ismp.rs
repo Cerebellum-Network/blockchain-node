@@ -41,10 +41,14 @@ parameter_types! {
 	pub const HostStateMachine: StateMachine = StateMachine::Substrate(*b"cere");
 }
 
+// Hyperbridge parachain on Kusama (paraId 4009) — the Gargantua v2 testnet
+// coprocessor. The `cere` runtime ships from the `staging` branch, which
+// deploys to testnet (not mainnet), so it targets the Kusama-based Hyperbridge
+// testnet rather than Nexus on Polkadot (paraId 3367).
 pub struct Coprocessor;
 impl Get<Option<StateMachine>> for Coprocessor {
 	fn get() -> Option<StateMachine> {
-		Some(HostStateMachine::get())
+		Some(StateMachine::Kusama(4009))
 	}
 }
 
