@@ -27,6 +27,11 @@ url.workspace = true
 
 # Polkadot SDK
 polkadot-sdk = { workspace = true, default-features = true, features = ["frame-benchmarking-cli", "sc-cli", "sc-executor", "sc-network", "sc-service", "sp-io", "sp-runtime"] }
+# Restore sc-cli's default features (which include "rocksdb"). The umbrella
+# pulls sc-cli with default-features off, and the umbrella exposes no
+# passthrough feature for it — matching the pre-umbrella pattern where
+# each consuming crate individually opted into sc-cli's defaults.
+sc-cli = { workspace = true, default-features = true }
 
 # Local
 cere-client = { workspace = true, optional = true }

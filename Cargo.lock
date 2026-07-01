@@ -2501,6 +2501,7 @@ dependencies = [
  "cere-service",
  "clap",
  "polkadot-sdk",
+ "sc-cli",
  "substrate-build-script-utils",
  "url",
 ]
