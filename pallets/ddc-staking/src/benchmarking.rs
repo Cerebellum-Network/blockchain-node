@@ -4,13 +4,15 @@ use ddc_primitives::{
 	ClusterParams, ClusterProtocolParams, NodeParams, NodeType, StorageNodeMode, StorageNodeParams,
 	StorageNodePubKey,
 };
-pub use frame_benchmarking::{
+pub use polkadot_sdk::frame_benchmarking::{
 	account, benchmarks, impl_benchmark_test_suite, whitelist_account, whitelisted_caller,
 };
-use frame_support::traits::Currency;
-use frame_system::RawOrigin;
-use sp_runtime::traits::StaticLookup;
-use sp_std::prelude::*;
+use polkadot_sdk::frame_support::traits::Currency;
+use polkadot_sdk::frame_system::RawOrigin;
+use polkadot_sdk::sp_runtime::traits::StaticLookup;
+use polkadot_sdk::sp_std::prelude::*;
+#[allow(unused_imports)]
+use polkadot_sdk::*;
 use testing_utils::*;
 
 use super::*;
@@ -19,19 +21,19 @@ use crate::Pallet as DdcStaking;
 const USER_SEED: u32 = 999666;
 
 fn next_block<T: Config>() {
-	frame_system::Pallet::<T>::set_block_number(
-		frame_system::Pallet::<T>::block_number() + BlockNumberFor::<T>::from(1_u32),
+	polkadot_sdk::frame_system::Pallet::<T>::set_block_number(
+		polkadot_sdk::frame_system::Pallet::<T>::block_number() + BlockNumberFor::<T>::from(1_u32),
 	);
 }
 
 fn fast_forward_to<T: Config>(n: BlockNumberFor<T>) {
-	while frame_system::Pallet::<T>::block_number() < n {
+	while polkadot_sdk::frame_system::Pallet::<T>::block_number() < n {
 		next_block::<T>();
 	}
 }
 
 fn assert_has_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
-	frame_system::Pallet::<T>::assert_has_event(generic_event.into());
+	polkadot_sdk::frame_system::Pallet::<T>::assert_has_event(generic_event.into());
 }
 
 benchmarks! {
@@ -84,7 +86,7 @@ benchmarks! {
 		let (stash, controller, _) = create_stash_controller_node::<T>(0, 100)?;
 		let amount = T::Currency::minimum_balance() * 5u32.into(); // Half of total
 		DdcStaking::<T>::unbond(RawOrigin::Signed(controller.clone()).into(), amount)?;
-		frame_system::Pallet::<T>::set_block_number(BlockNumberFor::<T>::from(1000u32));
+		polkadot_sdk::frame_system::Pallet::<T>::set_block_number(BlockNumberFor::<T>::from(1000u32));
 		let ledger = Ledger::<T>::get(&controller).ok_or("ledger not created before")?;
 		let original_total: BalanceOf<T> = ledger.total;
 		whitelist_account!(controller);
@@ -114,9 +116,9 @@ benchmarks! {
 		let (storage_stash, storage_controller, _) = create_stash_controller_node_with_balance::<T>(0, T::ClusterProtocol::get_bond_size(&ClusterId::from([1; 20]), NodeType::Storage).unwrap_or(10u128), node_pub_key)?;
 		DdcStaking::<T>::store(RawOrigin::Signed(storage_controller.clone()).into(), ClusterId::from([1; 20]))?;
 		assert!(Storages::<T>::contains_key(&storage_stash));
-		frame_system::Pallet::<T>::set_block_number(BlockNumberFor::<T>::from(1u32));
+		polkadot_sdk::frame_system::Pallet::<T>::set_block_number(BlockNumberFor::<T>::from(1u32));
 		DdcStaking::<T>::chill(RawOrigin::Signed(storage_controller.clone()).into())?;
-		frame_system::Pallet::<T>::set_block_number(BlockNumberFor::<T>::from(1u32) + T::ClusterProtocol::get_chill_delay(&ClusterId::from([1; 20]), NodeType::Storage).unwrap_or_else(|_| BlockNumberFor::<T>::from(10u32)));
+		polkadot_sdk::frame_system::Pallet::<T>::set_block_number(BlockNumberFor::<T>::from(1u32) + T::ClusterProtocol::get_chill_delay(&ClusterId::from([1; 20]), NodeType::Storage).unwrap_or_else(|_| BlockNumberFor::<T>::from(10u32)));
 
 		whitelist_account!(storage_controller);
 	}: _(RawOrigin::Signed(storage_controller))
@@ -234,7 +236,7 @@ benchmarks! {
 		next_block::<T>();
 
 		DdcStaking::<T>::unbond_cluster(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id)?;
-		fast_forward_to::<T>(frame_system::Pallet::<T>::block_number() + T::ClusterUnboningDelay::get() + BlockNumberFor::<T>::from(1_u32));
+		fast_forward_to::<T>(polkadot_sdk::frame_system::Pallet::<T>::block_number() + T::ClusterUnboningDelay::get() + BlockNumberFor::<T>::from(1_u32));
 
 		whitelist_account!(cluster_reserve_id);
 

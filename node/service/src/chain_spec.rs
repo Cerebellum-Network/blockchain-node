@@ -4,18 +4,18 @@ use cere_dev_runtime as cere_dev;
 use cere_runtime_common::constants::currency::DOLLARS as TEST_UNITS;
 pub use ddc_primitives::{AccountId, Balance, Block, Signature};
 use jsonrpsee::core::__reexports::serde_json;
-use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
-use sc_chain_spec::ChainSpecExtension;
-use sc_service::ChainType;
-use serde::{Deserialize, Serialize};
-use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
-use sp_consensus_babe::AuthorityId as BabeId;
-use sp_consensus_grandpa::AuthorityId as GrandpaId;
-use sp_core::{sr25519, Pair, Public};
-use sp_runtime::{
+use polkadot_sdk::pallet_im_online::sr25519::AuthorityId as ImOnlineId;
+use polkadot_sdk::sc_chain_spec::ChainSpecExtension;
+use polkadot_sdk::sc_service::ChainType;
+use polkadot_sdk::sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
+use polkadot_sdk::sp_consensus_babe::AuthorityId as BabeId;
+use polkadot_sdk::sp_consensus_grandpa::AuthorityId as GrandpaId;
+use polkadot_sdk::sp_core::{sr25519, Pair, Public};
+use polkadot_sdk::sp_runtime::{
 	traits::{IdentifyAccount, Verify},
 	Perbill,
 };
+use serde::{Deserialize, Serialize};
 
 const DEFAULT_PROTOCOL_ID: &str = "cere";
 
@@ -23,19 +23,19 @@ const DEFAULT_PROTOCOL_ID: &str = "cere";
 #[serde(rename_all = "camelCase")]
 pub struct Extensions {
 	/// Block numbers with known hashes.
-	pub fork_blocks: sc_client_api::ForkBlocks<Block>,
+	pub fork_blocks: polkadot_sdk::sc_client_api::ForkBlocks<Block>,
 	/// Known bad block hashes.
-	pub bad_blocks: sc_client_api::BadBlocks<Block>,
+	pub bad_blocks: polkadot_sdk::sc_client_api::BadBlocks<Block>,
 	/// The light sync state extension used by the sync-state rpc.
-	pub light_sync_state: sc_sync_state_rpc::LightSyncStateExtension,
+	pub light_sync_state: polkadot_sdk::sc_sync_state_rpc::LightSyncStateExtension,
 }
 
 // Dummy chain spec, in case when we don't have the native runtime.
-pub type DummyChainSpec = sc_service::GenericChainSpec<Extensions>;
+pub type DummyChainSpec = polkadot_sdk::sc_service::GenericChainSpec<Extensions>;
 
 /// The `ChainSpec` parameterized for the cere runtime.
 #[cfg(feature = "cere-native")]
-pub type CereChainSpec = sc_service::GenericChainSpec<Extensions>;
+pub type CereChainSpec = polkadot_sdk::sc_service::GenericChainSpec<Extensions>;
 
 /// The `ChainSpec` parameterized for the cere runtime.
 // Dummy chain spec, but that is fine when we don't have the native runtime.
@@ -44,7 +44,7 @@ pub type CereChainSpec = DummyChainSpec;
 
 /// The `ChainSpec` parameterized for the cere-dev runtime.
 #[cfg(feature = "cere-dev-native")]
-pub type CereDevChainSpec = sc_service::GenericChainSpec<Extensions>;
+pub type CereDevChainSpec = polkadot_sdk::sc_service::GenericChainSpec<Extensions>;
 
 /// The `ChainSpec` parameterized for the cere-dev runtime.
 // Dummy chain spec, but that is fine when we don't have the native runtime.

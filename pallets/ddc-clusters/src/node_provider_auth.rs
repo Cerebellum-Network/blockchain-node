@@ -1,14 +1,14 @@
 use codec::Encode;
 use ddc_primitives::{NodePubKey, NodeType};
-use frame_support::weights::Weight;
 #[cfg(any(feature = "runtime-benchmarks", test))]
 use hex_literal::hex;
-use sp_core::crypto::UncheckedFrom;
+use polkadot_sdk::frame_support::weights::Weight;
+use polkadot_sdk::sp_core::crypto::UncheckedFrom;
 #[cfg(any(feature = "runtime-benchmarks", test))]
-use sp_runtime::traits::Hash;
-use sp_std::prelude::Vec;
+use polkadot_sdk::sp_runtime::traits::Hash;
+use polkadot_sdk::sp_std::prelude::Vec;
 #[cfg(any(feature = "runtime-benchmarks", test))]
-use sp_std::vec;
+use polkadot_sdk::sp_std::vec;
 
 use crate::Config;
 
@@ -49,16 +49,16 @@ where
 			args.encode()
 		};
 
-		let is_authorized = pallet_contracts::Pallet::<T>::bare_call(
+		let is_authorized = polkadot_sdk::pallet_contracts::Pallet::<T>::bare_call(
 			self.caller_id.clone(),
 			self.contract_id.clone(),
 			Default::default(),
 			EXTENSION_CALL_GAS_LIMIT,
 			None,
 			call_data,
-			pallet_contracts::DebugInfo::Skip,
-			pallet_contracts::CollectEvents::Skip,
-			pallet_contracts::Determinism::Enforced,
+			polkadot_sdk::pallet_contracts::DebugInfo::Skip,
+			polkadot_sdk::pallet_contracts::CollectEvents::Skip,
+			polkadot_sdk::pallet_contracts::Determinism::Enforced,
 		)
 		.result
 		.map_err(|_| NodeProviderAuthContractError::ContractCallFailed)?
@@ -87,30 +87,30 @@ where
 
 		// Load the contract code.
 		let wasm = &include_bytes!("./test_data/node_provider_auth_white_list.wasm")[..];
-		let _wasm_hash = <T as frame_system::Config>::Hashing::hash(wasm);
+		let _wasm_hash = <T as polkadot_sdk::frame_system::Config>::Hashing::hash(wasm);
 		let contract_args = encode_constructor();
 
 		// upload and instantiate the contract
-		let code_hash = pallet_contracts::Pallet::<T>::bare_upload_code(
+		let code_hash = polkadot_sdk::pallet_contracts::Pallet::<T>::bare_upload_code(
 			caller_id.clone(),
 			wasm.to_vec(),
 			None,
-			pallet_contracts::Determinism::Enforced,
+			polkadot_sdk::pallet_contracts::Determinism::Enforced,
 		)
 		.unwrap()
 		.code_hash;
 
 		// Deploy the contract.
-		let contract_id = pallet_contracts::Pallet::<T>::bare_instantiate(
+		let contract_id = polkadot_sdk::pallet_contracts::Pallet::<T>::bare_instantiate(
 			caller_id.clone(),
 			Default::default(),
 			EXTENSION_CALL_GAS_LIMIT,
 			None,
-			pallet_contracts::Code::Existing(code_hash),
+			polkadot_sdk::pallet_contracts::Code::Existing(code_hash),
 			contract_args,
 			vec![],
-			pallet_contracts::DebugInfo::Skip,
-			pallet_contracts::CollectEvents::Skip,
+			polkadot_sdk::pallet_contracts::DebugInfo::Skip,
+			polkadot_sdk::pallet_contracts::CollectEvents::Skip,
 		)
 		.result
 		.map_err(|_| NodeProviderAuthContractError::ContractDeployFailed)?
@@ -133,16 +133,16 @@ where
 			args.encode()
 		};
 
-		let _ = pallet_contracts::Pallet::<T>::bare_call(
+		let _ = polkadot_sdk::pallet_contracts::Pallet::<T>::bare_call(
 			self.caller_id.clone(),
 			self.contract_id.clone(),
 			Default::default(),
 			EXTENSION_CALL_GAS_LIMIT,
 			None,
 			call_data,
-			pallet_contracts::DebugInfo::Skip,
-			pallet_contracts::CollectEvents::Skip,
-			pallet_contracts::Determinism::Enforced,
+			polkadot_sdk::pallet_contracts::DebugInfo::Skip,
+			polkadot_sdk::pallet_contracts::CollectEvents::Skip,
+			polkadot_sdk::pallet_contracts::Determinism::Enforced,
 		)
 		.result
 		.map_err(|_| NodeProviderAuthContractError::NodeAuthorizationNotSuccessful)?;

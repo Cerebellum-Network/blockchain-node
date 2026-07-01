@@ -3,14 +3,16 @@
 use ddc_primitives::{
 	ClusterId, ClusterNodeKind, ClusterParams, ClusterProtocolParams, NodePubKey,
 };
-pub use frame_benchmarking::{
+pub use polkadot_sdk::frame_benchmarking::{
 	account, benchmarks, impl_benchmark_test_suite, whitelist_account, whitelisted_caller,
 	BenchmarkError,
 };
-use frame_system::RawOrigin;
-use sp_core::crypto::UncheckedFrom;
-use sp_runtime::{AccountId32, Perquintill};
-use sp_std::prelude::*;
+use polkadot_sdk::frame_system::RawOrigin;
+use polkadot_sdk::sp_core::crypto::UncheckedFrom;
+use polkadot_sdk::sp_runtime::{AccountId32, Perquintill};
+use polkadot_sdk::sp_std::prelude::*;
+#[allow(unused_imports)]
+use polkadot_sdk::*;
 use testing_utils::*;
 
 use super::*;
@@ -20,7 +22,7 @@ const USER_SEED: u32 = 999666;
 const USER_SEED_2: u32 = 999555;
 
 fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
-	frame_system::Pallet::<T>::assert_last_event(generic_event.into());
+	polkadot_sdk::frame_system::Pallet::<T>::assert_last_event(generic_event.into());
 }
 
 benchmarks! {

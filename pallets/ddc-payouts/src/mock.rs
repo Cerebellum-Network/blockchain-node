@@ -12,22 +12,24 @@ use ddc_primitives::{
 	ClusterBondingParams, ClusterFeesParams, ClusterParams, ClusterPricingParams,
 	ClusterProtocolParams, ClusterStatus, NodeType, DOLLARS,
 };
-use frame_election_provider_support::SortedListProvider;
-use frame_support::{
+use polkadot_sdk::frame_election_provider_support::SortedListProvider;
+use polkadot_sdk::frame_support::{
 	construct_runtime, derive_impl, parameter_types,
 	traits::{ConstU32, ConstU64, ExistenceRequirement, Randomness},
 	PalletId,
 };
-use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
-use sp_core::H256;
-use sp_io::TestExternalities;
+use polkadot_sdk::frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
+use polkadot_sdk::sp_core::H256;
+use polkadot_sdk::sp_io::TestExternalities;
 #[cfg(feature = "try-runtime")]
-use sp_runtime::TryRuntimeError;
-use sp_runtime::{
+use polkadot_sdk::sp_runtime::TryRuntimeError;
+use polkadot_sdk::sp_runtime::{
 	traits::{Identity, IdentityLookup},
 	BuildStorage, DispatchError, Perquintill,
 };
-use sp_std::prelude::*;
+use polkadot_sdk::sp_std::prelude::*;
+#[allow(unused_imports)]
+use polkadot_sdk::*;
 
 use crate::{self as pallet_ddc_payouts, *};
 
@@ -39,14 +41,15 @@ pub(crate) type Balance = u128;
 
 type UncheckedExtrinsic = MockUncheckedExtrinsic<Test>;
 type Block = MockBlock<Test>;
-pub type BalanceOf<T> =
-	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+pub type BalanceOf<T> = <<T as Config>::Currency as Currency<
+	<T as polkadot_sdk::frame_system::Config>::AccountId,
+>>::Balance;
 
 construct_runtime!(
 	pub enum Test
 	{
-		System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+		System: polkadot_sdk::frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
+		Balances: polkadot_sdk::pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		DdcPayouts: pallet_ddc_payouts::{Pallet, Call, Storage, Config<T>, Event<T>},
 	}
 );
@@ -73,16 +76,16 @@ impl Randomness<H256, BlockNumber> for MockRandomness {
 }
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
-impl frame_system::Config for Test {
+impl polkadot_sdk::frame_system::Config for Test {
 	type Block = Block;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type BlockHashCount = ConstU64<250>;
-	type AccountData = pallet_balances::AccountData<Balance>;
+	type AccountData = polkadot_sdk::pallet_balances::AccountData<Balance>;
 	type MaxConsumers = ConstU32<16>;
 }
 
-impl pallet_balances::Config for Test {
+impl polkadot_sdk::pallet_balances::Config for Test {
 	type MaxLocks = ConstU32<1024>;
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
@@ -137,10 +140,10 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
 		temp = ACCOUNT_ID_5.to_ne_bytes();
 		let account_5 = T::AccountId::decode(&mut &temp[..]).unwrap();
 
-		if content_owner == account_1 ||
-			content_owner == account_3 ||
-			content_owner == account_4 ||
-			content_owner == account_5
+		if content_owner == account_1
+			|| content_owner == account_3
+			|| content_owner == account_4
+			|| content_owner == account_5
 		{
 			ensure!(amount > 1_000_000, DispatchError::BadOrigin); //  any error will do
 		}
@@ -288,20 +291,22 @@ pub const PRICING_FEES_ZERO: ClusterFeesParams = ClusterFeesParams {
 };
 
 pub struct TestTreasuryVisitor;
-impl<T: frame_system::Config> PalletVisitor<T> for TestTreasuryVisitor {
+impl<T: polkadot_sdk::frame_system::Config> PalletVisitor<T> for TestTreasuryVisitor {
 	fn get_account_id() -> T::AccountId {
 		let reserve_account = TREASURY_ACCOUNT_ID.to_ne_bytes();
 		T::AccountId::decode(&mut &reserve_account[..]).unwrap()
 	}
 }
 
-fn create_account_id_from_u128<T: frame_system::Config>(id: u128) -> T::AccountId {
+fn create_account_id_from_u128<T: polkadot_sdk::frame_system::Config>(id: u128) -> T::AccountId {
 	let bytes = id.to_ne_bytes();
 	T::AccountId::decode(&mut &bytes[..]).unwrap()
 }
 
-pub struct TestValidatorVisitor<T>(sp_std::marker::PhantomData<T>);
-impl<T: frame_system::Config> SortedListProvider<T::AccountId> for TestValidatorVisitor<T> {
+pub struct TestValidatorVisitor<T>(polkadot_sdk::sp_std::marker::PhantomData<T>);
+impl<T: polkadot_sdk::frame_system::Config> SortedListProvider<T::AccountId>
+	for TestValidatorVisitor<T>
+{
 	type Score = u64;
 	type Error = ();
 
@@ -380,9 +385,9 @@ impl<T: frame_system::Config> SortedListProvider<T::AccountId> for TestValidator
 }
 
 pub fn get_fees(cluster_id: &ClusterId) -> ClusterFeesParams {
-	if *cluster_id == NO_FEE_CLUSTER_ID ||
-		*cluster_id == ONE_CLUSTER_ID ||
-		*cluster_id == CERE_CLUSTER_ID
+	if *cluster_id == NO_FEE_CLUSTER_ID
+		|| *cluster_id == ONE_CLUSTER_ID
+		|| *cluster_id == CERE_CLUSTER_ID
 	{
 		PRICING_FEES_ZERO
 	} else if *cluster_id == HIGH_FEES_CLUSTER_ID {
@@ -489,17 +494,19 @@ impl<T: Config> ClusterProtocol<T, BalanceOf<T>> for TestClusterProtocol {
 	}
 }
 
-pub(crate) type TestRuntimeCall = <Test as frame_system::Config>::RuntimeCall;
+pub(crate) type TestRuntimeCall = <Test as polkadot_sdk::frame_system::Config>::RuntimeCall;
 
 pub struct ExtBuilder;
 
 impl ExtBuilder {
 	fn build(self) -> TestExternalities {
-		sp_tracing::try_init_simple();
+		polkadot_sdk::sp_tracing::try_init_simple();
 
-		let mut storage = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
+		let mut storage = polkadot_sdk::frame_system::GenesisConfig::<Test>::default()
+			.build_storage()
+			.unwrap();
 
-		let _balance_genesis = pallet_balances::GenesisConfig::<Test> {
+		let _balance_genesis = polkadot_sdk::pallet_balances::GenesisConfig::<Test> {
 			balances: vec![
 				(1, 10000000000000000000000000000),
 				(2, USER2_BALANCE), // < PARTIAL_CHARGE
@@ -523,7 +530,7 @@ impl ExtBuilder {
 		TestExternalities::new(storage)
 	}
 	pub fn build_and_execute(self, test: impl FnOnce()) {
-		sp_tracing::try_init_simple();
+		polkadot_sdk::sp_tracing::try_init_simple();
 		let mut ext = self.build();
 		ext.execute_with(test);
 	}

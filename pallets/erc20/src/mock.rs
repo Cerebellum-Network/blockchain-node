@@ -1,11 +1,13 @@
 #![cfg(test)]
 
+#[allow(unused_imports)]
+use polkadot_sdk::*;
 use chainbridge as bridge;
-use frame_support::{ord_parameter_types, derive_impl,parameter_types, weights::Weight};
-use frame_system::{self as system};
-pub use pallet_balances as balances;
-use sp_core::{hashing::blake2_128, H256};
-use sp_runtime::{
+use polkadot_sdk::frame_support::{ord_parameter_types, derive_impl,parameter_types, weights::Weight};
+use polkadot_sdk::frame_system::{self as system};
+pub use polkadot_sdk::pallet_balances as balances;
+use polkadot_sdk::sp_core::{hashing::blake2_128, H256};
+use polkadot_sdk::sp_runtime::{
 	testing::Header,
 	traits::{AccountIdConversion,  Block as BlockT, IdentityLookup},
 	Perbill,
@@ -22,7 +24,7 @@ parameter_types! {
 }
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
-impl frame_system::Config for Test {
+impl polkadot_sdk::frame_system::Config for Test {
 	type Block = u64;
 	type AccountId = u64;
 	type Event = Event;
@@ -41,7 +43,7 @@ ord_parameter_types! {
 	pub const One: u64 = 1;
 }
 
-impl pallet_balances::Config for Test {
+impl polkadot_sdk::pallet_balances::Config for Test {
 	type Balance = u64;
 	type DustRemoval = ();
 	type Event = Event;
@@ -57,7 +59,7 @@ parameter_types! {
 
 impl bridge::Config for Test {
 	type Event = Event;
-	type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
+	type AdminOrigin = polkadot_sdk::frame_system::EnsureRoot<Self::AccountId>;
 	type Proposal = Call;
 	type ChainIdentity = TestChainId;
 	type ProposalLifetime = ProposalLifetime;
@@ -84,10 +86,10 @@ impl Config for Test {
 	type WeightInfo = ();
 }
 
-pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
-pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, u64, Call, ()>;
+pub type Block = polkadot_sdk::sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
+pub type UncheckedExtrinsic = polkadot_sdk::sp_runtime::generic::UncheckedExtrinsic<u32, u64, Call, ()>;
 
-frame_support::construct_runtime!(
+polkadot_sdk::frame_support::construct_runtime!(
 	pub struct Test
 	{
 		System: system::{Pallet, Call, Event<T>},
@@ -103,15 +105,15 @@ pub const RELAYER_B: u64 = 0x3;
 pub const RELAYER_C: u64 = 0x4;
 pub const ENDOWED_BALANCE: u64 = 100_000_000;
 
-pub fn new_test_ext() -> sp_io::TestExternalities {
+pub fn new_test_ext() -> polkadot_sdk::sp_io::TestExternalities {
 	let bridge_id = PalletId(*b"cb/bridg").into_account();
-	let mut t = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
-	pallet_balances::GenesisConfig::<Test> {
+	let mut t = polkadot_sdk::frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
+	polkadot_sdk::pallet_balances::GenesisConfig::<Test> {
 		balances: vec![(bridge_id, ENDOWED_BALANCE), (RELAYER_A, ENDOWED_BALANCE)],
 	}
 	.assimilate_storage(&mut t)
 	.unwrap();
-	let mut ext = sp_io::TestExternalities::new(t);
+	let mut ext = polkadot_sdk::sp_io::TestExternalities::new(t);
 	ext.execute_with(|| System::set_block_number(1));
 	ext
 }

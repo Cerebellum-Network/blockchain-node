@@ -12,30 +12,10 @@ repository.workspace = true
 # 3rd-party dependencies
 jsonrpsee = { workspace = true, default-features = true }
 
-# Substrate dependencies
-ddc-primitives = { workspace = true, default-features = true }
-pallet-transaction-payment-rpc = { workspace = true, default-features = true }
-sc-chain-spec = { workspace = true, default-features = true }
-sc-client-api = { workspace = true, default-features = true }
-sc-consensus-babe = { workspace = true, default-features = true }
-sc-consensus-babe-rpc = { workspace = true, default-features = true }
-sc-consensus-epochs = { workspace = true, default-features = true }
-sc-consensus-grandpa = { workspace = true, default-features = true }
-sc-consensus-grandpa-rpc = { workspace = true, default-features = true }
-sc-rpc = { workspace = true, default-features = true }
-sc-rpc-api = { workspace = true, default-features = true }
-sc-sync-state-rpc = { workspace = true, default-features = true }
-sc-transaction-pool-api = { workspace = true, default-features = true }
-sp-api = { workspace = true, default-features = true }
-sp-block-builder = { workspace = true, default-features = true }
-sp-blockchain = { workspace = true, default-features = true }
-sp-consensus = { workspace = true, default-features = true }
-sp-consensus-babe = { workspace = true, default-features = true }
-sp-core = { workspace = true, default-features = true }
-sp-keystore = { workspace = true, default-features = true }
-sp-runtime = { workspace = true, default-features = true }
-substrate-frame-rpc-system = { workspace = true, default-features = true }
-substrate-state-trie-migration-rpc = { workspace = true, default-features = true }
+# Polkadot SDK
+polkadot-sdk = { workspace = true, default-features = true, features = ["pallet-transaction-payment-rpc", "sc-chain-spec", "sc-client-api", "sc-consensus-babe", "sc-consensus-babe-rpc", "sc-consensus-epochs", "sc-consensus-grandpa", "sc-consensus-grandpa-rpc", "sc-rpc", "sc-rpc-api", "sc-sync-state-rpc", "sc-transaction-pool-api", "sp-api", "sp-block-builder", "sp-blockchain", "sp-consensus", "sp-consensus-babe", "sp-core", "sp-keystore", "sp-runtime", "substrate-frame-rpc-system", "substrate-state-trie-migration-rpc"] }
 
+# Local
+ddc-primitives = { workspace = true, default-features = true }
 pallet-ismp-rpc = { workspace = true, default-features = true }
 pallet-ismp-runtime-api = { workspace = true, default-features = true }

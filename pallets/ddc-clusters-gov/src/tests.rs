@@ -1,11 +1,11 @@
 //! Tests for the module.
 
 use ddc_primitives::{ClusterNodeKind, ClusterParams, ClusterProtocolParams, StorageNodeParams};
-use frame_support::{assert_noop, assert_ok};
-use pallet_conviction_voting::{AccountVote, Conviction, Vote};
 use pallet_ddc_clusters::Event::{ClusterActivated, ClusterProtocolParamsSet};
-use pallet_referenda::ReferendumInfo;
-use sp_runtime::Perquintill;
+use polkadot_sdk::frame_support::{assert_noop, assert_ok};
+use polkadot_sdk::pallet_conviction_voting::{AccountVote, Conviction, Vote};
+use polkadot_sdk::pallet_referenda::ReferendumInfo;
+use polkadot_sdk::sp_runtime::Perquintill;
 
 use super::{mock_clusters_gov::*, *};
 use crate::SubmissionDeposit as ReferendaSubmissionDeposit;
@@ -1179,12 +1179,13 @@ fn cluster_protocol_activation_proposal_early_approved_with_supermajority_consen
 			ClusterMember::ClusterManager,
 		));
 
-		let referenda_count = pallet_referenda::ReferendumCount::<Test>::get();
+		let referenda_count = polkadot_sdk::pallet_referenda::ReferendumCount::<Test>::get();
 		assert_eq!(referenda_count, 1);
 		let referenda_index = referenda_count - 1;
 
 		let submission_deposit_amount =
-			<Test as pallet_referenda::Config>::SubmissionDeposit::get().saturated_into::<u128>();
+			<Test as polkadot_sdk::pallet_referenda::Config>::SubmissionDeposit::get()
+				.saturated_into::<u128>();
 
 		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
 		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
@@ -1230,7 +1231,9 @@ fn cluster_protocol_activation_proposal_early_approved_with_supermajority_consen
 			balance_after_decision_deposit
 		);
 
-		let referendum = pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index).unwrap();
+		let referendum =
+			polkadot_sdk::pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index)
+				.unwrap();
 		assert!(matches!(referendum, ReferendumInfo::Ongoing(..)));
 
 		assert_ok!(ConvictionVoting::vote(
@@ -1246,7 +1249,9 @@ fn cluster_protocol_activation_proposal_early_approved_with_supermajority_consen
 		fast_forward_to(3);
 		assert_ok!(Referenda::nudge_referendum(RuntimeOrigin::root(), referenda_index));
 
-		let referendum = pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index).unwrap();
+		let referendum =
+			polkadot_sdk::pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index)
+				.unwrap();
 		assert!(matches!(referendum, ReferendumInfo::Approved(..)));
 
 		let balance_before_submission_deposit_refund =
@@ -1363,12 +1368,13 @@ fn cluster_protocol_activation_proposal_approved_with_supermajority_consensus_an
 			ClusterMember::ClusterManager,
 		));
 
-		let referenda_count = pallet_referenda::ReferendumCount::<Test>::get();
+		let referenda_count = polkadot_sdk::pallet_referenda::ReferendumCount::<Test>::get();
 		assert_eq!(referenda_count, 1);
 		let referenda_index = referenda_count - 1;
 
 		let submission_deposit_amount =
-			<Test as pallet_referenda::Config>::SubmissionDeposit::get().saturated_into::<u128>();
+			<Test as polkadot_sdk::pallet_referenda::Config>::SubmissionDeposit::get()
+				.saturated_into::<u128>();
 
 		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
 		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
@@ -1507,7 +1513,7 @@ fn cluster_protocol_activation_proposal_early_disapproved_with_supermajority_con
 		));
 
 		// As the quorum is not reached, the proposal gets rejected and no referenda is created
-		assert_eq!(pallet_referenda::ReferendumCount::<Test>::get(), 0);
+		assert_eq!(polkadot_sdk::pallet_referenda::ReferendumCount::<Test>::get(), 0);
 
 		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
 		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
@@ -1607,7 +1613,7 @@ fn cluster_protocol_activation_proposal_disapproved_with_supermajority_consensus
 		));
 
 		// As the quorum is not reached, the proposal gets rejected and no referenda is created
-		assert_eq!(pallet_referenda::ReferendumCount::<Test>::get(), 0);
+		assert_eq!(polkadot_sdk::pallet_referenda::ReferendumCount::<Test>::get(), 0);
 
 		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
 		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
@@ -1931,12 +1937,13 @@ fn cluster_protocol_activation_proposal_early_approved_with_unanimous_consensus_
 			ClusterMember::ClusterManager,
 		));
 
-		let referenda_count = pallet_referenda::ReferendumCount::<Test>::get();
+		let referenda_count = polkadot_sdk::pallet_referenda::ReferendumCount::<Test>::get();
 		assert_eq!(referenda_count, 1);
 		let referenda_index = referenda_count - 1;
 
 		let submission_deposit_amount =
-			<Test as pallet_referenda::Config>::SubmissionDeposit::get().saturated_into::<u128>();
+			<Test as polkadot_sdk::pallet_referenda::Config>::SubmissionDeposit::get()
+				.saturated_into::<u128>();
 
 		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
 		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
@@ -1982,7 +1989,9 @@ fn cluster_protocol_activation_proposal_early_approved_with_unanimous_consensus_
 			balance_after_decision_deposit
 		);
 
-		let referendum = pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index).unwrap();
+		let referendum =
+			polkadot_sdk::pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index)
+				.unwrap();
 		assert!(matches!(referendum, ReferendumInfo::Ongoing(..)));
 
 		assert_ok!(ConvictionVoting::vote(
@@ -1998,7 +2007,9 @@ fn cluster_protocol_activation_proposal_early_approved_with_unanimous_consensus_
 		fast_forward_to(3);
 		assert_ok!(Referenda::nudge_referendum(RuntimeOrigin::root(), referenda_index));
 
-		let referendum = pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index).unwrap();
+		let referendum =
+			polkadot_sdk::pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index)
+				.unwrap();
 		assert!(matches!(referendum, ReferendumInfo::Approved(..)));
 
 		let balance_before_submission_deposit_refund =
@@ -2134,12 +2145,13 @@ fn cluster_protocol_activation_proposal_approved_with_unanimous_consensus_and_na
 			ClusterMember::ClusterManager,
 		));
 
-		let referenda_count = pallet_referenda::ReferendumCount::<Test>::get();
+		let referenda_count = polkadot_sdk::pallet_referenda::ReferendumCount::<Test>::get();
 		assert_eq!(referenda_count, 1);
 		let referenda_index = referenda_count - 1;
 
 		let submission_deposit_amount =
-			<Test as pallet_referenda::Config>::SubmissionDeposit::get().saturated_into::<u128>();
+			<Test as polkadot_sdk::pallet_referenda::Config>::SubmissionDeposit::get()
+				.saturated_into::<u128>();
 
 		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
 		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
@@ -2278,7 +2290,7 @@ fn cluster_protocol_activation_proposal_early_disapproved_with_unanimous_consens
 		));
 
 		// As the quorum is not reached, the proposal gets rejected and no referenda is created
-		assert_eq!(pallet_referenda::ReferendumCount::<Test>::get(), 0);
+		assert_eq!(polkadot_sdk::pallet_referenda::ReferendumCount::<Test>::get(), 0);
 
 		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
 		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
@@ -2389,7 +2401,7 @@ fn cluster_protocol_activation_proposal_disapproved_with_unanimous_consensus_and
 		));
 
 		// As the quorum is not reached, the proposal gets rejected and no referenda is created
-		assert_eq!(pallet_referenda::ReferendumCount::<Test>::get(), 0);
+		assert_eq!(polkadot_sdk::pallet_referenda::ReferendumCount::<Test>::get(), 0);
 
 		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
 		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
@@ -2735,12 +2747,13 @@ fn cluster_protocol_update_proposal_early_approved_with_supermajority_consensus_
 			ClusterMember::NodeProvider(cluster_node_3_key.clone()),
 		));
 
-		let referenda_count = pallet_referenda::ReferendumCount::<Test>::get();
+		let referenda_count = polkadot_sdk::pallet_referenda::ReferendumCount::<Test>::get();
 		assert_eq!(referenda_count, 1);
 		let referenda_index = referenda_count - 1;
 
 		let submission_deposit_amount =
-			<Test as pallet_referenda::Config>::SubmissionDeposit::get().saturated_into::<u128>();
+			<Test as polkadot_sdk::pallet_referenda::Config>::SubmissionDeposit::get()
+				.saturated_into::<u128>();
 
 		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
 		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
@@ -2789,7 +2802,9 @@ fn cluster_protocol_update_proposal_early_approved_with_supermajority_consensus_
 			balance_after_decision_deposit
 		);
 
-		let referendum = pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index).unwrap();
+		let referendum =
+			polkadot_sdk::pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index)
+				.unwrap();
 		assert!(matches!(referendum, ReferendumInfo::Ongoing(..)));
 
 		assert_ok!(ConvictionVoting::vote(
@@ -2805,7 +2820,9 @@ fn cluster_protocol_update_proposal_early_approved_with_supermajority_consensus_
 		fast_forward_to(3);
 		assert_ok!(Referenda::nudge_referendum(RuntimeOrigin::root(), referenda_index));
 
-		let referendum = pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index).unwrap();
+		let referendum =
+			polkadot_sdk::pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index)
+				.unwrap();
 		assert!(matches!(referendum, ReferendumInfo::Approved(..)));
 
 		let balance_before_submission_deposit_refund =
@@ -2924,12 +2941,13 @@ fn cluster_protocol_update_proposal_approved_with_supermajority_consensus_and_pr
 			ClusterMember::ClusterManager,
 		));
 
-		let referenda_count = pallet_referenda::ReferendumCount::<Test>::get();
+		let referenda_count = polkadot_sdk::pallet_referenda::ReferendumCount::<Test>::get();
 		assert_eq!(referenda_count, 1);
 		let referenda_index = referenda_count - 1;
 
 		let submission_deposit_amount =
-			<Test as pallet_referenda::Config>::SubmissionDeposit::get().saturated_into::<u128>();
+			<Test as polkadot_sdk::pallet_referenda::Config>::SubmissionDeposit::get()
+				.saturated_into::<u128>();
 
 		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
 		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
@@ -3069,7 +3087,7 @@ fn cluster_protocol_update_proposal_early_disapproved_with_supermajority_consens
 		));
 
 		// As the quorum is not reached, the proposal gets rejected and no referenda is created
-		assert_eq!(pallet_referenda::ReferendumCount::<Test>::get(), 0);
+		assert_eq!(polkadot_sdk::pallet_referenda::ReferendumCount::<Test>::get(), 0);
 
 		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
 		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
@@ -3170,7 +3188,7 @@ fn cluster_protocol_update_proposal_disapproved_with_supermajority_consensus_and
 		));
 
 		// As the quorum is not reached, the proposal gets rejected and no referenda is created
-		assert_eq!(pallet_referenda::ReferendumCount::<Test>::get(), 0);
+		assert_eq!(polkadot_sdk::pallet_referenda::ReferendumCount::<Test>::get(), 0);
 
 		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
 		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
@@ -3498,12 +3516,13 @@ fn cluster_protocol_update_proposal_early_approved_with_unanimous_consensus_and_
 			ClusterMember::NodeProvider(cluster_node_3_key.clone()),
 		));
 
-		let referenda_count = pallet_referenda::ReferendumCount::<Test>::get();
+		let referenda_count = polkadot_sdk::pallet_referenda::ReferendumCount::<Test>::get();
 		assert_eq!(referenda_count, 1);
 		let referenda_index = referenda_count - 1;
 
 		let submission_deposit_amount =
-			<Test as pallet_referenda::Config>::SubmissionDeposit::get().saturated_into::<u128>();
+			<Test as polkadot_sdk::pallet_referenda::Config>::SubmissionDeposit::get()
+				.saturated_into::<u128>();
 
 		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
 		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
@@ -3552,7 +3571,9 @@ fn cluster_protocol_update_proposal_early_approved_with_unanimous_consensus_and_
 			balance_after_decision_deposit
 		);
 
-		let referendum = pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index).unwrap();
+		let referendum =
+			polkadot_sdk::pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index)
+				.unwrap();
 		assert!(matches!(referendum, ReferendumInfo::Ongoing(..)));
 
 		assert_ok!(ConvictionVoting::vote(
@@ -3568,7 +3589,9 @@ fn cluster_protocol_update_proposal_early_approved_with_unanimous_consensus_and_
 		fast_forward_to(3);
 		assert_ok!(Referenda::nudge_referendum(RuntimeOrigin::root(), referenda_index));
 
-		let referendum = pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index).unwrap();
+		let referendum =
+			polkadot_sdk::pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index)
+				.unwrap();
 		assert!(matches!(referendum, ReferendumInfo::Approved(..)));
 
 		let balance_before_submission_deposit_refund =
@@ -3704,12 +3727,13 @@ fn cluster_protocol_update_proposal_approved_with_unanimous_consensus_and_nay_de
 			ClusterMember::ClusterManager,
 		));
 
-		let referenda_count = pallet_referenda::ReferendumCount::<Test>::get();
+		let referenda_count = polkadot_sdk::pallet_referenda::ReferendumCount::<Test>::get();
 		assert_eq!(referenda_count, 1);
 		let referenda_index = referenda_count - 1;
 
 		let submission_deposit_amount =
-			<Test as pallet_referenda::Config>::SubmissionDeposit::get().saturated_into::<u128>();
+			<Test as polkadot_sdk::pallet_referenda::Config>::SubmissionDeposit::get()
+				.saturated_into::<u128>();
 
 		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
 		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
@@ -3849,7 +3873,7 @@ fn cluster_protocol_update_proposal_early_disapproved_with_unanimous_consensus_a
 		));
 
 		// As the quorum is not reached, the proposal gets rejected and no referenda is created
-		assert_eq!(pallet_referenda::ReferendumCount::<Test>::get(), 0);
+		assert_eq!(polkadot_sdk::pallet_referenda::ReferendumCount::<Test>::get(), 0);
 
 		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
 		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
@@ -3960,7 +3984,7 @@ fn cluster_protocol_update_proposal_disapproved_with_unanimous_consensus_and_nay
 		));
 
 		// As the quorum is not reached, the proposal gets rejected and no referenda is created
-		assert_eq!(pallet_referenda::ReferendumCount::<Test>::get(), 0);
+		assert_eq!(polkadot_sdk::pallet_referenda::ReferendumCount::<Test>::get(), 0);
 
 		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
 		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));

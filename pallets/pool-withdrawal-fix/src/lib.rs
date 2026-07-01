@@ -5,29 +5,30 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::pallet_prelude::Weight;
 pub use pallet::*;
+use polkadot_sdk::frame_support::pallet_prelude::Weight;
 
-#[frame_support::pallet]
+#[polkadot_sdk::frame_support::pallet]
 pub mod pallet {
-	use frame_support::{
+	use polkadot_sdk::frame_support::{
 		pallet_prelude::*,
 		traits::{Currency, EnsureOrigin, LockableCurrency},
 	};
-	use frame_system::pallet_prelude::*;
-	use sp_staking::OnStakingUpdate;
+	use polkadot_sdk::frame_system::pallet_prelude::*;
+	use polkadot_sdk::sp_staking::OnStakingUpdate;
 
 	use crate::WeightInfo;
 
-	pub type BalanceOf<T> =
-		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+	pub type BalanceOf<T> = <<T as Config>::Currency as Currency<
+		<T as polkadot_sdk::frame_system::Config>::AccountId,
+	>>::Balance;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
-	pub trait Config: frame_system::Config<RuntimeEvent: From<Event<Self>>> {
+	pub trait Config: polkadot_sdk::frame_system::Config<RuntimeEvent: From<Event<Self>>> {
 		type Currency: LockableCurrency<Self::AccountId, Moment = BlockNumberFor<Self>>;
 		/// Integrate Delegated Pallet
 		type DelegationPalletConnector: OnStakingUpdate<Self::AccountId, BalanceOf<Self>>;

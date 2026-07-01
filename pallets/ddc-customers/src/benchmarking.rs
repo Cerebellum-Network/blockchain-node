@@ -1,17 +1,20 @@
 //! DdcStaking pallet benchmarking.
 use ddc_primitives::{ClusterId, ClusterParams, ClusterProtocolParams};
-use frame_benchmarking::{account, benchmarks, whitelist_account};
-use frame_support::traits::Currency;
-use sp_runtime::Perquintill;
-use sp_std::prelude::*;
+use polkadot_sdk::frame_benchmarking::{account, benchmarks, whitelist_account};
+use polkadot_sdk::frame_support::traits::Currency;
+use polkadot_sdk::sp_runtime::Perquintill;
+use polkadot_sdk::sp_std::prelude::*;
+#[allow(unused_imports)]
+use polkadot_sdk::*;
 
 use super::*;
 use crate::Pallet as DdcCustomers;
 
-pub type BalanceOf<T> =
-	<<T as pallet::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+pub type BalanceOf<T> = <<T as pallet::Config>::Currency as Currency<
+	<T as polkadot_sdk::frame_system::Config>::AccountId,
+>>::Balance;
 
-use frame_system::{Pallet as System, RawOrigin};
+use polkadot_sdk::frame_system::{Pallet as System, RawOrigin};
 
 const USER_SEED: u32 = 999666;
 

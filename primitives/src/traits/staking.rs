@@ -1,5 +1,5 @@
-use frame_system::Config;
-use sp_runtime::DispatchResult;
+use polkadot_sdk::frame_system::Config;
+use polkadot_sdk::sp_runtime::DispatchResult;
 
 use crate::{ClusterId, NodePubKey};
 

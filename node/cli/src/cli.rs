@@ -12,7 +12,7 @@ pub struct Cli {
 #[group(skip)]
 pub struct RunCmd {
 	#[clap(flatten)]
-	pub base: sc_cli::RunCmd,
+	pub base: polkadot_sdk::sc_cli::RunCmd,
 
 	/// Force using Cere Dev runtime.
 	#[arg(long = "force-cere-dev")]
@@ -34,7 +34,7 @@ pub struct RunCmd {
 pub enum Subcommand {
 	/// Key management cli utilities
 	#[command(subcommand)]
-	Key(sc_cli::KeySubcommand),
+	Key(polkadot_sdk::sc_cli::KeySubcommand),
 
 	/// Build a chain specification.
 	/// DEPRECATED: `build-spec` command will be removed after 1/04/2026. Use `export-chain-spec`
@@ -42,33 +42,33 @@ pub enum Subcommand {
 	#[deprecated(
 		note = "build-spec command will be removed after 1/04/2026. Use export-chain-spec command instead"
 	)]
-	BuildSpec(sc_cli::BuildSpecCmd),
+	BuildSpec(polkadot_sdk::sc_cli::BuildSpecCmd),
 
 	/// Export the chain specification.
-	ExportChainSpec(sc_cli::ExportChainSpecCmd),
+	ExportChainSpec(polkadot_sdk::sc_cli::ExportChainSpecCmd),
 
 	/// Validate blocks.
-	CheckBlock(sc_cli::CheckBlockCmd),
+	CheckBlock(polkadot_sdk::sc_cli::CheckBlockCmd),
 
 	/// Export blocks.
-	ExportBlocks(sc_cli::ExportBlocksCmd),
+	ExportBlocks(polkadot_sdk::sc_cli::ExportBlocksCmd),
 
 	/// Export the state of a given block into a chain spec.
-	ExportState(sc_cli::ExportStateCmd),
+	ExportState(polkadot_sdk::sc_cli::ExportStateCmd),
 
 	/// Import blocks.
-	ImportBlocks(sc_cli::ImportBlocksCmd),
+	ImportBlocks(polkadot_sdk::sc_cli::ImportBlocksCmd),
 
 	/// Remove the whole chain.
-	PurgeChain(sc_cli::PurgeChainCmd),
+	PurgeChain(polkadot_sdk::sc_cli::PurgeChainCmd),
 
 	/// Revert the chain to a previous state.
-	Revert(sc_cli::RevertCmd),
+	Revert(polkadot_sdk::sc_cli::RevertCmd),
 
 	/// Sub-commands concerned with benchmarking.
 	#[command(subcommand)]
-	Benchmark(frame_benchmarking_cli::BenchmarkCmd),
+	Benchmark(polkadot_sdk::frame_benchmarking_cli::BenchmarkCmd),
 
 	/// Db meta columns information.
-	ChainInfo(sc_cli::ChainInfoCmd),
+	ChainInfo(polkadot_sdk::sc_cli::ChainInfoCmd),
 }

@@ -1,11 +1,13 @@
 //! DdcStaking pallet benchmarking.
 
 use ddc_primitives::{StorageNodeMode, StorageNodePubKey};
-pub use frame_benchmarking::{
+pub use polkadot_sdk::frame_benchmarking::{
 	account, benchmarks, impl_benchmark_test_suite, whitelist_account, whitelisted_caller,
 };
-use frame_system::RawOrigin;
-use sp_std::prelude::*;
+use polkadot_sdk::frame_system::RawOrigin;
+use polkadot_sdk::sp_std::prelude::*;
+#[allow(unused_imports)]
+use polkadot_sdk::*;
 use testing_utils::*;
 
 use super::*;

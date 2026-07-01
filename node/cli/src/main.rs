@@ -2,6 +2,6 @@
 #![warn(missing_docs)]
 
 #[allow(clippy::result_large_err)]
-fn main() -> sc_cli::Result<()> {
+fn main() -> polkadot_sdk::sc_cli::Result<()> {
 	cere_cli::run()
 }

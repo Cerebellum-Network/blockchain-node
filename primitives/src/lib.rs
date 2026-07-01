@@ -1,14 +1,14 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use scale_info::{prelude::vec::Vec, TypeInfo};
-use serde::{Deserialize, Serialize};
-use sp_core::{hash::H160, DecodeWithMemTracking};
-use sp_runtime::{
+use polkadot_sdk::sp_core::{hash::H160, DecodeWithMemTracking};
+use polkadot_sdk::sp_runtime::{
 	generic,
 	traits::{BlakeTwo256, IdentifyAccount, Verify},
 	AccountId32, MultiSignature, OpaqueExtrinsic, Perquintill, RuntimeDebug,
 };
+use scale_info::{prelude::vec::Vec, TypeInfo};
+use serde::{Deserialize, Serialize};
 pub mod traits;
 
 /// An index to a block.
@@ -27,7 +27,7 @@ pub type Moment = u64;
 /// Index of a transaction in the chain.
 pub type Nonce = u32;
 /// A hash of some data used by the chain.
-pub type Hash = sp_core::H256;
+pub type Hash = polkadot_sdk::sp_core::H256;
 /// A timestamp: milliseconds since the unix epoch.
 /// `u64` is enough to represent a duration of half a billion years, when the
 /// time scale is milliseconds.

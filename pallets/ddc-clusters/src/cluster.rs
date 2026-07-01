@@ -1,6 +1,6 @@
 use codec::{Decode, Encode};
 use ddc_primitives::{ClusterId, ClusterParams, ClusterStatus};
-use frame_support::{pallet_prelude::*, parameter_types};
+use polkadot_sdk::frame_support::{pallet_prelude::*, parameter_types};
 use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
 

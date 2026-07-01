@@ -20,26 +20,27 @@ use ddc_primitives::{
 	},
 	BucketId, ClusterId,
 };
-use frame_support::{
+pub use pallet::*;
+use polkadot_sdk::frame_support::{
 	parameter_types,
 	traits::{Currency, DefensiveSaturating, ExistenceRequirement},
 	BoundedVec, Deserialize, PalletId, Serialize,
 };
-use frame_system::pallet_prelude::*;
-pub use pallet::*;
-use scale_info::TypeInfo;
-use sp_io::hashing::blake2_128;
-use sp_runtime::{
+use polkadot_sdk::frame_system::pallet_prelude::*;
+use polkadot_sdk::sp_io::hashing::blake2_128;
+use polkadot_sdk::sp_runtime::{
 	traits::{AccountIdConversion, Saturating, Zero},
 	RuntimeDebug, SaturatedConversion,
 };
-use sp_std::prelude::*;
+use polkadot_sdk::sp_std::prelude::*;
+use scale_info::TypeInfo;
 
 pub mod migration;
 
 /// The balance type of this pallet.
-pub type BalanceOf<T> =
-	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+pub type BalanceOf<T> = <<T as Config>::Currency as Currency<
+	<T as polkadot_sdk::frame_system::Config>::AccountId,
+>>::Balance;
 
 parameter_types! {
 	/// A limit to the number of pending unlocks an account may have in parallel.
@@ -137,16 +138,16 @@ impl<T: Config> AccountsLedger<T> {
 	}
 }
 
-#[frame_support::pallet]
+#[polkadot_sdk::frame_support::pallet]
 pub mod pallet {
-	use frame_support::{pallet_prelude::*, traits::LockableCurrency};
-	use frame_system::pallet_prelude::*;
+	use polkadot_sdk::frame_support::{pallet_prelude::*, traits::LockableCurrency};
+	use polkadot_sdk::frame_system::pallet_prelude::*;
 
 	use super::*;
 
 	/// The current storage version.
-	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-		frame_support::traits::StorageVersion::new(1);
+	const STORAGE_VERSION: polkadot_sdk::frame_support::traits::StorageVersion =
+		polkadot_sdk::frame_support::traits::StorageVersion::new(1);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -154,13 +155,14 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: polkadot_sdk::frame_system::Config {
 		/// The accounts's pallet id, used for deriving its sovereign account ID.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 		type Currency: LockableCurrency<Self::AccountId, Moment = BlockNumberFor<Self>>;
 		#[allow(deprecated)]
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+		type RuntimeEvent: From<Event<Self>>
+			+ IsType<<Self as polkadot_sdk::frame_system::Config>::RuntimeEvent>;
 		/// Number of eras that staked funds must remain locked for.
 		#[pallet::constant]
 		type UnlockingDelay: Get<BlockNumberFor<Self>>;
@@ -413,7 +415,7 @@ pub mod pallet {
 					ledger.active = Zero::zero();
 				}
 
-				let current_block = <frame_system::Pallet<T>>::block_number();
+				let current_block = <polkadot_sdk::frame_system::Pallet<T>>::block_number();
 				// Note: locking for extra block to allow for accounting
 				// block + configurable value - shouldn't overflow
 				let block = current_block + <T as pallet::Config>::UnlockingDelay::get();
@@ -459,11 +461,11 @@ pub mod pallet {
 			let owner = ensure_signed(origin)?;
 			let mut ledger = Ledger::<T>::get(&owner).ok_or(Error::<T>::NotOwner)?;
 			let (owner, old_total) = (ledger.owner.clone(), ledger.total);
-			let current_block = <frame_system::Pallet<T>>::block_number();
+			let current_block = <polkadot_sdk::frame_system::Pallet<T>>::block_number();
 			ledger = ledger.consolidate_unlocked(current_block);
 
-			let post_info_weight = if ledger.unlocking.is_empty() &&
-				ledger.active < <T as pallet::Config>::Currency::minimum_balance()
+			let post_info_weight = if ledger.unlocking.is_empty()
+				&& ledger.active < <T as pallet::Config>::Currency::minimum_balance()
 			{
 				log::debug!("Killing owner");
 				// This account must have called `unlock_deposit()` with some value that caused the
@@ -592,7 +594,7 @@ pub mod pallet {
 		fn kill_owner(owner: &T::AccountId) -> DispatchResult {
 			<Ledger<T>>::remove(owner);
 
-			frame_system::Pallet::<T>::dec_consumers(owner);
+			polkadot_sdk::frame_system::Pallet::<T>::dec_consumers(owner);
 
 			Ok(())
 		}
@@ -703,7 +705,8 @@ pub mod pallet {
 				Err(Error::<T>::InsufficientDeposit)?
 			}
 
-			frame_system::Pallet::<T>::inc_consumers(&owner).map_err(|_| Error::<T>::BadState)?;
+			polkadot_sdk::frame_system::Pallet::<T>::inc_consumers(&owner)
+				.map_err(|_| Error::<T>::BadState)?;
 
 			let owner_balance = <T as pallet::Config>::Currency::free_balance(&owner);
 			let value = value.min(owner_balance);

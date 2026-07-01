@@ -1,6 +1,6 @@
-use frame_support::{storage_alias, traits::OnRuntimeUpgrade};
 use log::info;
-use sp_runtime::Saturating;
+use polkadot_sdk::frame_support::{storage_alias, traits::OnRuntimeUpgrade};
+use polkadot_sdk::sp_runtime::Saturating;
 
 use super::*;
 use crate::cluster::ClusterProps;
@@ -8,7 +8,7 @@ use crate::cluster::ClusterProps;
 const LOG_TARGET: &str = "ddc-clusters";
 
 pub mod v0 {
-	use frame_support::pallet_prelude::*;
+	use polkadot_sdk::frame_support::pallet_prelude::*;
 
 	use super::*;
 
@@ -30,13 +30,13 @@ pub mod v0 {
 		crate::Pallet<T>,
 		Blake2_128Concat,
 		ClusterId,
-		Cluster<<T as frame_system::Config>::AccountId>,
+		Cluster<<T as polkadot_sdk::frame_system::Config>::AccountId>,
 	>;
 }
 
 pub mod v1 {
 	use ddc_primitives::ClusterStatus;
-	use frame_support::pallet_prelude::*;
+	use polkadot_sdk::frame_support::pallet_prelude::*;
 
 	use super::*;
 
@@ -95,7 +95,7 @@ pub mod v1 {
 			T::DbWeight::get().reads(1)
 		}
 	}
-	pub struct MigrateToV1<T>(sp_std::marker::PhantomData<T>);
+	pub struct MigrateToV1<T>(polkadot_sdk::sp_std::marker::PhantomData<T>);
 	impl<T: Config> OnRuntimeUpgrade for MigrateToV1<T> {
 		fn on_runtime_upgrade() -> Weight {
 			migrate_to_v1::<T>()
@@ -122,7 +122,7 @@ pub mod v1 {
 			let current_version = Pallet::<T>::in_code_storage_version();
 			let on_chain_version = Pallet::<T>::on_chain_storage_version();
 
-			frame_support::ensure!(current_version == 1, "must_upgrade");
+			polkadot_sdk::frame_support::ensure!(current_version == 1, "must_upgrade");
 			ensure!(
 				current_version == on_chain_version,
 				"after migration, the current_version and on_chain_version should be the same"
@@ -135,7 +135,7 @@ pub mod v1 {
 	#[cfg(feature = "try-runtime")]
 	mod test {
 
-		use frame_support::pallet_prelude::StorageVersion;
+		use polkadot_sdk::frame_support::pallet_prelude::StorageVersion;
 
 		use super::*;
 		use crate::mock::{Test as T, *};
@@ -212,11 +212,13 @@ pub mod v2 {
 		ClusterId, ClusterNodeKind, ClusterNodeState, ClusterNodeStatus, ClusterNodesCount,
 		ClusterNodesStats, ClusterStatus,
 	};
-	use frame_support::{pallet_prelude::*, traits::OnRuntimeUpgrade, weights::Weight};
-	use sp_runtime::Saturating;
-	use sp_std::collections::btree_map::BTreeMap;
+	use polkadot_sdk::frame_support::{
+		pallet_prelude::*, traits::OnRuntimeUpgrade, weights::Weight,
+	};
+	use polkadot_sdk::sp_runtime::Saturating;
+	use polkadot_sdk::sp_std::collections::btree_map::BTreeMap;
 	#[cfg(feature = "try-runtime")]
-	use sp_std::vec::Vec;
+	use polkadot_sdk::sp_std::vec::Vec;
 
 	use crate::{
 		cluster::{Cluster, ClusterProps},
@@ -246,7 +248,7 @@ pub mod v2 {
 	}
 
 	pub type OldNodeStatus = bool;
-	pub struct MigrateToV2<T>(sp_std::marker::PhantomData<T>);
+	pub struct MigrateToV2<T>(polkadot_sdk::sp_std::marker::PhantomData<T>);
 	impl<T: Config> OnRuntimeUpgrade for MigrateToV2<T> {
 		fn on_runtime_upgrade() -> Weight {
 			let current_version = Pallet::<T>::in_code_storage_version();
@@ -291,7 +293,7 @@ pub mod v2 {
 						Some(ClusterNodeState {
 							kind: ClusterNodeKind::External,
 							status: ClusterNodeStatus::ValidationSucceeded,
-							added_at: <frame_system::Pallet<T>>::block_number(),
+							added_at: <polkadot_sdk::frame_system::Pallet<T>>::block_number(),
 						})
 					},
 				);
@@ -340,7 +342,7 @@ pub mod v2 {
 
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
-			frame_support::ensure!(
+			polkadot_sdk::frame_support::ensure!(
 				Pallet::<T>::on_chain_storage_version() == 1,
 				"must upgrade linearly"
 			);
@@ -386,7 +388,7 @@ pub mod v2 {
 			let current_version = Pallet::<T>::in_code_storage_version();
 			let onchain_version = Pallet::<T>::on_chain_storage_version();
 
-			frame_support::ensure!(current_version == 2, "must_upgrade");
+			polkadot_sdk::frame_support::ensure!(current_version == 2, "must_upgrade");
 			assert_eq!(
 				current_version, onchain_version,
 				"after migration, the current_version and onchain_version should be the same"
