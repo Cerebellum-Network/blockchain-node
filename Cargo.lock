@@ -4537,7 +4537,7 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.3"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev#1ceb673bebeaed1e449841263f718daedde0d269"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=fix%2Frecords-fetch-node-pubkey#bc8c55b34cc5c5119e09bad60cad73fa0c19f2d3"
 dependencies = [
  "blake2 0.10.6",
  "ddc-primitives",
@@ -4557,7 +4557,7 @@ dependencies = [
 [[package]]
 name = "ddc-dac-host"
 version = "0.1.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=dev#69f320b01272e2807dcdf2a4c4206c60e8e5cc7a"
+source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=fix%2Frecords-fetch-node-pubkey#a260bfd1394ac3cd4de2c73fecb7b1a23bc31ebc"
 dependencies = [
  "ddc-api",
  "log",
@@ -10194,7 +10194,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#c1f65d05a8a4e32a945007f0cb172a38ce823511"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=fix%2Frecords-fetch-node-pubkey#c4e34a89116d0550a2676e5519a959907bf1adb3"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
@@ -10240,7 +10240,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "8.0.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#db402f3e9b5c4158e2cf83e32ffd4dcd81eb939d"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=fix%2Frecords-fetch-node-pubkey#d1c0a6cf5d4dae5de4e89b0015503c55853b29d1"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
