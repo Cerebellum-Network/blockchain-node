@@ -25,11 +25,12 @@ use polkadot_sdk::frame_support::{
 	traits::{
 		fungibles::{self, Dust, Unbalanced},
 		tokens::{DepositConsequence, Fortitude, Preservation, Provenance, WithdrawConsequence},
-		Get,
+		EitherOfDiverse, Get,
 	},
 	weights::WeightToFee,
 };
 use polkadot_sdk::frame_system::EnsureRoot;
+use polkadot_sdk::pallet_collective::EnsureMembers;
 use polkadot_sdk::sp_core::H256;
 use polkadot_sdk::sp_runtime::{DispatchError, DispatchResult, Weight};
 
@@ -65,7 +66,8 @@ impl WeightToFee for IsmpWeightToFee {
 }
 
 impl pallet_ismp::Config for Runtime {
-	type AdminOrigin = EnsureRoot<AccountId>;
+	type AdminOrigin =
+		EitherOfDiverse<EnsureRoot<AccountId>, EnsureMembers<AccountId, TechCommCollective, 2>>;
 	type HostStateMachine = HostStateMachine;
 	type Coprocessor = Coprocessor;
 	type TimestampProvider = Timestamp;
@@ -87,7 +89,8 @@ impl pallet_ismp::Config for Runtime {
 impl ismp_grandpa::Config for Runtime {
 	type IsmpHost = pallet_ismp::Pallet<Runtime>;
 	type WeightInfo = crate::weights::ismp_grandpa::WeightInfo<Runtime>;
-	type RootOrigin = EnsureRoot<AccountId>;
+	type RootOrigin =
+		EitherOfDiverse<EnsureRoot<AccountId>, EnsureMembers<AccountId, TechCommCollective, 2>>;
 }
 
 parameter_types! {
@@ -109,10 +112,8 @@ impl pallet_hyper_fungible_token::Config for Runtime {
 	type Assets = MockAssets;
 	type NativeCurrency = Balances;
 	type NativeAssetId = HftNativeAssetId;
-	// cere-dev is the devnet runtime — permissive so any signed account can
-	// register an asset for testing without needing sudo. cere mainnet keeps
-	// EnsureRoot. Preserved from the runtime baseline.
-	type CreateOrigin = polkadot_sdk::frame_system::EnsureSigned<AccountId>;
+	type CreateOrigin =
+		EitherOfDiverse<EnsureRoot<AccountId>, EnsureMembers<AccountId, TechCommCollective, 2>>;
 	type Decimals = HftDecimals;
 	type EvmToSubstrate = ();
 	type WeightInfo = ();
