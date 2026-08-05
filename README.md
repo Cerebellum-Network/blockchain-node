@@ -12,6 +12,12 @@ First, complete the [basic Rust setup instructions](./docs/rust-setup.md).
 ./scripts/init.sh
 ```
 
+This also initializes the `third_party/` submodules. The orml submodule is
+sparse-checked-out to the three crates this workspace builds (`oracle`,
+`traits`, `utilities`) rather than all ~24 of its pallets. Re-run
+`./scripts/init-submodules.sh` if a `git submodule` command resets its
+working tree.
+
 ### Build
 
 Use the following command to build the node without launching it:
