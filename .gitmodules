@@ -1,4 +1,4 @@
-[submodule "orml"]
-	path = orml
+[submodule "third_party/open-runtime-module-library"]
+	path = third_party/open-runtime-module-library
 	url = https://github.com/open-web3-stack/open-runtime-module-library.git
 	branch = polkadot-stable2512

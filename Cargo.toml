@@ -30,9 +30,9 @@ members = [
   # crates inherit their dependencies from whichever workspace embeds them.
   # This is the integration path orml's maintainers recommend (Acala does the
   # same) -- see open-web3-stack/open-runtime-module-library#980 and #1000.
-  "orml/oracle",
-  "orml/traits",
-  "orml/utilities",
+  "third_party/open-runtime-module-library/oracle",
+  "third_party/open-runtime-module-library/traits",
+  "third_party/open-runtime-module-library/utilities",
 ]
 resolver = "2"
 
@@ -55,7 +55,7 @@ hex-literal = { version = "^0.4.1", default-features = false }
 jsonrpsee = { version = "0.24.3", default-features = false, features = ["server"] }
 lazy_static = { version = "1.5.0", default-features = false }
 log = { version = "0.4.22", default-features = false }
-orml-oracle = { path = "orml/oracle", default-features = false }
+orml-oracle = { path = "third_party/open-runtime-module-library/oracle", default-features = false }
 # Names the orml submodule crates inherit from this workspace but that nothing
 # else here declares. The frame/sp pins they need already exist below at
 # matching versions.
