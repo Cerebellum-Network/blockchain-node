@@ -26,6 +26,13 @@ members = [
   "runtime/cere",
   "runtime/cere-dev",
   "contracts/customer-deposit",
+  # orml git submodule. Upstream ships no root Cargo.toml by design, so its
+  # crates inherit their dependencies from whichever workspace embeds them.
+  # This is the integration path orml's maintainers recommend (Acala does the
+  # same) -- see open-web3-stack/open-runtime-module-library#980 and #1000.
+  "orml/oracle",
+  "orml/traits",
+  "orml/utilities",
 ]
 resolver = "2"
 
@@ -48,7 +55,15 @@ hex-literal = { version = "^0.4.1", default-features = false }
 jsonrpsee = { version = "0.24.3", default-features = false, features = ["server"] }
 lazy_static = { version = "1.5.0", default-features = false }
 log = { version = "0.4.22", default-features = false }
-orml-oracle = { git = "https://github.com/yahortsaryk/open-runtime-module-library", branch = "cere/polkadot-stable2512", default-features = false }
+orml-oracle = { path = "orml/oracle", default-features = false }
+# Names the orml submodule crates inherit from this workspace but that nothing
+# else here declares. The frame/sp pins they need already exist below at
+# matching versions.
+impl-trait-for-tuples = "0.2.2"
+num-traits = { version = "0.2.14", default-features = false }
+parity-scale-codec = { version = "3.7.5", default-features = false, features = ["derive", "max-encoded-len"] }
+paste = "1.0"
+xcm = { version = "21.0.0", package = "staging-xcm", default-features = false }
 parking_lot = { version = "0.12.1", default-features = false }
 polkadot-ckb-merkle-mountain-range = { version = "0.8.1", default-features = false }
 prost = { version = "0.12.4", default-features = false, features = ["prost-derive"] }

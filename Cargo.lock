@@ -9389,7 +9389,6 @@ dependencies = [
 [[package]]
 name = "orml-oracle"
 version = "1.5.0"
-source = "git+https://github.com/yahortsaryk/open-runtime-module-library?branch=cere%2Fpolkadot-stable2512#32034ababba8ca9bd129fd090e30a391a82b5275"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -9400,6 +9399,7 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-application-crypto",
+ "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
@@ -9408,7 +9408,6 @@ dependencies = [
 [[package]]
 name = "orml-traits"
 version = "1.5.0"
-source = "git+https://github.com/yahortsaryk/open-runtime-module-library?branch=cere%2Fpolkadot-stable2512#32034ababba8ca9bd129fd090e30a391a82b5275"
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples",
@@ -9428,9 +9427,9 @@ dependencies = [
 [[package]]
 name = "orml-utilities"
 version = "1.5.0"
-source = "git+https://github.com/yahortsaryk/open-runtime-module-library?branch=cere%2Fpolkadot-stable2512#32034ababba8ca9bd129fd090e30a391a82b5275"
 dependencies = [
  "frame-support",
+ "frame-system",
  "parity-scale-codec",
  "scale-info",
  "serde",
