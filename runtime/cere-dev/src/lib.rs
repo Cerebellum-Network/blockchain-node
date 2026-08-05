@@ -1656,6 +1656,48 @@ impl pallet_pool_withdrawal_fix::Config for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const PriceOraclePalletId: PalletId = PalletId(*b"cereorcl");
+	pub PriceOracleRootOperator: AccountId = PriceOraclePalletId::get().into_account_truncating();
+}
+
+/// Governance-curated set of CERE/USD price feed operators.
+///
+/// SPIKE: empty set. Real wiring points this at a `pallet_membership` instance so
+/// governance can add and remove feeders without a runtime upgrade.
+pub struct PriceOracleOperators;
+impl polkadot_sdk::frame_support::traits::SortedMembers<AccountId> for PriceOracleOperators {
+	fn sorted_members() -> polkadot_sdk::sp_std::vec::Vec<AccountId> {
+		polkadot_sdk::sp_std::vec::Vec::new()
+	}
+	fn contains(_who: &AccountId) -> bool {
+		false
+	}
+	fn count() -> usize {
+		0
+	}
+	#[cfg(feature = "runtime-benchmarks")]
+	fn add(_who: &AccountId) {}
+}
+
+impl orml_oracle::Config for Runtime {
+	type OnNewData = ();
+	// Median over unexpired operator submissions, falling back to the previous value
+	// when fewer than 3 operators are fresh within the last hour.
+	type CombineData =
+		orml_oracle::DefaultCombineData<Runtime, ConstU32<3>, ConstU64<3_600_000>, ()>;
+	type Time = Timestamp;
+	type OracleKey = u8;
+	type OracleValue = u128;
+	type RootOperatorAccountId = PriceOracleRootOperator;
+	type Members = PriceOracleOperators;
+	type WeightInfo = ();
+	type MaxHasDispatchedSize = ConstU32<40>;
+	type MaxFeedValues = ConstU32<4>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
+}
+
 #[polkadot_sdk::frame_support::runtime]
 mod runtime {
 	#[runtime::runtime]
@@ -1841,6 +1883,9 @@ mod runtime {
 
 	#[runtime::pallet_index(54)]
 	pub type PoolWithdrawalFix = pallet_pool_withdrawal_fix::Pallet<Runtime>;
+
+	#[runtime::pallet_index(55)]
+	pub type PriceOracle = orml_oracle::Pallet<Runtime>;
 }
 
 /// The address format for describing accounts.

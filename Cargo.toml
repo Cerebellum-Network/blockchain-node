@@ -48,6 +48,7 @@ hex-literal = { version = "^0.4.1", default-features = false }
 jsonrpsee = { version = "0.24.3", default-features = false, features = ["server"] }
 lazy_static = { version = "1.5.0", default-features = false }
 log = { version = "0.4.22", default-features = false }
+orml-oracle = { git = "https://github.com/yahortsaryk/open-runtime-module-library", branch = "cere/polkadot-stable2512", default-features = false }
 parking_lot = { version = "0.12.1", default-features = false }
 polkadot-ckb-merkle-mountain-range = { version = "0.8.1", default-features = false }
 prost = { version = "0.12.4", default-features = false, features = ["prost-derive"] }

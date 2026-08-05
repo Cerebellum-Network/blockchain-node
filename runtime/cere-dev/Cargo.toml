@@ -16,6 +16,7 @@ targets = ["x86_64-unknown-linux-gnu"]
 codec = { workspace = true, features = ["derive", "max-encoded-len"] }
 hex-literal = { workspace = true, default-features = true, optional = true }
 log.workspace = true
+orml-oracle = { workspace = true }
 scale-info.workspace = true
 static_assertions.workspace = true
 
@@ -58,6 +59,7 @@ std = [
   "codec/std",
   "scale-info/std",
   "log/std",
+  "orml-oracle/std",
   "polkadot-sdk/std",
   "ddc-primitives/std",
   "pallet-chainbridge/std",

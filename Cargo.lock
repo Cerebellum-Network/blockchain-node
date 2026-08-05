@@ -2560,6 +2560,7 @@ dependencies = [
  "ismp",
  "ismp-grandpa",
  "log",
+ "orml-oracle",
  "pallet-chainbridge",
  "pallet-ddc-clusters",
  "pallet-ddc-clusters-gov",
@@ -9383,6 +9384,60 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "orml-oracle"
+version = "1.5.0"
+source = "git+https://github.com/yahortsaryk/open-runtime-module-library?branch=cere%2Fpolkadot-stable2512#32034ababba8ca9bd129fd090e30a391a82b5275"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "orml-traits",
+ "orml-utilities",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-application-crypto",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "orml-traits"
+version = "1.5.0"
+source = "git+https://github.com/yahortsaryk/open-runtime-module-library?branch=cere%2Fpolkadot-stable2512#32034ababba8ca9bd129fd090e30a391a82b5275"
+dependencies = [
+ "frame-support",
+ "impl-trait-for-tuples",
+ "num-traits",
+ "orml-utilities",
+ "parity-scale-codec",
+ "paste",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "staging-xcm 21.0.0",
+]
+
+[[package]]
+name = "orml-utilities"
+version = "1.5.0"
+source = "git+https://github.com/yahortsaryk/open-runtime-module-library?branch=cere%2Fpolkadot-stable2512#32034ababba8ca9bd129fd090e30a391a82b5275"
+dependencies = [
+ "frame-support",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
