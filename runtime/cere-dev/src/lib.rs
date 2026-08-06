@@ -1661,23 +1661,33 @@ parameter_types! {
 	pub PriceOracleRootOperator: AccountId = PriceOraclePalletId::get().into_account_truncating();
 }
 
-/// Governance-curated set of CERE/USD price feed operators.
+/// Membership instance holding the price-oracle operator set. Governance adds
+/// and removes feeders here; ADR-001 §2 makes that the path to decentralising
+/// the feed without a runtime upgrade.
 ///
-/// SPIKE: empty set. Real wiring points this at a `pallet_membership` instance so
-/// governance can add and remove feeders without a runtime upgrade.
-pub struct PriceOracleOperators;
-impl polkadot_sdk::frame_support::traits::SortedMembers<AccountId> for PriceOracleOperators {
-	fn sorted_members() -> polkadot_sdk::sp_std::vec::Vec<AccountId> {
-		polkadot_sdk::sp_std::vec::Vec::new()
-	}
-	fn contains(_who: &AccountId) -> bool {
-		false
-	}
-	fn count() -> usize {
-		0
-	}
-	#[cfg(feature = "runtime-benchmarks")]
-	fn add(_who: &AccountId) {}
+/// Instance markers are scoped to a single pallet, so any of them would be
+/// technically safe. `Instance4` is picked so the markers used in this runtime
+/// stay unique as a set — `Instance1` is `VoterList` (bags-list) and
+/// `Instance3` is `TechComm` (collective) — and a reader does not have to know
+/// the scoping rule to see that nothing is shared.
+pub type PriceOracleMembershipInstance = polkadot_sdk::pallet_membership::Instance4;
+
+impl polkadot_sdk::pallet_membership::Config<PriceOracleMembershipInstance> for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type AddOrigin = EnsureRoot<AccountId>;
+	type RemoveOrigin = EnsureRoot<AccountId>;
+	type SwapOrigin = EnsureRoot<AccountId>;
+	type ResetOrigin = EnsureRoot<AccountId>;
+	type PrimeOrigin = EnsureRoot<AccountId>;
+	// orml-oracle implements ChangeMembers but not InitializeMembers, so only
+	// the change hook is wired. That is the one that matters: it prunes a
+	// removed operator's submitted value. Authorisation itself reads the
+	// membership set live through `Members`, and no members are seeded at
+	// genesis (ADR-001 §2 puts the set under governance).
+	type MembershipInitialized = ();
+	type MembershipChanged = PriceOracle;
+	type MaxMembers = ConstU32<16>;
+	type WeightInfo = polkadot_sdk::pallet_membership::weights::SubstrateWeight<Runtime>;
 }
 
 /// Key space of the price oracle. A typed key rather than a bare integer so a
@@ -1712,7 +1722,7 @@ impl orml_oracle::Config for Runtime {
 	type OracleKey = PriceKey;
 	type OracleValue = u128;
 	type RootOperatorAccountId = PriceOracleRootOperator;
-	type Members = PriceOracleOperators;
+	type Members = PriceOracleMembership;
 	type WeightInfo = ();
 	// Three operators plus the root operator, with headroom.
 	type MaxHasDispatchedSize = ConstU32<8>;
@@ -1910,6 +1920,10 @@ mod runtime {
 
 	#[runtime::pallet_index(55)]
 	pub type PriceOracle = orml_oracle::Pallet<Runtime>;
+
+	#[runtime::pallet_index(56)]
+	pub type PriceOracleMembership =
+		polkadot_sdk::pallet_membership::Pallet<Runtime, Instance4>;
 }
 
 /// The address format for describing accounts.
