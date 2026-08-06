@@ -1680,20 +1680,44 @@ impl polkadot_sdk::frame_support::traits::SortedMembers<AccountId> for PriceOrac
 	fn add(_who: &AccountId) {}
 }
 
+/// Key space of the price oracle. A typed key rather than a bare integer so a
+/// second pair can be added later without reinterpreting existing storage.
+#[derive(
+	Clone,
+	Copy,
+	PartialEq,
+	Eq,
+	PartialOrd,
+	Ord,
+	Debug,
+	codec::Encode,
+	codec::Decode,
+	codec::DecodeWithMemTracking,
+	codec::MaxEncodedLen,
+	scale_info::TypeInfo,
+)]
+pub enum PriceKey {
+	/// USD per CERE, scaled by 10^18 (atto-USD per CERE).
+	CereUsd,
+}
+
 impl orml_oracle::Config for Runtime {
 	type OnNewData = ();
-	// Median over unexpired operator submissions, falling back to the previous value
-	// when fewer than 3 operators are fresh within the last hour.
+	// Median over unexpired operator submissions. Below MinimumCount fresh
+	// values the previous median is kept rather than stalling. ADR-001:
+	// MinimumCount = 2 of 3 operators, ExpiresIn = 3h.
 	type CombineData =
-		orml_oracle::DefaultCombineData<Runtime, ConstU32<3>, ConstU64<3_600_000>, ()>;
+		orml_oracle::DefaultCombineData<Runtime, ConstU32<2>, ConstU64<10_800_000>, ()>;
 	type Time = Timestamp;
-	type OracleKey = u8;
+	type OracleKey = PriceKey;
 	type OracleValue = u128;
 	type RootOperatorAccountId = PriceOracleRootOperator;
 	type Members = PriceOracleOperators;
 	type WeightInfo = ();
-	type MaxHasDispatchedSize = ConstU32<40>;
-	type MaxFeedValues = ConstU32<4>;
+	// Three operators plus the root operator, with headroom.
+	type MaxHasDispatchedSize = ConstU32<8>;
+	// One key, so one pair per submission.
+	type MaxFeedValues = ConstU32<1>;
 	#[cfg(feature = "runtime-benchmarks")]
 	type BenchmarkHelper = ();
 }
