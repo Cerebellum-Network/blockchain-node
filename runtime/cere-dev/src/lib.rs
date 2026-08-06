@@ -1723,7 +1723,9 @@ impl orml_oracle::Config for Runtime {
 	type OracleValue = u128;
 	type RootOperatorAccountId = PriceOracleRootOperator;
 	type Members = PriceOracleMembership;
-	type WeightInfo = ();
+	// Provisional, not benchmarked — see the module header. Upstream's default
+	// impl is non-zero but was benchmarked on 2021 Acala hardware.
+	type WeightInfo = weights::orml_oracle::WeightInfo<Runtime>;
 	// Three operators plus the root operator, with headroom.
 	type MaxHasDispatchedSize = ConstU32<8>;
 	// One key, so one pair per submission.
@@ -1922,8 +1924,7 @@ mod runtime {
 	pub type PriceOracle = orml_oracle::Pallet<Runtime>;
 
 	#[runtime::pallet_index(56)]
-	pub type PriceOracleMembership =
-		polkadot_sdk::pallet_membership::Pallet<Runtime, Instance4>;
+	pub type PriceOracleMembership = polkadot_sdk::pallet_membership::Pallet<Runtime, Instance4>;
 }
 
 /// The address format for describing accounts.
@@ -1989,6 +1990,8 @@ type EventRecord = polkadot_sdk::frame_system::EventRecord<
 mod benches {
 	polkadot_sdk::frame_benchmarking::define_benchmarks!(
 		[frame_benchmarking, BaselineBench::<Runtime>]
+		[orml_oracle, PriceOracle]
+		[pallet_membership, PriceOracleMembership]
 		[pallet_babe, Babe]
 		[pallet_bags_list, VoterList]
 		[pallet_balances, Balances]
