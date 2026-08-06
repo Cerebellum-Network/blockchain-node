@@ -171,6 +171,12 @@ jobs:
     needs: format
     # The type of runner that the job will run on
     runs-on: ["self-hosted", "cere-network-memory-large"]
+    # This runner does not set HOME, so `git config --global` fails with
+    # "fatal: $HOME not set". CARGO_HOME is already pinned on the runner for
+    # the same reason; point HOME at the per-job temp dir so git has a
+    # writable global config without guessing the runner's user.
+    env:
+      HOME: ${{ runner.temp }}
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
