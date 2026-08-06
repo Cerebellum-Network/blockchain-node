@@ -1,3 +1,4 @@
 pub mod ismp_grandpa;
+pub mod orml_oracle;
 pub mod pallet_balances_balances;
 pub mod pallet_ismp;
