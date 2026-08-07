@@ -167,7 +167,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 80014,
+	spec_version: 80015,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 27,
@@ -1443,6 +1443,14 @@ parameter_types! {
 
 impl pallet_ddc_payouts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
+	// USD-denominated pricing (ADR-001). Cluster protocol params are quoted in
+	// atto-USD; the rate below converts each emitted amount into CERE.
+	type PriceOracle = CereUsdRate;
+	type GovernanceOrigin = EnsureRoot<AccountId>;
+	type EpochLength = RateEpochLength;
+	type HistoryDepth = RateHistoryDepth;
+	type TimeProvider = Timestamp;
+	type MaxRateAge = MaxRateAge;
 	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
 	type PalletId = PayoutsPalletId;
 	type Currency = Balances;
@@ -1719,6 +1727,35 @@ impl orml_oracle::Config for Runtime {
 	type MaxFeedValues = ConstU32<1>;
 	#[cfg(feature = "runtime-benchmarks")]
 	type BenchmarkHelper = ();
+}
+
+parameter_types! {
+	/// How often the payouts pallet samples the oracle median into its ring.
+	/// Ten minutes: short enough that an era is priced close to the rate that
+	/// held while it ran, long enough that the ring spans days rather than hours.
+	pub const RateEpochLength: BlockNumber = 10 * MINUTES;
+	/// 288 entries at ten minutes apart is 48 hours of history. ADR-001 requires
+	/// `HistoryDepth x EpochLength` to exceed the worst-case payout lag, so that
+	/// an era retried long after the fact can still find the rate that applied
+	/// when it ran instead of halting.
+	pub const RateHistoryDepth: u32 = 288;
+	/// Three hours, matching the oracle's own `ExpiresIn`. Past this an entry is
+	/// refused rather than used, so a stalled feed halts payouts instead of
+	/// billing against a rate nobody is still vouching for.
+	pub const MaxRateAge: u64 = 10_800_000;
+}
+
+/// Exposes the oracle's combined CERE/USD median to the payouts pallet.
+///
+/// The pallet deliberately does not depend on orml: it declares its own
+/// `PriceProvider` boundary and this adapter is the only place the two meet.
+/// Read here is the aggregate the oracle already combined -- median of unexpired
+/// operator submissions -- not a raw feed.
+pub struct CereUsdRate;
+impl pallet_ddc_payouts::PriceProvider for CereUsdRate {
+	fn current_rate() -> Option<u128> {
+		PriceOracle::get(&PriceKey::CereUsd).map(|timestamped| timestamped.value)
+	}
 }
 
 #[polkadot_sdk::frame_support::runtime]
