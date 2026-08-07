@@ -16,6 +16,7 @@ targets = ["x86_64-unknown-linux-gnu"]
 codec = { workspace = true, features = ["derive", "max-encoded-len"] }
 hex-literal = { workspace = true, default-features = true, optional = true }
 log.workspace = true
+orml-oracle = { workspace = true }
 scale-info.workspace = true
 static_assertions.workspace = true
 
@@ -58,6 +59,7 @@ std = [
   "codec/std",
   "scale-info/std",
   "log/std",
+  "orml-oracle/std",
   "polkadot-sdk/std",
   "ddc-primitives/std",
   "pallet-chainbridge/std",
@@ -83,6 +85,7 @@ std = [
   "pallet-hyper-fungible-token/std",
 ]
 runtime-benchmarks = [
+  "orml-oracle/runtime-benchmarks",
   "polkadot-sdk/frame-benchmarking",
   "polkadot-sdk/frame-system-benchmarking",
   "polkadot-sdk/pallet-election-provider-support-benchmarking",
@@ -106,6 +109,7 @@ runtime-benchmarks = [
   "pallet-hyper-fungible-token/runtime-benchmarks",
 ]
 try-runtime = [
+  "orml-oracle/try-runtime",
   "polkadot-sdk/frame-try-runtime",
   "polkadot-sdk/try-runtime",
   "pallet-chainbridge/try-runtime",

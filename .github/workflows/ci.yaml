@@ -22,11 +22,12 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.91.0
-          override: true
           components: rustfmt
       - name: Check TOML
         uses: dprint/check@v2.2
@@ -41,11 +42,12 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.91.0
-          override: true
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
       - name: Configure Git
@@ -70,14 +72,15 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: Install linux dependencies
         run: sudo apt update && sudo apt install -y cargo clang libclang-dev libssl-dev llvm libudev-dev protobuf-compiler
       - name: Install toolchain and rust-src
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.91.0
-          override: true
-          target: wasm32-unknown-unknown
+          targets: wasm32-unknown-unknown
           components: rust-src
       - name: Enhanced Rust Cache
         uses: Swatinem/rust-cache@v2
@@ -102,14 +105,15 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: Install linux dependencies
         run: sudo apt update && sudo apt install -y cargo clang libclang-dev libssl-dev llvm libudev-dev protobuf-compiler
       - name: Install toolchain and rust-src
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.91.0
-          override: true
-          target: wasm32-unknown-unknown
+          targets: wasm32-unknown-unknown
           components: rust-src
       - name: Enhanced Rust Cache
         uses: Swatinem/rust-cache@v2
@@ -135,14 +139,15 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: Install linux dependencies
         run: sudo apt update && sudo apt install -y cargo clang libclang-dev libssl-dev llvm libudev-dev protobuf-compiler
       - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.91.0
-          override: true
-          target: wasm32-unknown-unknown
+          targets: wasm32-unknown-unknown
           components: rust-src
       - name: Enhanced Rust Cache
         uses: Swatinem/rust-cache@v2
@@ -153,8 +158,13 @@ jobs:
         run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
       - name: Check with Clippy (Optimized)
         run: |
-          # Run clippy with incremental compilation
-          CARGO_INCREMENTAL=1 cargo clippy --no-deps --all-targets --features runtime-benchmarks,try-runtime --workspace -- --deny warnings
+          # Run clippy with incremental compilation.
+          # The orml crates under third_party/ are workspace members so their
+          # `{ workspace = true }` deps resolve, but they are vendored upstream
+          # code and are not held to this repo's lint policy.
+          CARGO_INCREMENTAL=1 cargo clippy --no-deps --all-targets --features runtime-benchmarks,try-runtime --workspace \
+            --exclude orml-oracle --exclude orml-traits --exclude orml-utilities \
+            -- --deny warnings
 
   tests:
     name: Run tests
@@ -164,14 +174,25 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
+        with:
+          submodules: true
+      # This runner does not set HOME, so `git config --global` fails with
+      # "fatal: $HOME not set". CARGO_HOME is already pinned on the runner for
+      # the same reason. Export a writable HOME to every later step rather than
+      # guessing the runner's user. Set here, after checkout, because checkout
+      # manages HOME itself.
+      - name: Ensure HOME is set
+        run: |
+          if [ -z "${HOME:-}" ]; then
+            echo "HOME=${RUNNER_TEMP}" >> "$GITHUB_ENV"
+          fi
       - name: Install linux dependencies
         run: sudo apt update && sudo apt install -y cargo clang libclang-dev libssl-dev llvm libudev-dev protobuf-compiler make pkg-config
       - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.91.0
-          override: true
-          target: wasm32-unknown-unknown
+          targets: wasm32-unknown-unknown
           components: rust-src
       - name: Configure Git
         run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
@@ -187,6 +208,7 @@ jobs:
       - name: Run cargo-tarpaulin
         run: |
           cargo tarpaulin --verbose --locked --no-fail-fast --workspace \
+            --exclude orml-oracle --exclude orml-traits --exclude orml-utilities \
             --features runtime-benchmarks --out "Xml" -- \
             --skip mock_clusters_gov::__construct_runtime_integrity_test::runtime_integrity_tests \
             --skip tests::call_size

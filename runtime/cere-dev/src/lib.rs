@@ -174,7 +174,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 80013,
+	spec_version: 80014,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 27,
@@ -1656,6 +1656,84 @@ impl pallet_pool_withdrawal_fix::Config for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const PriceOraclePalletId: PalletId = PalletId(*b"cereorcl");
+	pub PriceOracleRootOperator: AccountId = PriceOraclePalletId::get().into_account_truncating();
+}
+
+/// Membership instance holding the price-oracle operator set. Governance adds
+/// and removes feeders here; ADR-001 §2 makes that the path to decentralising
+/// the feed without a runtime upgrade.
+///
+/// Instance markers are scoped to a single pallet, so any of them would be
+/// technically safe. `Instance4` is picked so the markers used in this runtime
+/// stay unique as a set — `Instance1` is `VoterList` (bags-list) and
+/// `Instance3` is `TechComm` (collective) — and a reader does not have to know
+/// the scoping rule to see that nothing is shared.
+pub type PriceOracleMembershipInstance = polkadot_sdk::pallet_membership::Instance4;
+
+impl polkadot_sdk::pallet_membership::Config<PriceOracleMembershipInstance> for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type AddOrigin = EnsureRoot<AccountId>;
+	type RemoveOrigin = EnsureRoot<AccountId>;
+	type SwapOrigin = EnsureRoot<AccountId>;
+	type ResetOrigin = EnsureRoot<AccountId>;
+	type PrimeOrigin = EnsureRoot<AccountId>;
+	// orml-oracle implements ChangeMembers but not InitializeMembers, so only
+	// the change hook is wired. That is the one that matters: it prunes a
+	// removed operator's submitted value. Authorisation itself reads the
+	// membership set live through `Members`, and no members are seeded at
+	// genesis (ADR-001 §2 puts the set under governance).
+	type MembershipInitialized = ();
+	type MembershipChanged = PriceOracle;
+	type MaxMembers = ConstU32<16>;
+	type WeightInfo = polkadot_sdk::pallet_membership::weights::SubstrateWeight<Runtime>;
+}
+
+/// Key space of the price oracle. A typed key rather than a bare integer so a
+/// second pair can be added later without reinterpreting existing storage.
+#[derive(
+	Clone,
+	Copy,
+	PartialEq,
+	Eq,
+	PartialOrd,
+	Ord,
+	Debug,
+	codec::Encode,
+	codec::Decode,
+	codec::DecodeWithMemTracking,
+	codec::MaxEncodedLen,
+	scale_info::TypeInfo,
+)]
+pub enum PriceKey {
+	/// USD per CERE, scaled by 10^18 (atto-USD per CERE).
+	CereUsd,
+}
+
+impl orml_oracle::Config for Runtime {
+	type OnNewData = ();
+	// Median over unexpired operator submissions. Below MinimumCount fresh
+	// values the previous median is kept rather than stalling. ADR-001:
+	// MinimumCount = 2 of 3 operators, ExpiresIn = 3h.
+	type CombineData =
+		orml_oracle::DefaultCombineData<Runtime, ConstU32<2>, ConstU64<10_800_000>, ()>;
+	type Time = Timestamp;
+	type OracleKey = PriceKey;
+	type OracleValue = u128;
+	type RootOperatorAccountId = PriceOracleRootOperator;
+	type Members = PriceOracleMembership;
+	// Provisional, not benchmarked — see the module header. Upstream's default
+	// impl is non-zero but was benchmarked on 2021 Acala hardware.
+	type WeightInfo = weights::orml_oracle::WeightInfo<Runtime>;
+	// Three operators plus the root operator, with headroom.
+	type MaxHasDispatchedSize = ConstU32<8>;
+	// One key, so one pair per submission.
+	type MaxFeedValues = ConstU32<1>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
+}
+
 #[polkadot_sdk::frame_support::runtime]
 mod runtime {
 	#[runtime::runtime]
@@ -1841,6 +1919,12 @@ mod runtime {
 
 	#[runtime::pallet_index(54)]
 	pub type PoolWithdrawalFix = pallet_pool_withdrawal_fix::Pallet<Runtime>;
+
+	#[runtime::pallet_index(55)]
+	pub type PriceOracle = orml_oracle::Pallet<Runtime>;
+
+	#[runtime::pallet_index(56)]
+	pub type PriceOracleMembership = polkadot_sdk::pallet_membership::Pallet<Runtime, Instance4>;
 }
 
 /// The address format for describing accounts.
@@ -1906,6 +1990,8 @@ type EventRecord = polkadot_sdk::frame_system::EventRecord<
 mod benches {
 	polkadot_sdk::frame_benchmarking::define_benchmarks!(
 		[frame_benchmarking, BaselineBench::<Runtime>]
+		[orml_oracle, PriceOracle]
+		[pallet_membership, PriceOracleMembership]
 		[pallet_babe, Babe]
 		[pallet_bags_list, VoterList]
 		[pallet_balances, Balances]
