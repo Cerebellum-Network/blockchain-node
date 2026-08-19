@@ -27,6 +27,12 @@ pub struct RunCmd {
 	/// telemetry, if telemetry is enabled.
 	#[arg(long)]
 	pub no_hardware_benchmarks: bool,
+
+	/// Maximum wasm linear-memory pages (each page is 64 KB) for offchain
+	/// worker execution. The default is 8192 (= 512 MB ceiling); memory grows
+	/// on demand up to this value. Does not affect on-chain wasm execution.
+	#[arg(long)]
+	pub ocw_heap_pages: Option<u32>,
 }
 
 #[allow(missing_docs, clippy::large_enum_variant)]

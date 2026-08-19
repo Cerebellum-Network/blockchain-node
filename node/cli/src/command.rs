@@ -35,6 +35,8 @@ impl SubstrateCli for Cli {
 			"cere-mainnet" => Box::new(cere_service::chain_spec::cere_mainnet_config()?),
 			"cere-testnet" => Box::new(cere_service::chain_spec::cere_testnet_config()?),
 			"cere-qanet" => Box::new(cere_service::chain_spec::cere_qanet_config()?),
+			#[cfg(feature = "cere-native")]
+			"cere-thirdparty" => Box::new(cere_service::chain_spec::cere_thirdparty_config()?),
 			#[cfg(feature = "cere-dev-native")]
 			"cere-devnet" => Box::new(cere_service::chain_spec::cere_devnet_config()?),
 			#[cfg(feature = "cere-dev-native")]
@@ -225,6 +227,7 @@ pub fn run() -> polkadot_sdk::sc_cli::Result<()> {
 				cere_service::build_full::<polkadot_sdk::sc_network::Litep2pNetworkBackend>(
 					config,
 					cli.run.no_hardware_benchmarks,
+					cli.run.ocw_heap_pages,
 				)
 				.map(|full| full.task_manager)
 				.map_err(Error::Service)

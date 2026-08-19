@@ -3,8 +3,8 @@
   "id": "cere_devnet",
   "chainType": "Development",
   "bootNodes": [
-    "/ip4/168.119.231.248/tcp/30333/p2p/12D3KooWQzPcs9GoWH9utjbW9HkK1uFr96i9PSYib4aprma2dK1g",
-    "/ip4/46.101.112.115/tcp/30333/p2p/12D3KooWFddCGHeat53xRQUAsqRJvJxE8Z6pFGaJPjCxEfrR7URP"
+    "/ip4/157.90.248.60/tcp/30333/p2p/12D3KooWMaMKVzsFYsr4QVhNHmNBqr45vkDvwT69ocdMu3kLtJqS",
+    "/ip4/65.21.184.158/tcp/30333/p2p/12D3KooWPmcmaNdAniEE9C4hEvcabLybY2VyVPkGhuh6LXUbJiyS"
   ],
   "telemetryEndpoints": [
     [
@@ -19,7 +19,9 @@
     "tokenSymbol": "CERE"
   },
   "forkBlocks": null,
-  "badBlocks": null,
+  "badBlocks": [
+    "0x8ccaaa1dbfb08891449cdd3bdcd4981bd905e7a92d3dd1ab74eba0eb098e184c"
+  ],
   "consensusEngine": null,
   "lightSyncState": null,
   "genesis": {
