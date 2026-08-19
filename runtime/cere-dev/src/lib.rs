@@ -53,7 +53,7 @@ use polkadot_sdk::frame_support::{
 			imbalance::ResolveTo, Fortitude, PayFromAccount, Precision, Preservation,
 			UnityAssetBalanceConversion,
 		},
-		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
+		ConstBool, ConstU128, ConstU16, ConstU32, ConstU64, Currency, EitherOf, EitherOfDiverse,
 		EqualPrivilegeOnly, Imbalance, InstanceFilter, KeyOwnerProofSystem, LinearStoragePrice,
 		Nothing, OnUnbalanced, VariantCountOf, WithdrawReasons,
 	},
@@ -92,7 +92,13 @@ pub use polkadot_sdk::pallet_transaction_payment::{
 use polkadot_sdk::pallet_treasury::TreasuryAccountId;
 use polkadot_sdk::sp_api::impl_runtime_apis;
 use polkadot_sdk::sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
-use polkadot_sdk::sp_core::{crypto::KeyTypeId, OpaqueMetadata};
+use polkadot_sdk::pallet_contracts::chain_extension::{
+	ChainExtension, Environment, Ext, InitState, RetVal,
+};
+use polkadot_sdk::sp_core::{
+	crypto::{AccountId32, KeyTypeId},
+	OpaqueMetadata,
+};
 use polkadot_sdk::sp_inherents::{CheckInherentsResult, InherentData};
 use polkadot_sdk::sp_io::hashing::blake2_128;
 #[cfg(any(feature = "std", test))]
@@ -106,8 +112,8 @@ use polkadot_sdk::sp_runtime::{
 		StaticLookup, Verify,
 	},
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill, Perquintill,
-	RuntimeDebug,
+	ApplyExtrinsicResult, DispatchError, FixedPointNumber, FixedU128, Perbill, Percent, Permill,
+	Perquintill, RuntimeDebug,
 };
 use polkadot_sdk::sp_std::{marker::PhantomData, prelude::*};
 #[cfg(any(feature = "std", test))]
@@ -167,10 +173,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73158,
+	spec_version: 73159,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 25,
+	transaction_version: 26,
 	system_version: 0,
 };
 
@@ -567,12 +573,24 @@ impl polkadot_sdk::pallet_authorship::Config for Runtime {
 	type EventHandler = (Staking, ImOnline);
 }
 
+// The pre-upgrade key set, retained so `Session::upgrade_keys` can decode what
+// is already on chain.
+impl_opaque_keys! {
+	pub struct OldSessionKeys {
+		pub grandpa: Grandpa,
+		pub babe: Babe,
+		pub im_online: ImOnline,
+		pub authority_discovery: AuthorityDiscovery,
+	}
+}
+
 impl_opaque_keys! {
 	pub struct SessionKeys {
 		pub grandpa: Grandpa,
 		pub babe: Babe,
 		pub im_online: ImOnline,
 		pub authority_discovery: AuthorityDiscovery,
+		pub ddc_verification: DdcVerification,
 	}
 }
 
@@ -703,6 +721,7 @@ impl polkadot_sdk::pallet_staking::Config for Runtime {
 }
 
 impl pallet_pool_withdrawal_fix::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type DelegationPalletConnector = DelegatedStaking;
 	type GovernanceOrigin = EnsureRoot<AccountId>;
@@ -1014,7 +1033,7 @@ impl polkadot_sdk::pallet_contracts::Config for Runtime {
 	type CallStack = [polkadot_sdk::pallet_contracts::Frame<Self>; 5];
 	type WeightPrice = polkadot_sdk::pallet_transaction_payment::Pallet<Self>;
 	type WeightInfo = polkadot_sdk::pallet_contracts::weights::SubstrateWeight<Self>;
-	type ChainExtension = ();
+	type ChainExtension = CereChainExtension;
 	type Schedule = Schedule;
 	type AddressGenerator = polkadot_sdk::pallet_contracts::DefaultAddressGenerator;
 	type MaxCodeLen = ConstU32<{ 123 * 1024 }>;
@@ -1347,8 +1366,7 @@ impl pallet_ddc_staking::Config for Runtime {
 	type ClusterProtocol = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterCreator = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
-	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
-	type NodeCreator = pallet_ddc_nodes::Pallet<Runtime>;
+	type NodeManager = pallet_ddc_nodes::Pallet<Runtime>;
 	type ClusterBondingAmount = ClusterBondingAmount;
 	type ClusterUnboningDelay = ClusterUnboningDelay;
 }
@@ -1356,6 +1374,38 @@ impl pallet_ddc_staking::Config for Runtime {
 parameter_types! {
 	pub const DdcCustomersPalletId: PalletId = PalletId(*b"accounts"); // DDC maintainer's stake
 	pub const UnlockingDelay: BlockNumber = 100800_u32; // 1 hour * 24 * 7 = 7 days; (1 hour is 600 blocks)
+}
+
+// Chain extension backing the per-cluster customer-deposit contract. `func_id 1`
+// returns the DdcPayouts pallet account for a cluster, which the contract uses
+// to authorise incoming `charge` calls -- see
+// `ddc-primitives::contracts::customer_deposit`.
+#[derive(Default)]
+pub struct CereChainExtension;
+impl ChainExtension<Runtime> for CereChainExtension {
+	fn call<E: Ext>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError> {
+		let func_id = env.func_id();
+		let ext_id = env.ext_id();
+		log::debug!("CereChainExtension called with ext_id: {} func_id: {}", ext_id, func_id);
+		match func_id {
+			1 => {
+				use ddc_primitives::contracts::types::ClusterId as ClusterId20;
+
+				let mut env = env.buf_in_buf_out();
+				let _cluster_id: ClusterId20 = env.read_as_unbounded(env.in_len())?;
+				let payouts_pallet_id = DdcPayouts::pallet_account_id();
+
+				env.write(&payouts_pallet_id.encode(), false, None).map_err(|_| {
+					DispatchError::Other(
+						"ChainExtension failed to call `get_payouts_origin_id` function",
+					)
+				})?;
+
+				Ok(RetVal::Converging(0))
+			},
+			_ => Err(DispatchError::Other("Unsupported function in CereChainExtension")),
+		}
+	}
 }
 
 impl pallet_ddc_customers::Config for Runtime {
@@ -1366,6 +1416,7 @@ impl pallet_ddc_customers::Config for Runtime {
 	type ClusterProtocol = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterCreator = pallet_ddc_clusters::Pallet<Runtime>;
 	type WeightInfo = pallet_ddc_customers::weights::SubstrateWeight<Runtime>;
+	type ContractMigrator = pallet_ddc_customers::Pallet<Runtime>;
 }
 
 impl pallet_ddc_nodes::Config for Runtime {
@@ -1388,6 +1439,7 @@ impl pallet_ddc_clusters::Config for Runtime {
 
 parameter_types! {
 	pub const PayoutsPalletId: PalletId = PalletId(*b"payouts_");
+	pub const MajorityOfValidators: Percent = Percent::from_percent(67);
 }
 
 pub struct TreasuryWrapper;
@@ -1397,19 +1449,81 @@ impl<T: polkadot_sdk::frame_system::Config> PalletVisitor<T> for TreasuryWrapper
 	}
 }
 
+parameter_types! {
+	/// Wasmtime tunables for the dac.wasm executor used by ddc-payouts and
+	/// ddc-verification OCWs. Each field is runtime-upgrade tunable; see
+	/// `ddc_dac_host::DacExecConfig` for field semantics.
+	///
+	/// Comfortable headroom over wasmtime defaults without committing
+	/// huge resources on small validator hosts:
+	///   * 5-min per-invoke deadline — only fires on genuine runaway
+	///     loops; healthy single-invoke ops complete in milliseconds.
+	///   * 512 MiB linear-memory hard cap — 2x previous, comfortably
+	///     above proto decode + clone + canonical-hash for the largest
+	///     tables observed (4 MiB proto + structural expansion).
+	///   * 4 GiB virtual reservation — wasmtime-typical, no physical
+	///     RAM until pages are touched. Stays safe on 8 GiB hosts.
+	///   * 4 MiB wasm stack — bounds runaway recursion without
+	///     affecting normal depths.
+	/// Diagnostics fully ON — on a dac.wasm trap, the host writes a
+	/// WasmCoreDump to /data/dac-coredumps/ for post-mortem analysis
+	/// via `wasmtime explore`, DWARF debug info is preserved through
+	/// Cranelift, and trap backtraces include source-level detail.
+	/// Can be flipped off via runtime upgrade once the system stabilises.
+	pub DacExecConfigConst: ddc_dac_host::DacExecConfig = ddc_dac_host::DacExecConfig {
+		invoke_deadline_ms: 600_000,
+		epoch_tick_ms: 250,
+		fuel_per_invoke: None,
+		max_wasm_stack_bytes: 4 * 1024 * 1024,
+		max_memory_bytes: 512 * 1024 * 1024,
+		memory_guard_size: 2 * 1024 * 1024,
+		memory_reservation: 4 * 1024 * 1024 * 1024,
+		memory_init_cow: true,
+		cranelift_opt_level: ddc_dac_host::CraneliftOptLevel::Speed,
+		parallel_compilation: true,
+		coredump_on_trap: true,
+		wasm_backtrace: true,
+		wasm_backtrace_details: true,
+		debug_info: true,
+	};
+}
+
 impl pallet_ddc_payouts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
 	type PalletId = PayoutsPalletId;
 	type Currency = Balances;
-	type CustomerCharger = DdcCustomers;
-	type CustomerDepositor = DdcCustomers;
+	type CustomerBalanceSource = pallet_ddc_payouts::CustomerBalanceContract<Runtime>;
+	type BucketManager = DdcCustomers;
 	type ClusterProtocol = DdcClusters;
 	type TreasuryVisitor = TreasuryWrapper;
 	type NominatorsAndValidatorsList =
 		polkadot_sdk::pallet_staking::UseNominatorsAndValidatorsMap<Self>;
+	type VoteScoreToU64 = IdentityConvert;
+	type InspectorAuthority = DdcVerification;
+	type NodeManager = DdcNodes;
+	type AccountIdConverter = AccountId32;
+	type Hasher = BlakeTwo256;
+	type ClusterValidator = DdcClusters;
+	type ValidatorsQuorum = MajorityOfValidators;
+	type ClusterManager = DdcClusters;
+	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
+	#[cfg(feature = "runtime-benchmarks")]
+	type CustomerDepositor = DdcCustomers;
+	#[cfg(feature = "runtime-benchmarks")]
 	type ClusterCreator = DdcClusters;
-	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
-	type VoteScoreToU64 = IdentityConvert; // used for UseNominatorsAndValidatorsMap
+	#[cfg(feature = "runtime-benchmarks")]
+	type WPublic = <Signature as Verify>::Signer;
+	#[cfg(feature = "runtime-benchmarks")]
+	type WSignature = Signature;
+	type UnsignedPriority = ConstU64<500_000_000>;
+	type DacExecConfig = DacExecConfigConst;
+	type FeeHandler = FeeHandler;
+	type ForcePayoutOrigin = pallet_ddc_payouts::EnsureRootOrClusterManagerForForcePayout<Runtime>;
+
+	const MAX_PAYOUT_BATCH_SIZE: u16 = 100;
+	const MAX_PAYOUT_BATCH_COUNT: u16 = 1000;
+	const OCW_INTERVAL: u16 = 1; // every 5th block
 }
 
 parameter_types! {
@@ -1418,8 +1532,8 @@ parameter_types! {
 	pub const TechnicalMaxMembers: u32 = 100;
 }
 
-type TechCommCollective = polkadot_sdk::pallet_collective::Instance3;
-impl polkadot_sdk::pallet_collective::Config<TechCommCollective> for Runtime {
+type TechCommCollective = pallet_collective::Instance3;
+impl pallet_collective::Config<TechCommCollective> for Runtime {
 	type RuntimeOrigin = RuntimeOrigin;
 	type Proposal = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
@@ -1427,8 +1541,8 @@ impl polkadot_sdk::pallet_collective::Config<TechCommCollective> for Runtime {
 	type MaxProposals = TechnicalMaxProposals;
 	type MaxMembers = TechnicalMaxMembers;
 	type SetMembersOrigin = EnsureRoot<AccountId>;
-	type DefaultVote = polkadot_sdk::pallet_collective::PrimeDefaultVote;
-	type WeightInfo = polkadot_sdk::pallet_collective::weights::SubstrateWeight<Runtime>;
+	type DefaultVote = pallet_collective::PrimeDefaultVote;
+	type WeightInfo = pallet_collective::weights::SubstrateWeight<Runtime>;
 	type MaxProposalWeight = MaxCollectivesProposalWeight;
 	type DisapproveOrigin = EnsureRoot<Self::AccountId>;
 	type KillOrigin = EnsureRoot<Self::AccountId>;
@@ -1458,27 +1572,13 @@ impl pallet_ddc_clusters_gov::Config for Runtime {
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterCreator = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterProtocol = pallet_ddc_clusters::Pallet<Runtime>;
-	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
+	type NodeManager = pallet_ddc_nodes::Pallet<Runtime>;
 	type SeatsConsensus = pallet_ddc_clusters_gov::Unanimous;
 	type DefaultVote = pallet_ddc_clusters_gov::NayAsDefaultVote;
 	type MinValidatedNodesCount = MinValidatedNodesCount;
 	type ReferendumEnactmentDuration = ReferendumEnactmentDuration;
 	#[cfg(feature = "runtime-benchmarks")]
-	type NodeCreator = pallet_ddc_nodes::Pallet<Runtime>;
-	#[cfg(feature = "runtime-benchmarks")]
 	type StakerCreator = pallet_ddc_staking::Pallet<Runtime>;
-}
-
-parameter_types! {
-	pub const FeeHandlerPalletId: PalletId = PalletId(*b"feehandl");
-}
-
-impl pallet_fee_handler::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type Currency = Balances;
-	type GovernanceOrigin = EnsureRoot<Self::AccountId>;
-	type PalletId = FeeHandlerPalletId;
-	type TreasuryPalletId = TreasuryPalletId;
 }
 
 pub struct ClustersGovWrapper;
@@ -1498,24 +1598,72 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: polkadot_sdk::frame_system::Config> Ge
 }
 
 parameter_types! {
+	pub const VerificationPalletId: PalletId = PalletId(*b"verifypa");
+	pub const TenPercentOfValidators: Percent = Percent::from_percent(10);
+}
+
+impl pallet_ddc_verification::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type PalletId = VerificationPalletId;
+	type WeightInfo = pallet_ddc_verification::weights::SubstrateWeight<Runtime>;
+	type ClusterProtocol = DdcClusters;
+	type ClusterManager = DdcClusters;
+	type ClusterValidator = DdcClusters;
+	type NodeManager = DdcNodes;
+	type AuthorityId = ddc_primitives::sr25519::AuthorityId;
+	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
+	type Hasher = BlakeTwo256;
+	type ValidatorStaking = polkadot_sdk::pallet_staking::Pallet<Runtime>;
+	type Currency = Balances;
+	type CustomerVisitor = DdcCustomers;
+	type BucketManager = DdcCustomers;
+	type InspReceiptsInterceptor =
+		pallet_ddc_verification::simulations::v1::SimulationReceiptsInterceptor;
+
+	type InspRedundancyFactor = TenPercentOfValidators;
+	type InspBackupsFactor = TenPercentOfValidators;
+	type DacExecConfig = DacExecConfigConst;
+
+	const OCW_INTERVAL: u16 = 1; // every 10th block
+	const TCA_INSPECTION_STEP: u64 = 0;
+	const MIN_INSP_REDUNDANCY_FACTOR: u8 = 3;
+	const MIN_INSP_BACKUPS_FACTOR: u8 = 1;
+	const INSP_BACKUP_BLOCK_DELAY: u32 = 25;
+}
+
+parameter_types! {
 	pub MbmServiceWeight: Weight = Perbill::from_percent(80) * RuntimeBlockWeights::get().max_block;
 }
 
-impl polkadot_sdk::pallet_migrations::Config for Runtime {
+impl pallet_migrations::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	#[cfg(not(feature = "runtime-benchmarks"))]
-	type Migrations = polkadot_sdk::pallet_identity::migration::v2::LazyMigrationV1ToV2<Runtime>;
+	type Migrations = ();
 	// Benchmarks need mocked migrations to guarantee that they succeed.
 	#[cfg(feature = "runtime-benchmarks")]
-	type Migrations = polkadot_sdk::pallet_migrations::mock_helpers::MockedMigrations;
+	type Migrations = pallet_migrations::mock_helpers::MockedMigrations;
 	type CursorMaxLen = ConstU32<65_536>;
 	type IdentifierMaxLen = ConstU32<256>;
 	type MigrationStatusHandler = ();
 	type FailedMigrationHandler =
 		polkadot_sdk::frame_support::migrations::FreezeChainOnFailedMigration;
 	type MaxServiceWeight = MbmServiceWeight;
-	type WeightInfo = polkadot_sdk::pallet_migrations::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = pallet_migrations::weights::SubstrateWeight<Runtime>;
 }
+
+parameter_types! {
+	pub const FeeHandlerPalletId: PalletId = PalletId(*b"feehandl");
+}
+
+impl pallet_fee_handler::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type GovernanceOrigin = EnsureRoot<AccountId>;
+	type PalletId = FeeHandlerPalletId;
+	type TreasuryPalletId = TreasuryPalletId;
+	type WeightInfo = pallet_fee_handler::weights::SubstrateWeight<Runtime>;
+}
+
 #[polkadot_sdk::frame_support::runtime]
 mod runtime {
 	#[runtime::runtime]
@@ -1699,6 +1847,11 @@ mod runtime {
 
 	#[runtime::pallet_index(53)]
 	pub type PoolWithdrawalFix = pallet_pool_withdrawal_fix::Pallet<Runtime>;
+
+	// APPENDED, not inserted -- see runtime/cere for the rationale. Kept in
+	// step with the cere runtime so both share one index map.
+	#[runtime::pallet_index(54)]
+	pub type DdcVerification = pallet_ddc_verification::Pallet<Runtime>;
 }
 
 /// The address format for describing accounts.
@@ -1818,6 +1971,7 @@ mod benches {
 		[pallet_ddc_staking, DdcStaking]
 		[pallet_ddc_nodes, DdcNodes]
 		[pallet_ddc_payouts, DdcPayouts]
+		[pallet_ddc_verification, DdcVerification]
 		[frame_system, SystemBench::<Runtime>]
 		[pallet_timestamp, Timestamp]
 		[pallet_treasury, Treasury]
