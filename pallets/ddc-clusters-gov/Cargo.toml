@@ -20,6 +20,7 @@ serde.workspace = true
 polkadot-sdk = { workspace = true, features = ["frame-support", "frame-system", "pallet-referenda", "sp-io", "sp-runtime", "sp-std"] }
 
 [dev-dependencies]
+# Substrate dev-deps via the umbrella.
 lazy_static = { workspace = true, default-features = true }
 pallet-ddc-clusters = { workspace = true, default-features = true }
 pallet-ddc-nodes.workspace = true

@@ -1,7 +1,7 @@
 //! Custom origins for governance interventions.
-#![allow(clippy::manual_inspect)]
-#![cfg_attr(not(feature = "std"), no_std)]
 
+#![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::manual_inspect)]
 pub use pallet::*;
 
 #[polkadot_sdk::frame_support::pallet]

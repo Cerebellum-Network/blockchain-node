@@ -10,9 +10,9 @@ repository.workspace = true
 
 [dependencies]
 # 3rd-party dependencies
-codec = { workspace = true }
-scale-info = { workspace = true }
-serde = { workspace = true }
+codec.workspace = true
+scale-info.workspace = true
+serde.workspace = true
 
 # Polkadot SDK
 polkadot-sdk = { workspace = true, features = ["frame-support", "frame-system", "sp-core", "sp-runtime", "sp-staking", "sp-std"] }

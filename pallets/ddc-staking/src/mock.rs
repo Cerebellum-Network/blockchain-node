@@ -2,6 +2,8 @@
 
 #![allow(dead_code)]
 
+use polkadot_sdk::*;
+
 use ddc_primitives::{
 	ClusterNodeKind, ClusterNodeStatus, ClusterParams, ClusterProtocolParams, ClusterStatus,
 	NodeParams, NodePubKey, StorageNodeParams, StorageNodePubKey,
@@ -21,8 +23,6 @@ use polkadot_sdk::sp_runtime::{
 	traits::{Convert, IdentifyAccount, IdentityLookup, Verify},
 	BuildStorage, MultiSignature, Perbill, Perquintill,
 };
-#[allow(unused_imports)]
-use polkadot_sdk::*;
 
 use crate::{self as pallet_ddc_staking, *};
 
@@ -44,7 +44,7 @@ construct_runtime!(
 		Timestamp: polkadot_sdk::pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Balances: polkadot_sdk::pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Contracts: polkadot_sdk::pallet_contracts::{Pallet, Call, Storage, Event<T>, HoldReason},
-		Randomness: polkadot_sdk::pallet_insecure_randomness_collective_flip::{Pallet, Storage},
+		Randomness: pallet_insecure_randomness_collective_flip::{Pallet, Storage},
 		DdcStaking: pallet_ddc_staking::{Pallet, Call, Config<T>, Storage, Event<T>},
 		DdcNodes: pallet_ddc_nodes::{Pallet, Call, Storage, Event<T>},
 		DdcClusters: pallet_ddc_clusters::{Pallet, Call, Storage, Config<T>, Event<T>},
@@ -151,7 +151,7 @@ impl polkadot_sdk::pallet_contracts::Config for Test {
 	type Xcm = ();
 }
 
-impl polkadot_sdk::pallet_insecure_randomness_collective_flip::Config for Test {}
+impl pallet_insecure_randomness_collective_flip::Config for Test {}
 
 impl pallet_ddc_nodes::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
@@ -178,8 +178,7 @@ impl crate::pallet::Config for Test {
 	type ClusterProtocol = pallet_ddc_clusters::Pallet<Test>;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Test>;
 	type ClusterCreator = pallet_ddc_clusters::Pallet<Test>;
-	type NodeVisitor = pallet_ddc_nodes::Pallet<Test>;
-	type NodeCreator = pallet_ddc_nodes::Pallet<Test>;
+	type NodeManager = pallet_ddc_nodes::Pallet<Test>;
 	type ClusterBondingAmount = ClusterBondingAmount;
 	type ClusterUnboningDelay = ClusterUnboningDelay;
 }
@@ -195,7 +194,8 @@ pub(crate) type BuiltClusterBond = (AccountId, AccountId, ClusterId);
 pub(crate) type BuiltNodeBond = (AccountId, AccountId, NodePubKey, Balance, ClusterId);
 
 #[allow(clippy::type_complexity)]
-pub(crate) type BuiltCluster = (Cluster<AccountId>, ClusterProtocolParams<Balance, BlockNumber>);
+pub(crate) type BuiltCluster =
+	(Cluster<AccountId>, ClusterProtocolParams<Balance, BlockNumber, AccountId>);
 
 #[allow(clippy::type_complexity)]
 pub(crate) type BuiltNode = (NodePubKey, StorageNode<Test>, Option<ClusterAssignment>);
@@ -225,6 +225,7 @@ pub const NODE_CONTROLLER_4: [u8; 32] = [40; 32];
 pub const CLUSTER_ID: [u8; 20] = [1; 20];
 pub const CLUSTER_STASH: [u8; 32] = [102; 32];
 pub const CLUSTER_CONTROLLER: [u8; 32] = [101; 32];
+pub const CLUSTER_CUSTOMER_DEPOSIT_CONTRACT: [u8; 32] = [103; 32];
 
 pub const USER_KEY_1: [u8; 32] = [1; 32];
 pub const USER_KEY_2: [u8; 32] = [2; 32];
@@ -251,10 +252,14 @@ pub(crate) fn build_default_setup(
 				storage_bond_size: 10,
 				storage_chill_delay: 10u32.into(),
 				storage_unbonding_delay: 10u32.into(),
-				unit_per_mb_stored: 2,
-				unit_per_mb_streamed: 3,
-				unit_per_put_request: 4,
-				unit_per_get_request: 5,
+				cost_per_mb_stored: 2,
+				cost_per_mb_streamed: 3,
+				cost_per_put_request: 4,
+				cost_per_get_request: 5,
+				cost_per_gpu_unit: 0,
+				cost_per_cpu_unit: 0,
+				cost_per_ram_unit: 0,
+				customer_deposit_contract: AccountId::from(CLUSTER_CUSTOMER_DEPOSIT_CONTRACT),
 			},
 			ClusterStatus::Activated,
 		)],
@@ -315,7 +320,7 @@ pub(crate) fn build_cluster(
 	manager_id: [u8; 32],
 	reserve_id: [u8; 32],
 	params: ClusterParams<AccountId>,
-	protocol_params: ClusterProtocolParams<Balance, BlockNumber>,
+	protocol_params: ClusterProtocolParams<Balance, BlockNumber, AccountId>,
 	status: ClusterStatus,
 ) -> BuiltCluster {
 	let mut cluster = Cluster::new(
@@ -396,7 +401,7 @@ impl ExtBuilder {
 		clusters_bonds: Vec<BuiltClusterBond>,
 		nodes_bondes: Vec<BuiltNodeBond>,
 	) -> TestExternalities {
-		polkadot_sdk::sp_tracing::try_init_simple();
+		sp_tracing::try_init_simple();
 		let mut storage = polkadot_sdk::frame_system::GenesisConfig::<Test>::default()
 			.build_storage()
 			.unwrap();
@@ -477,7 +482,7 @@ impl ExtBuilder {
 		nodes_bondes: Vec<BuiltNodeBond>,
 		test: impl FnOnce(),
 	) {
-		polkadot_sdk::sp_tracing::try_init_simple();
+		sp_tracing::try_init_simple();
 		let mut ext = self.build(clusters, clusters_nodes, clusters_bonds, nodes_bondes);
 		ext.execute_with(test);
 		ext.execute_with(post_condition);

@@ -1,15 +1,15 @@
 #![cfg(test)]
 
-#[allow(unused_imports)]
 use polkadot_sdk::*;
+
 use chainbridge as bridge;
-use polkadot_sdk::frame_support::{ord_parameter_types, derive_impl,parameter_types, weights::Weight};
+use polkadot_sdk::frame_support::{ord_parameter_types, derive_impl, parameter_types, weights::Weight};
 use polkadot_sdk::frame_system::{self as system};
 pub use polkadot_sdk::pallet_balances as balances;
 use polkadot_sdk::sp_core::{hashing::blake2_128, H256};
 use polkadot_sdk::sp_runtime::{
 	testing::Header,
-	traits::{AccountIdConversion,  Block as BlockT, IdentityLookup},
+	traits::{AccountIdConversion, Block as BlockT, IdentityLookup},
 	Perbill,
 };
 
@@ -90,7 +90,7 @@ pub type Block = polkadot_sdk::sp_runtime::generic::Block<Header, UncheckedExtri
 pub type UncheckedExtrinsic = polkadot_sdk::sp_runtime::generic::UncheckedExtrinsic<u32, u64, Call, ()>;
 
 polkadot_sdk::frame_support::construct_runtime!(
-	pub struct Test
+	pub enum Test
 	{
 		System: system::{Pallet, Call, Event<T>},
 		Balances: balances::{Pallet, Call, Storage, Config<T>, Event<T>},
@@ -111,8 +111,8 @@ pub fn new_test_ext() -> polkadot_sdk::sp_io::TestExternalities {
 	polkadot_sdk::pallet_balances::GenesisConfig::<Test> {
 		balances: vec![(bridge_id, ENDOWED_BALANCE), (RELAYER_A, ENDOWED_BALANCE)],
 	}
-	.assimilate_storage(&mut t)
-	.unwrap();
+		.assimilate_storage(&mut t)
+		.unwrap();
 	let mut ext = polkadot_sdk::sp_io::TestExternalities::new(t);
 	ext.execute_with(|| System::set_block_number(1));
 	ext

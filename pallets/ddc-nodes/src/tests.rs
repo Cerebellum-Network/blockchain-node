@@ -23,10 +23,12 @@ fn create_storage_node_works() {
 			p2p_port: 15000u16,
 		};
 
+		let account_id1 = AccountId::from([1; 32]);
+
 		// Host length exceeds limit
 		assert_noop!(
 			DdcNodes::create_node(
-				RuntimeOrigin::signed(1),
+				RuntimeOrigin::signed(account_id1.clone()),
 				NodePubKey::StoragePubKey(node_pub_key.clone()),
 				NodeParams::StorageParams(StorageNodeParams {
 					mode: StorageNodeMode::Storage,
@@ -44,7 +46,7 @@ fn create_storage_node_works() {
 		// Host length exceeds limit
 		assert_noop!(
 			DdcNodes::create_node(
-				RuntimeOrigin::signed(1),
+				RuntimeOrigin::signed(account_id1.clone()),
 				NodePubKey::StoragePubKey(node_pub_key.clone()),
 				NodeParams::StorageParams(StorageNodeParams {
 					mode: StorageNodeMode::Storage,
@@ -61,7 +63,7 @@ fn create_storage_node_works() {
 
 		// Node created
 		assert_ok!(DdcNodes::create_node(
-			RuntimeOrigin::signed(1),
+			RuntimeOrigin::signed(account_id1.clone()),
 			NodePubKey::StoragePubKey(node_pub_key.clone()),
 			NodeParams::StorageParams(storage_node_params.clone())
 		));
@@ -73,7 +75,7 @@ fn create_storage_node_works() {
 			storage_node_params.clone().domain.try_into().unwrap();
 
 		assert_eq!(created_storage_node.pub_key, node_pub_key);
-		assert_eq!(created_storage_node.provider_id, 1);
+		assert_eq!(created_storage_node.provider_id, account_id1);
 		assert_eq!(created_storage_node.cluster_id, None);
 		assert_eq!(created_storage_node.props.host, expected_host);
 		assert_eq!(created_storage_node.props.domain, expected_domain);
@@ -97,7 +99,7 @@ fn create_storage_node_works() {
 		// Node already exists
 		assert_noop!(
 			DdcNodes::create_node(
-				RuntimeOrigin::signed(1),
+				RuntimeOrigin::signed(account_id1),
 				NodePubKey::StoragePubKey(node_pub_key.clone()),
 				NodeParams::StorageParams(storage_node_params)
 			),
@@ -109,42 +111,6 @@ fn create_storage_node_works() {
 		System::assert_last_event(
 			Event::NodeCreated { node_pub_key: NodePubKey::StoragePubKey(node_pub_key) }.into(),
 		)
-	})
-}
-
-#[test]
-fn create_storage_node_with_node_creator() {
-	ExtBuilder.build_and_execute(|| {
-		System::set_block_number(1);
-		let bytes = [0u8; 32];
-		let node_pub_key = AccountId32::from(bytes);
-		let storage_node_params = StorageNodeParams {
-			mode: StorageNodeMode::Storage,
-			host: vec![1u8; 255],
-			domain: vec![2u8; 255],
-			ssl: true,
-			http_port: 35000u16,
-			grpc_port: 25000u16,
-			p2p_port: 15000u16,
-		};
-
-		// Node created
-		assert_ok!(<DdcNodes as NodeCreator<Test>>::create_node(
-			NodePubKey::StoragePubKey(node_pub_key.clone()),
-			1u64,
-			NodeParams::StorageParams(storage_node_params)
-		));
-
-		// Check storage
-		assert!(StorageNodes::<Test>::contains_key(node_pub_key.clone()));
-		assert!(DdcNodes::exists(&NodePubKey::StoragePubKey(node_pub_key.clone())));
-		if let Ok(cluster_id) =
-			DdcNodes::get_cluster_id(&NodePubKey::StoragePubKey(node_pub_key.clone()))
-		{
-			assert_eq!(cluster_id, None);
-		}
-		let storage_node = StorageNodes::<Test>::get(&node_pub_key).unwrap();
-		assert_eq!(storage_node.pub_key, node_pub_key);
 	})
 }
 
@@ -164,10 +130,13 @@ fn set_storage_node_params_works() {
 			p2p_port: 15000u16,
 		};
 
+		let account_id1 = AccountId::from([1; 32]);
+		let account_id2 = AccountId::from([2; 32]);
+
 		// Node doesn't exist
 		assert_noop!(
 			DdcNodes::set_node_params(
-				RuntimeOrigin::signed(1),
+				RuntimeOrigin::signed(account_id1.clone()),
 				NodePubKey::StoragePubKey(node_pub_key.clone()),
 				NodeParams::StorageParams(storage_node_params.clone())
 			),
@@ -176,7 +145,7 @@ fn set_storage_node_params_works() {
 
 		// Node created
 		assert_ok!(DdcNodes::create_node(
-			RuntimeOrigin::signed(1),
+			RuntimeOrigin::signed(account_id1.clone()),
 			NodePubKey::StoragePubKey(node_pub_key.clone()),
 			NodeParams::StorageParams(storage_node_params.clone())
 		));
@@ -193,7 +162,7 @@ fn set_storage_node_params_works() {
 
 		// Set node params
 		assert_ok!(DdcNodes::set_node_params(
-			RuntimeOrigin::signed(1),
+			RuntimeOrigin::signed(account_id1.clone()),
 			NodePubKey::StoragePubKey(node_pub_key.clone()),
 			NodeParams::StorageParams(updated_params.clone())
 		));
@@ -204,7 +173,7 @@ fn set_storage_node_params_works() {
 			updated_params.domain.try_into().unwrap();
 
 		assert_eq!(updated_storage_node.pub_key, node_pub_key);
-		assert_eq!(updated_storage_node.provider_id, 1);
+		assert_eq!(updated_storage_node.provider_id, account_id1.clone());
 		assert_eq!(updated_storage_node.cluster_id, None);
 		assert_eq!(updated_storage_node.props.host, expected_host);
 		assert_eq!(updated_storage_node.props.domain, expected_domain);
@@ -217,7 +186,7 @@ fn set_storage_node_params_works() {
 		// Only node provider can set params
 		assert_noop!(
 			DdcNodes::set_node_params(
-				RuntimeOrigin::signed(2),
+				RuntimeOrigin::signed(account_id2.clone()),
 				NodePubKey::StoragePubKey(node_pub_key.clone()),
 				NodeParams::StorageParams(storage_node_params.clone())
 			),
@@ -228,7 +197,7 @@ fn set_storage_node_params_works() {
 		let node_pub_key_2 = AccountId32::from(bytes_2);
 		let node = Node::<Test>::new(
 			NodePubKey::StoragePubKey(node_pub_key_2),
-			2u64,
+			account_id2,
 			NodeParams::StorageParams(storage_node_params),
 		)
 		.unwrap();
@@ -242,7 +211,7 @@ fn set_storage_node_params_works() {
 		// Storage host length exceeds limit
 		assert_noop!(
 			DdcNodes::set_node_params(
-				RuntimeOrigin::signed(1),
+				RuntimeOrigin::signed(account_id1.clone()),
 				NodePubKey::StoragePubKey(node_pub_key.clone()),
 				NodeParams::StorageParams(StorageNodeParams {
 					mode: StorageNodeMode::Storage,
@@ -260,7 +229,7 @@ fn set_storage_node_params_works() {
 		// Storage domain length exceeds limit
 		assert_noop!(
 			DdcNodes::set_node_params(
-				RuntimeOrigin::signed(1),
+				RuntimeOrigin::signed(account_id1),
 				NodePubKey::StoragePubKey(node_pub_key.clone()),
 				NodeParams::StorageParams(StorageNodeParams {
 					mode: StorageNodeMode::Storage,
@@ -299,11 +268,13 @@ fn delete_storage_node_works() {
 			grpc_port: 25000u16,
 			p2p_port: 15000u16,
 		};
+		let account_id1 = AccountId::from([1; 32]);
+		let account_id2 = AccountId::from([2; 32]);
 
 		// Node doesn't exist
 		assert_noop!(
 			DdcNodes::delete_node(
-				RuntimeOrigin::signed(1),
+				RuntimeOrigin::signed(account_id1.clone()),
 				NodePubKey::StoragePubKey(node_pub_key.clone())
 			),
 			Error::<Test>::NodeDoesNotExist
@@ -311,7 +282,7 @@ fn delete_storage_node_works() {
 
 		// Create node
 		assert_ok!(DdcNodes::create_node(
-			RuntimeOrigin::signed(1),
+			RuntimeOrigin::signed(account_id1.clone()),
 			NodePubKey::StoragePubKey(node_pub_key.clone()),
 			NodeParams::StorageParams(storage_node_params)
 		));
@@ -319,7 +290,7 @@ fn delete_storage_node_works() {
 		// Only node provider can delete
 		assert_noop!(
 			DdcNodes::delete_node(
-				RuntimeOrigin::signed(2),
+				RuntimeOrigin::signed(account_id2),
 				NodePubKey::StoragePubKey(node_pub_key.clone())
 			),
 			Error::<Test>::OnlyNodeProvider
@@ -327,7 +298,7 @@ fn delete_storage_node_works() {
 
 		// Delete node
 		assert_ok!(DdcNodes::delete_node(
-			RuntimeOrigin::signed(1),
+			RuntimeOrigin::signed(account_id1),
 			NodePubKey::StoragePubKey(node_pub_key.clone()),
 		));
 

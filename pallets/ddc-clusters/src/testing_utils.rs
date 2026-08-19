@@ -13,13 +13,14 @@ use polkadot_sdk::frame_system::RawOrigin;
 use polkadot_sdk::sp_core::crypto::UncheckedFrom;
 use polkadot_sdk::sp_runtime::Perquintill;
 use polkadot_sdk::sp_std::prelude::*;
-#[allow(unused_imports)]
-use polkadot_sdk::*;
 
 use crate::{Pallet as DdcClusters, *};
 
-pub fn config_cluster<T: Config>(user: T::AccountId, cluster_id: ClusterId)
-where
+pub fn config_cluster<T: Config>(
+	user: T::AccountId,
+	cluster_id: ClusterId,
+	customer_deposit_contract: T::AccountId,
+) where
 	T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 {
 	let cluster_params = ClusterParams {
@@ -27,20 +28,28 @@ where
 		erasure_coding_required: 4,
 		erasure_coding_total: 6,
 		replication_total: 3,
+		inspection_dry_run_params: None,
 	};
-	let cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>> =
-		ClusterProtocolParams {
-			treasury_share: Perquintill::default(),
-			validators_share: Perquintill::default(),
-			cluster_reserve_share: Perquintill::default(),
-			storage_bond_size: 100u32.into(),
-			storage_chill_delay: 50u32.into(),
-			storage_unbonding_delay: 50u32.into(),
-			unit_per_mb_stored: 10,
-			unit_per_mb_streamed: 10,
-			unit_per_put_request: 10,
-			unit_per_get_request: 10,
-		};
+	let cluster_protocol_params: ClusterProtocolParams<
+		BalanceOf<T>,
+		BlockNumberFor<T>,
+		T::AccountId,
+	> = ClusterProtocolParams {
+		treasury_share: Perquintill::default(),
+		validators_share: Perquintill::default(),
+		cluster_reserve_share: Perquintill::default(),
+		storage_bond_size: 100u32.into(),
+		storage_chill_delay: 50u32.into(),
+		storage_unbonding_delay: 50u32.into(),
+		cost_per_mb_stored: 10,
+		cost_per_mb_streamed: 10,
+		cost_per_put_request: 10,
+		cost_per_get_request: 10,
+		cost_per_gpu_unit: 0,
+		cost_per_cpu_unit: 0,
+		cost_per_ram_unit: 0,
+		customer_deposit_contract,
+	};
 
 	let _ = DdcClusters::<T>::create_cluster(
 		RawOrigin::Signed(user.clone()).into(),
@@ -55,6 +64,7 @@ pub fn config_cluster_and_node<T: Config>(
 	user: T::AccountId,
 	node_pub_key: NodePubKey,
 	cluster_id: ClusterId,
+	customer_deposit_contract: T::AccountId,
 ) -> Result<(), Box<BenchmarkError>>
 where
 	T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
@@ -64,6 +74,7 @@ where
 		erasure_coding_required: 4,
 		erasure_coding_total: 6,
 		replication_total: 3,
+		inspection_dry_run_params: None,
 	};
 	let storage_node_params = StorageNodeParams {
 		mode: StorageNodeMode::Storage,
@@ -75,19 +86,26 @@ where
 		p2p_port: 15000u16,
 	};
 
-	let cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>> =
-		ClusterProtocolParams {
-			treasury_share: Perquintill::default(),
-			validators_share: Perquintill::default(),
-			cluster_reserve_share: Perquintill::default(),
-			storage_bond_size: 100u32.into(),
-			storage_chill_delay: 50u32.into(),
-			storage_unbonding_delay: 50u32.into(),
-			unit_per_mb_stored: 10,
-			unit_per_mb_streamed: 10,
-			unit_per_put_request: 10,
-			unit_per_get_request: 10,
-		};
+	let cluster_protocol_params: ClusterProtocolParams<
+		BalanceOf<T>,
+		BlockNumberFor<T>,
+		T::AccountId,
+	> = ClusterProtocolParams {
+		treasury_share: Perquintill::default(),
+		validators_share: Perquintill::default(),
+		cluster_reserve_share: Perquintill::default(),
+		storage_bond_size: 100u32.into(),
+		storage_chill_delay: 50u32.into(),
+		storage_unbonding_delay: 50u32.into(),
+		cost_per_mb_stored: 10,
+		cost_per_mb_streamed: 10,
+		cost_per_put_request: 10,
+		cost_per_get_request: 10,
+		cost_per_gpu_unit: 0,
+		cost_per_cpu_unit: 0,
+		cost_per_ram_unit: 0,
+		customer_deposit_contract,
+	};
 
 	let _ = DdcClusters::<T>::create_cluster(
 		RawOrigin::Signed(user.clone()).into(),
@@ -114,8 +132,8 @@ where
 	)
 	.unwrap();
 
-	<DdcClusters<T> as ClusterProtocol<T, BalanceOf<T>>>::bond_cluster(&cluster_id).unwrap();
-	<DdcClusters<T> as ClusterProtocol<T, BalanceOf<T>>>::activate_cluster_protocol(&cluster_id)
+	<DdcClusters<T> as ClusterProtocol<T::AccountId, BlockNumberFor<T>, BalanceOf<T>>>::bond_cluster(&cluster_id).unwrap();
+	<DdcClusters<T> as ClusterProtocol<T::AccountId, BlockNumberFor<T>, BalanceOf<T>>>::activate_cluster_protocol(&cluster_id)
 		.unwrap();
 
 	let mut auth_contract = NodeProviderAuthContract::<T>::new(user.clone(), user.clone());
@@ -127,6 +145,7 @@ where
 		erasure_coding_required: 4,
 		erasure_coding_total: 6,
 		replication_total: 3,
+		inspection_dry_run_params: None,
 	};
 	// Register auth contract
 	let _ = DdcClusters::<T>::set_cluster_params(

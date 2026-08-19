@@ -2,8 +2,8 @@
 
 #![allow(dead_code)]
 
-#[allow(unused_imports)]
 use polkadot_sdk::*;
+
 use std::{borrow::Cow, cell::RefCell};
 
 use ddc_primitives::{
@@ -128,10 +128,10 @@ parameter_types! {
 	pub const PreimageMaxSize: u32 = 4096 * 1024;
 	pub const PreimageBaseDeposit: Balance = 0;
 	pub const PreimageByteDeposit: Balance = 0;
-	pub const PreimageHoldReason: RuntimeHoldReason = RuntimeHoldReason::Preimage(polkadot_sdk::pallet_preimage::HoldReason::Preimage);
+	pub const PreimageHoldReason: RuntimeHoldReason = RuntimeHoldReason::Preimage(pallet_preimage::HoldReason::Preimage);
 }
 
-impl polkadot_sdk::pallet_preimage::Config for Test {
+impl pallet_preimage::Config for Test {
 	type WeightInfo = ();
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
@@ -188,7 +188,7 @@ impl polkadot_sdk::pallet_conviction_voting::Config for Test {
 	type VotingHooks = ();
 }
 
-impl polkadot_sdk::pallet_scheduler::Config for Test {
+impl pallet_scheduler::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type PalletsOrigin = OriginCaller;
@@ -252,7 +252,7 @@ impl polkadot_sdk::pallet_contracts::Config for Test {
 	type Xcm = ();
 }
 
-impl polkadot_sdk::pallet_insecure_randomness_collective_flip::Config for Test {}
+impl pallet_insecure_randomness_collective_flip::Config for Test {}
 
 impl pallet_ddc_nodes::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
@@ -284,8 +284,7 @@ impl pallet_ddc_staking::Config for Test {
 	type ClusterProtocol = pallet_ddc_clusters::Pallet<Test>;
 	type ClusterCreator = pallet_ddc_clusters::Pallet<Test>;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Test>;
-	type NodeVisitor = pallet_ddc_nodes::Pallet<Test>;
-	type NodeCreator = pallet_ddc_nodes::Pallet<Test>;
+	type NodeManager = pallet_ddc_nodes::Pallet<Test>;
 	type ClusterBondingAmount = ClusterBondingAmount;
 	type ClusterUnboningDelay = ClusterUnboningDelay;
 }
@@ -315,13 +314,11 @@ impl crate::pallet::Config for Test {
 	type ClusterManager = pallet_ddc_clusters::Pallet<Test>;
 	type ClusterCreator = pallet_ddc_clusters::Pallet<Test>;
 	type ClusterProtocol = pallet_ddc_clusters::Pallet<Test>;
-	type NodeVisitor = pallet_ddc_nodes::Pallet<Test>;
+	type NodeManager = pallet_ddc_nodes::Pallet<Test>;
 	type SeatsConsensus = MockedSeatsConsensus;
 	type DefaultVote = MockedDefaultVote; // pallet_ddc_clusters_gov::PrimeDefaultVote;
 	type MinValidatedNodesCount = MinValidatedNodesCount;
 	type ReferendumEnactmentDuration = ReferendumEnactmentDuration;
-	#[cfg(feature = "runtime-benchmarks")]
-	type NodeCreator = pallet_ddc_nodes::Pallet<Test>;
 	#[cfg(feature = "runtime-benchmarks")]
 	type StakerCreator = pallet_ddc_staking::Pallet<Test>;
 }
@@ -668,6 +665,7 @@ mod pallet_mock_origins {
 pub const CLUSTER_ID: [u8; 20] = [1; 20];
 pub const CLUSTER_MANAGER_ID: [u8; 32] = [1; 32];
 pub const CLUSTER_RESERVE_ID: [u8; 32] = [2; 32];
+pub const CLUSTER_CUSTOMER_DEPOSIT_CONTRACT: [u8; 32] = [3; 32];
 
 pub const NODE_PROVIDER_ID_1: [u8; 32] = [11; 32];
 pub const NODE_PROVIDER_ID_2: [u8; 32] = [12; 32];
@@ -680,7 +678,8 @@ pub const NODE_PUB_KEY_3: [u8; 32] = [113; 32];
 pub const ENDOWMENT: u128 = 1000 * CERE;
 
 #[allow(clippy::type_complexity)]
-pub type BuiltCluster = (Cluster<AccountId>, ClusterProtocolParams<Balance, BlockNumber>);
+pub type BuiltCluster =
+	(Cluster<AccountId>, ClusterProtocolParams<Balance, BlockNumber, AccountId>);
 #[allow(clippy::type_complexity)]
 pub type BuiltNode = (NodePubKey, StorageNode<Test>, ClusterNodeStatus, ClusterNodeKind);
 
@@ -689,7 +688,7 @@ pub fn build_cluster(
 	manager_id: [u8; 32],
 	reserve_id: [u8; 32],
 	params: ClusterParams<AccountId>,
-	protocol_params: ClusterProtocolParams<Balance, BlockNumber>,
+	protocol_params: ClusterProtocolParams<Balance, BlockNumber, AccountId>,
 	status: ClusterStatus,
 ) -> BuiltCluster {
 	let mut cluster = Cluster::new(
@@ -725,7 +724,7 @@ pub struct ExtBuilder;
 
 impl ExtBuilder {
 	pub fn build(self, cluster: BuiltCluster, cluster_nodes: Vec<BuiltNode>) -> TestExternalities {
-		polkadot_sdk::sp_tracing::try_init_simple();
+		sp_tracing::try_init_simple();
 		let mut storage = polkadot_sdk::frame_system::GenesisConfig::<Test>::default()
 			.build_storage()
 			.unwrap();
@@ -771,7 +770,7 @@ impl ExtBuilder {
 		cluster_nodes: Vec<BuiltNode>,
 		test: impl FnOnce(),
 	) {
-		polkadot_sdk::sp_tracing::try_init_simple();
+		sp_tracing::try_init_simple();
 		let mut ext = self.build(cluster, cluster_nodes);
 		ext.execute_with(test);
 	}

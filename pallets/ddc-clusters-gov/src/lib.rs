@@ -16,12 +16,12 @@
 #![allow(clippy::manual_inspect)]
 use codec::{Decode, DecodeWithMemTracking, Encode};
 #[cfg(feature = "runtime-benchmarks")]
-use ddc_primitives::traits::{node::NodeCreator, staking::StakerCreator};
+use ddc_primitives::traits::staking::StakerCreator;
 use ddc_primitives::{
 	traits::{
 		cluster::{ClusterCreator, ClusterManager, ClusterProtocol, ClusterQuery},
 		cluster_gov::{DefaultVote, MemberCount, SeatsConsensus},
-		node::NodeVisitor,
+		node::NodeManager,
 		pallet::GetDdcOrigin,
 	},
 	ClusterId, ClusterNodeStatus, ClusterProtocolParams, ClusterStatus, NodePubKey,
@@ -67,7 +67,7 @@ type ReferendumBlockNumberFor<T, I = ()> =
 pub type ReferendaCall<T> = polkadot_sdk::pallet_referenda::Call<T>;
 
 /// Info for keeping track of a proposal being voted on.
-#[derive(PartialEq, Eq, Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct Votes<AccountId, BlockNumber> {
 	/// The max number of members that can vote on this proposal.
 	seats: MemberCount,
@@ -144,16 +144,18 @@ pub mod pallet {
 			+ Dispatchable<RuntimeOrigin = Self::RuntimeOrigin>
 			+ IsType<<Self as polkadot_sdk::pallet_referenda::Config>::RuntimeCall>
 			+ GetDispatchInfo;
-		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
-		type ClusterManager: ClusterManager<Self>;
-		type ClusterProtocol: ClusterProtocol<Self, BalanceOf<Self>>;
-		type NodeVisitor: NodeVisitor<Self>;
+		type ClusterCreator: ClusterCreator<Self::AccountId, BlockNumberFor<Self>, BalanceOf<Self>>;
+		type ClusterManager: ClusterManager<Self::AccountId, BlockNumberFor<Self>>;
+		type ClusterProtocol: ClusterProtocol<
+			Self::AccountId,
+			BlockNumberFor<Self>,
+			BalanceOf<Self>,
+		>;
+		type NodeManager: NodeManager<Self::AccountId>;
 		type SeatsConsensus: SeatsConsensus;
 		type DefaultVote: DefaultVote;
 		type MinValidatedNodesCount: Get<u16>;
 		type ReferendumEnactmentDuration: Get<ReferendumBlockNumberFor<Self>>;
-		#[cfg(feature = "runtime-benchmarks")]
-		type NodeCreator: NodeCreator<Self>;
 		#[cfg(feature = "runtime-benchmarks")]
 		type StakerCreator: StakerCreator<Self, BalanceOf<Self>>;
 	}
@@ -259,7 +261,11 @@ pub mod pallet {
 		pub fn propose_activate_cluster_protocol(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
-			cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
+			cluster_protocol_params: ClusterProtocolParams<
+				BalanceOf<T>,
+				BlockNumberFor<T>,
+				T::AccountId,
+			>,
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
 			Self::ensure_cluster_manager(caller_id.clone(), cluster_id)?;
@@ -267,7 +273,7 @@ pub mod pallet {
 			ensure!(!<ClusterProposal<T>>::contains_key(cluster_id), Error::<T>::ActiveProposal);
 
 			let cluster_status =
-				<T::ClusterProtocol as ClusterQuery<T>>::get_cluster_status(&cluster_id)
+				<T::ClusterProtocol as ClusterQuery<T::AccountId>>::get_cluster_status(&cluster_id)
 					.map_err(|_| Error::<T>::NoCluster)?;
 			ensure!(cluster_status == ClusterStatus::Bonded, Error::<T>::UnexpectedState);
 
@@ -310,7 +316,11 @@ pub mod pallet {
 		pub fn propose_update_cluster_protocol(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
-			cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
+			cluster_protocol_params: ClusterProtocolParams<
+				BalanceOf<T>,
+				BlockNumberFor<T>,
+				T::AccountId,
+			>,
 			member: ClusterMember,
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
@@ -319,7 +329,7 @@ pub mod pallet {
 			ensure!(!<ClusterProposal<T>>::contains_key(cluster_id), Error::<T>::ActiveProposal);
 
 			let cluster_status =
-				<T::ClusterProtocol as ClusterQuery<T>>::get_cluster_status(&cluster_id)
+				<T::ClusterProtocol as ClusterQuery<T::AccountId>>::get_cluster_status(&cluster_id)
 					.map_err(|_| Error::<T>::NoCluster)?;
 			ensure!(cluster_status == ClusterStatus::Activated, Error::<T>::UnexpectedState);
 
@@ -449,7 +459,11 @@ pub mod pallet {
 		pub fn activate_cluster_protocol(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
-			cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
+			cluster_protocol_params: ClusterProtocolParams<
+				BalanceOf<T>,
+				BlockNumberFor<T>,
+				T::AccountId,
+			>,
 		) -> DispatchResult {
 			T::OpenGovActivatorOrigin::ensure_origin(origin)?;
 			T::ClusterProtocol::activate_cluster_protocol(&cluster_id)?;
@@ -461,7 +475,11 @@ pub mod pallet {
 		pub fn update_cluster_protocol(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
-			cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
+			cluster_protocol_params: ClusterProtocolParams<
+				BalanceOf<T>,
+				BlockNumberFor<T>,
+				T::AccountId,
+			>,
 		) -> DispatchResult {
 			T::OpenGovUpdaterOrigin::ensure_origin(origin)?;
 			T::ClusterProtocol::update_cluster_protocol(&cluster_id, cluster_protocol_params)
@@ -499,7 +517,7 @@ pub mod pallet {
 					if !is_validated_node {
 						Err(Error::<T>::NotValidatedNode.into())
 					} else {
-						let node_provider = T::NodeVisitor::get_node_provider_id(&node_pub_key)?;
+						let node_provider = T::NodeManager::get_node_provider_id(&node_pub_key)?;
 						if origin == node_provider {
 							Ok(())
 						} else {
@@ -523,7 +541,7 @@ pub mod pallet {
 					if node_state.status != ClusterNodeStatus::ValidationSucceeded {
 						Err(Error::<T>::NotValidatedNode.into())
 					} else {
-						let node_provider = T::NodeVisitor::get_node_provider_id(&node_pub_key)?;
+						let node_provider = T::NodeManager::get_node_provider_id(&node_pub_key)?;
 						if origin == node_provider {
 							let voting = ClusterProposalVoting::<T>::get(cluster_id)
 								.ok_or(Error::<T>::ProposalMissing)?;

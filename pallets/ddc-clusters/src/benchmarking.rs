@@ -1,5 +1,7 @@
 //! DdcStaking pallet benchmarking.
 
+use polkadot_sdk::*;
+
 use ddc_primitives::{
 	ClusterId, ClusterNodeKind, ClusterParams, ClusterProtocolParams, NodePubKey,
 };
@@ -11,8 +13,6 @@ use polkadot_sdk::frame_system::RawOrigin;
 use polkadot_sdk::sp_core::crypto::UncheckedFrom;
 use polkadot_sdk::sp_runtime::{AccountId32, Perquintill};
 use polkadot_sdk::sp_std::prelude::*;
-#[allow(unused_imports)]
-use polkadot_sdk::*;
 use testing_utils::*;
 
 use super::*;
@@ -36,19 +36,25 @@ benchmarks! {
 								node_provider_auth_contract: Some(user.clone()),
 								erasure_coding_required: 4,
 								erasure_coding_total: 6,
-								replication_total: 3
+								replication_total: 3,
+								inspection_dry_run_params: None,
 							};
-		let cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>> = ClusterProtocolParams {
+		let customer_deposit_contract = account::<T::AccountId>("customer-deposit-contract", 0, 0);
+		let cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>, T::AccountId> = ClusterProtocolParams {
 			treasury_share: Perquintill::default(),
 			validators_share: Perquintill::default(),
 			cluster_reserve_share: Perquintill::default(),
 			storage_bond_size: 100u32.into(),
 			storage_chill_delay: 50u32.into(),
 			storage_unbonding_delay: 50u32.into(),
-			unit_per_mb_stored: 10,
-			unit_per_mb_streamed: 10,
-			unit_per_put_request: 10,
-			unit_per_get_request: 10,
+			cost_per_mb_stored: 10,
+			cost_per_mb_streamed: 10,
+			cost_per_put_request: 10,
+			cost_per_get_request: 10,
+			cost_per_gpu_unit: 0,
+			cost_per_cpu_unit: 0,
+			cost_per_ram_unit: 0,
+			customer_deposit_contract,
 		};
 	}: _(RawOrigin::Signed(user.clone()), cluster_id, user.clone(), cluster_params, cluster_protocol_params)
 	verify {
@@ -60,10 +66,25 @@ benchmarks! {
 		let node_pub_key = NodePubKey::StoragePubKey(AccountId32::from(bytes));
 		let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+		let customer_deposit_contract = account::<T::AccountId>("customer-deposit-contract", 0, 0);
 		let balance = <T as pallet::Config>::Currency::minimum_balance() * 1_000_000u32.into();
 		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
-		let _ = config_cluster_and_node::<T>(user.clone(), node_pub_key.clone(), cluster_id);
+		let _ = config_cluster_and_node::<T>(user.clone(), node_pub_key.clone(), cluster_id, customer_deposit_contract);
 	}: _(RawOrigin::Signed(user.clone()), cluster_id, node_pub_key.clone(), ClusterNodeKind::Genesis)
+	verify {
+		assert!(ClustersNodes::<T>::contains_key(cluster_id, node_pub_key));
+	}
+
+	join_cluster {
+		let bytes = [0u8; 32];
+		let node_pub_key = NodePubKey::StoragePubKey(AccountId32::from(bytes));
+		let cluster_id = ClusterId::from([1; 20]);
+		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+		let customer_deposit_contract = account::<T::AccountId>("customer-deposit-contract", 0, 0);
+		let balance = <T as pallet::Config>::Currency::minimum_balance() * 1_000_000u32.into();
+		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
+		let _ = config_cluster_and_node::<T>(user.clone(), node_pub_key.clone(), cluster_id, customer_deposit_contract);
+	}: _(RawOrigin::Signed(user.clone()), cluster_id, node_pub_key.clone())
 	verify {
 		assert!(ClustersNodes::<T>::contains_key(cluster_id, node_pub_key));
 	}
@@ -73,9 +94,10 @@ benchmarks! {
 		let node_pub_key = NodePubKey::StoragePubKey(AccountId32::from(bytes));
 		let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+		let customer_deposit_contract = account::<T::AccountId>("customer-deposit-contract", 0, 0);
 		let balance = <T as pallet::Config>::Currency::minimum_balance() * 1_000_000u32.into();
 		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
-		let _ = config_cluster_and_node::<T>(user.clone(), node_pub_key.clone(), cluster_id);
+		let _ = config_cluster_and_node::<T>(user.clone(), node_pub_key.clone(), cluster_id, customer_deposit_contract);
 		let _ = DdcClusters::<T>::add_node(
 			RawOrigin::Signed(user.clone()).into(),
 			cluster_id,
@@ -91,12 +113,14 @@ benchmarks! {
 		let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
 		let user_2 = account::<T::AccountId>("user", USER_SEED_2, 0u32);
-		let _ = config_cluster::<T>(user.clone(), cluster_id);
+		let customer_deposit_contract = account::<T::AccountId>("customer-deposit-contract", 0, 0);
+		let _ = config_cluster::<T>(user.clone(), cluster_id, customer_deposit_contract);
 		let new_cluster_params = ClusterParams {
 									node_provider_auth_contract: Some(user_2.clone()),
 									erasure_coding_required: 4,
 									erasure_coding_total: 6,
-									replication_total: 3
+									replication_total: 3,
+									inspection_dry_run_params: None,
 								};
 	}: _(RawOrigin::Signed(user.clone()), cluster_id, new_cluster_params)
 	verify {
@@ -107,6 +131,7 @@ benchmarks! {
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
 				replication_total: 3,
+				inspection_dry_run_params: None,
 			}
 		);
 	}
@@ -116,9 +141,10 @@ benchmarks! {
 		let node_pub_key = NodePubKey::StoragePubKey(AccountId32::from(bytes));
 		let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+		let customer_deposit_contract = account::<T::AccountId>("customer-deposit-contract", 0, 0);
 		let balance = <T as pallet::Config>::Currency::minimum_balance() * 1_000_000u32.into();
 		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
-		let _ = config_cluster_and_node::<T>(user.clone(), node_pub_key.clone(), cluster_id);
+		let _ = config_cluster_and_node::<T>(user.clone(), node_pub_key.clone(), cluster_id, customer_deposit_contract);
 		DdcClusters::<T>::add_node(RawOrigin::Signed(user.clone()).into(), cluster_id, node_pub_key.clone(), ClusterNodeKind::Genesis)?;
 
 	}: _(RawOrigin::Signed(user.clone()), cluster_id, node_pub_key.clone(), true)

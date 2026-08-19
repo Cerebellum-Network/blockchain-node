@@ -1,46 +1,56 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 #![allow(clippy::manual_inspect)]
-pub mod weights;
-use crate::weights::WeightInfo;
-
 #[cfg(feature = "runtime-benchmarks")]
 pub mod benchmarking;
+pub mod weights;
 
 #[cfg(test)]
 pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
-
-use codec::{Decode, DecodeWithMemTracking, Encode};
+use codec::{Decode, Encode};
 use ddc_primitives::{
 	traits::{
+		bucket::BucketManager,
 		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery},
-		customer::{CustomerCharger, CustomerDepositor},
+		customer::{CustomerCharger, CustomerDepositor, CustomerVisitor},
 	},
-	BucketId, ClusterId,
+	BucketId, BucketParams, ClusterId,
 };
 pub use pallet::*;
 use polkadot_sdk::frame_support::{
 	parameter_types,
-	traits::{Currency, DefensiveSaturating, ExistenceRequirement},
+	traits::{
+		fungible::Inspect, Currency, DefensiveSaturating, ExistenceRequirement,
+		UnfilteredDispatchable,
+	},
 	BoundedVec, Deserialize, PalletId, Serialize,
 };
 use polkadot_sdk::frame_system::pallet_prelude::*;
 use polkadot_sdk::sp_io::hashing::blake2_128;
 use polkadot_sdk::sp_runtime::{
-	traits::{AccountIdConversion, Saturating, Zero},
+	traits::{AccountIdConversion, Saturating, StaticLookup, Zero},
 	RuntimeDebug, SaturatedConversion,
 };
+use polkadot_sdk::sp_std::fmt::Debug;
 use polkadot_sdk::sp_std::prelude::*;
 use scale_info::TypeInfo;
 
-pub mod migration;
+use crate::weights::WeightInfo;
+
+pub mod migrations;
 
 /// The balance type of this pallet.
 pub type BalanceOf<T> = <<T as Config>::Currency as Currency<
 	<T as polkadot_sdk::frame_system::Config>::AccountId,
 >>::Balance;
+
+/// The balance type of contracts pallet.
+pub type ContractsBalanceOf<T> =
+	<<T as polkadot_sdk::pallet_contracts::Config>::Currency as Inspect<
+		<T as polkadot_sdk::frame_system::Config>::AccountId,
+	>>::Balance;
 
 parameter_types! {
 	/// A limit to the number of pending unlocks an account may have in parallel.
@@ -48,7 +58,7 @@ parameter_types! {
 }
 
 /// Just a Balance/BlockNumber tuple to encode when a chunk of funds will be unlocked.
-#[derive(PartialEq, Eq, Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub struct UnlockChunk<T: Config> {
 	/// Amount of funds to be unlocked.
@@ -59,18 +69,7 @@ pub struct UnlockChunk<T: Config> {
 	block: BlockNumberFor<T>,
 }
 
-#[derive(
-	PartialEq,
-	Eq,
-	Clone,
-	Encode,
-	Decode,
-	DecodeWithMemTracking,
-	RuntimeDebug,
-	TypeInfo,
-	Serialize,
-	Deserialize,
-)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, Serialize, Deserialize)]
 #[scale_info(skip_type_params(T))]
 pub struct Bucket<T: Config> {
 	bucket_id: BucketId,
@@ -80,14 +79,9 @@ pub struct Bucket<T: Config> {
 	is_removed: bool,
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo)]
-pub struct BucketParams {
-	is_public: bool,
-}
-
-#[derive(PartialEq, Eq, Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 #[scale_info(skip_type_params(T))]
-pub struct AccountsLedger<T: Config> {
+pub struct CustomerLedger<T: Config> {
 	/// The owner account whose balance is actually locked and can be used to pay for DDC network
 	/// usage.
 	pub owner: T::AccountId,
@@ -106,7 +100,7 @@ pub struct AccountsLedger<T: Config> {
 	pub unlocking: BoundedVec<UnlockChunk<T>, MaxUnlockingChunks>,
 }
 
-impl<T: Config> AccountsLedger<T> {
+impl<T: Config> CustomerLedger<T> {
 	/// Initializes the default object using the given owner.
 	pub fn default_from(owner: T::AccountId) -> Self {
 		Self { owner, total: Zero::zero(), active: Zero::zero(), unlocking: Default::default() }
@@ -147,7 +141,7 @@ pub mod pallet {
 
 	/// The current storage version.
 	const STORAGE_VERSION: polkadot_sdk::frame_support::traits::StorageVersion =
-		polkadot_sdk::frame_support::traits::StorageVersion::new(1);
+		polkadot_sdk::frame_support::traits::StorageVersion::new(5);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -155,7 +149,9 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: polkadot_sdk::frame_system::Config {
+	pub trait Config:
+		polkadot_sdk::frame_system::Config + polkadot_sdk::pallet_contracts::Config
+	{
 		/// The accounts's pallet id, used for deriving its sovereign account ID.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
@@ -166,14 +162,19 @@ pub mod pallet {
 		/// Number of eras that staked funds must remain locked for.
 		#[pallet::constant]
 		type UnlockingDelay: Get<BlockNumberFor<Self>>;
-		type ClusterProtocol: ClusterProtocol<Self, BalanceOf<Self>>;
-		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
+		type ClusterProtocol: ClusterProtocol<
+			Self::AccountId,
+			BlockNumberFor<Self>,
+			BalanceOf<Self>,
+		>;
+		type ClusterCreator: ClusterCreator<Self::AccountId, BlockNumberFor<Self>, BalanceOf<Self>>;
 		type WeightInfo: WeightInfo;
+		type ContractMigrator: ContractMigrator<Self::AccountId, ContractsBalanceOf<Self>>;
 	}
 
-	/// Map from all (unlocked) "owner" accounts to the info regarding the staking.
 	#[pallet::storage]
-	pub type Ledger<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, AccountsLedger<T>>;
+	pub type ClusterLedger<T: Config> =
+		StorageDoubleMap<_, Blake2_256, ClusterId, Blake2_256, T::AccountId, CustomerLedger<T>>;
 
 	#[pallet::type_value]
 	pub fn DefaultBucketCount<T: Config>() -> BucketId {
@@ -196,20 +197,25 @@ pub mod pallet {
 		///
 		/// NOTE: This event is only emitted when funds are deposited via a dispatchable. Notably,
 		/// it will not be emitted for staking rewards when they are added to stake.
-		Deposited { owner_id: T::AccountId, amount: BalanceOf<T> },
+		Deposited { cluster_id: ClusterId, owner_id: T::AccountId, amount: BalanceOf<T> },
 		/// An account has initiated unlock for amount. \[owner, amount\]
-		InitialDepositUnlock { owner_id: T::AccountId, amount: BalanceOf<T> },
+		InitialDepositUnlock { cluster_id: ClusterId, owner_id: T::AccountId, amount: BalanceOf<T> },
 		/// An account has called `withdraw_unlocked_deposit` and removed unlocking chunks worth
 		/// `Balance` from the unlocking queue. \[owner, amount\]
-		Withdrawn { owner_id: T::AccountId, amount: BalanceOf<T> },
+		Withdrawn { cluster_id: ClusterId, owner_id: T::AccountId, amount: BalanceOf<T> },
 		/// The account has been charged for the usage
-		Charged { owner_id: T::AccountId, charged: BalanceOf<T>, expected_to_charge: BalanceOf<T> },
+		Charged {
+			cluster_id: ClusterId,
+			owner_id: T::AccountId,
+			charged: BalanceOf<T>,
+			expected: BalanceOf<T>,
+		},
 		/// Bucket with specific id created
-		BucketCreated { bucket_id: BucketId },
+		BucketCreated { cluster_id: ClusterId, bucket_id: BucketId },
 		/// Bucket with specific id updated
-		BucketUpdated { bucket_id: BucketId },
+		BucketUpdated { cluster_id: ClusterId, bucket_id: BucketId },
 		/// Bucket with specific id marked as removed
-		BucketRemoved { bucket_id: BucketId },
+		BucketRemoved { cluster_id: ClusterId, bucket_id: BucketId },
 	}
 
 	#[pallet::error]
@@ -224,6 +230,8 @@ pub mod pallet {
 		InsufficientDeposit,
 		/// Can not schedule more unlock chunks.
 		NoMoreChunks,
+		/// Not enough balance to deposit
+		NotEnoughBalance,
 		/// Bucket with speicifed id doesn't exist.
 		NoBucketWithId,
 		/// Internal state has become somehow corrupted and the operation cannot continue.
@@ -232,8 +240,8 @@ pub mod pallet {
 		BucketDoesNotExist,
 		/// DDC Cluster with provided id doesn't exist
 		ClusterDoesNotExist,
-		// unauthorised operation
-		Unauthorised,
+		// unauthorized operation
+		Unauthorized,
 		// Arithmetic overflow
 		ArithmeticOverflow,
 		// Arithmetic underflow
@@ -242,6 +250,8 @@ pub mod pallet {
 		TransferFailed,
 		/// Bucket is already removed
 		AlreadyRemoved,
+		/// Bucket belongs to another cluster
+		ClusterMismatch,
 	}
 
 	#[pallet::genesis_config]
@@ -260,24 +270,27 @@ pub mod pallet {
 	#[pallet::genesis_build]
 	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
-			let account_id = <Pallet<T>>::account_id();
-			let min = <T as pallet::Config>::Currency::minimum_balance();
-
-			let balance = <T as pallet::Config>::Currency::free_balance(&account_id);
-			if balance < min {
-				if let Some(vault) = &self.feeder_account {
-					let _ = <T as pallet::Config>::Currency::transfer(
-						vault,
-						&account_id,
-						min - balance,
-						ExistenceRequirement::AllowDeath,
-					);
-				} else {
-					let _ = <T as pallet::Config>::Currency::make_free_balance_be(&account_id, min);
-				}
-			}
-
 			for (bucket, deposit) in &self.buckets {
+				let cluster_vault = <Pallet<T>>::cluster_vault_id(&bucket.cluster_id);
+				let min = <T as pallet::Config>::Currency::minimum_balance();
+
+				let balance = <T as pallet::Config>::Currency::free_balance(&cluster_vault);
+				if balance < min {
+					if let Some(feeder) = &self.feeder_account {
+						let _ = <T as pallet::Config>::Currency::transfer(
+							feeder,
+							&cluster_vault,
+							min - balance,
+							ExistenceRequirement::AllowDeath,
+						);
+					} else {
+						let _ = <T as pallet::Config>::Currency::make_free_balance_be(
+							&cluster_vault,
+							min,
+						);
+					}
+				}
+
 				let cur_bucket_id = <BucketsCount<T>>::get()
 					.checked_add(1)
 					.ok_or(Error::<T>::ArithmeticOverflow)
@@ -286,15 +299,15 @@ pub mod pallet {
 
 				<Buckets<T>>::insert(cur_bucket_id, bucket);
 
-				let ledger = AccountsLedger::<T> {
+				let ledger = CustomerLedger::<T> {
 					owner: bucket.owner_id.clone(),
 					total: *deposit,
 					active: *deposit,
 					unlocking: Default::default(),
 				};
-				<Ledger<T>>::insert(&ledger.owner, &ledger);
+				<ClusterLedger<T>>::insert(bucket.cluster_id, &bucket.owner_id, &ledger);
 
-				<T as pallet::Config>::Currency::deposit_into_existing(&account_id, *deposit)
+				<T as pallet::Config>::Currency::deposit_into_existing(&cluster_vault, *deposit)
 					.unwrap();
 			}
 		}
@@ -306,33 +319,17 @@ pub mod pallet {
 		///
 		/// Anyone can create a bucket
 		#[pallet::call_index(0)]
-		#[pallet::weight(T::WeightInfo::create_bucket())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_bucket())]
 		pub fn create_bucket(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			bucket_params: BucketParams,
 		) -> DispatchResult {
 			let bucket_owner = ensure_signed(origin)?;
-			let cur_bucket_id =
+			let bucket_id =
 				BucketsCount::<T>::get().checked_add(1).ok_or(Error::<T>::ArithmeticOverflow)?;
 
-			ensure!(
-				<T::ClusterProtocol as ClusterQuery<T>>::cluster_exists(&cluster_id),
-				Error::<T>::ClusterDoesNotExist
-			);
-
-			let bucket = Bucket {
-				bucket_id: cur_bucket_id,
-				owner_id: bucket_owner,
-				cluster_id,
-				is_public: bucket_params.is_public,
-				is_removed: false,
-			};
-
-			<BucketsCount<T>>::set(cur_bucket_id);
-			<Buckets<T>>::insert(cur_bucket_id, bucket);
-
-			Self::deposit_event(Event::<T>::BucketCreated { bucket_id: cur_bucket_id });
+			Self::do_create_bucket(cluster_id, bucket_id, bucket_owner, bucket_params)?;
 
 			Ok(())
 		}
@@ -346,13 +343,18 @@ pub mod pallet {
 		///
 		/// Emits `Deposited`.
 		#[pallet::call_index(1)]
-		#[pallet::weight(T::WeightInfo::deposit())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::deposit())]
 		pub fn deposit(
 			origin: OriginFor<T>,
+			cluster_id: ClusterId,
 			#[pallet::compact] value: BalanceOf<T>,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
-			<Self as CustomerDepositor<T>>::deposit(owner, value.saturated_into())?;
+			ensure!(
+				<T::ClusterProtocol as ClusterQuery<T::AccountId>>::cluster_exists(&cluster_id),
+				Error::<T>::ClusterDoesNotExist
+			);
+			<Self as CustomerDepositor<T>>::deposit(owner, cluster_id, value.saturated_into())?;
 			Ok(())
 		}
 
@@ -363,13 +365,53 @@ pub mod pallet {
 		///
 		/// Emits `Deposited`.
 		#[pallet::call_index(2)]
-		#[pallet::weight(T::WeightInfo::deposit_extra())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::deposit_extra())]
 		pub fn deposit_extra(
 			origin: OriginFor<T>,
+			cluster_id: ClusterId,
 			#[pallet::compact] max_additional: BalanceOf<T>,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
-			<Self as CustomerDepositor<T>>::deposit_extra(owner, max_additional.saturated_into())?;
+			ensure!(
+				<T::ClusterProtocol as ClusterQuery<T::AccountId>>::cluster_exists(&cluster_id),
+				Error::<T>::ClusterDoesNotExist
+			);
+			<Self as CustomerDepositor<T>>::deposit_extra(
+				owner,
+				cluster_id,
+				max_additional.saturated_into(),
+			)?;
+			Ok(())
+		}
+
+		/// Take the owner account in parameter as an owner and lock up `value` of its balance.
+		/// `Owner` will be the account that controls it.
+		///
+		/// `value` must be more than the `minimum balance` specified by `T::Currency` in case of
+		/// depositing to a new account.
+		///
+		/// The dispatch origin for this call must be _Signed_ by the owner account.
+		///
+		/// Emits `Deposited`.
+		#[pallet::call_index(7)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::deposit())]
+		pub fn deposit_for(
+			origin: OriginFor<T>,
+			owner: T::AccountId,
+			cluster_id: ClusterId,
+			#[pallet::compact] value: BalanceOf<T>,
+		) -> DispatchResult {
+			let funder = ensure_signed(origin)?;
+			ensure!(
+				<T::ClusterProtocol as ClusterQuery<T::AccountId>>::cluster_exists(&cluster_id),
+				Error::<T>::ClusterDoesNotExist
+			);
+			<Self as CustomerDepositor<T>>::deposit_for(
+				funder,
+				owner,
+				cluster_id,
+				value.saturated_into(),
+			)?;
 			Ok(())
 		}
 
@@ -390,13 +432,15 @@ pub mod pallet {
 		///
 		/// See also [`Call::withdraw_unlocked_deposit`].
 		#[pallet::call_index(3)]
-		#[pallet::weight(T::WeightInfo::unlock_deposit())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::unlock_deposit())]
 		pub fn unlock_deposit(
 			origin: OriginFor<T>,
+			cluster_id: ClusterId,
 			#[pallet::compact] value: BalanceOf<T>,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
-			let mut ledger = Ledger::<T>::get(&owner).ok_or(Error::<T>::NotOwner)?;
+			let mut ledger =
+				ClusterLedger::<T>::get(cluster_id, &owner).ok_or(Error::<T>::NotOwner)?;
 			ensure!(
 				ledger.unlocking.len() < MaxUnlockingChunks::get() as usize,
 				Error::<T>::NoMoreChunks,
@@ -434,10 +478,11 @@ pub mod pallet {
 						.map_err(|_| Error::<T>::NoMoreChunks)?;
 				};
 
-				<Ledger<T>>::insert(&owner, &ledger);
+				<ClusterLedger<T>>::insert(cluster_id, &owner, &ledger);
 
 				Self::deposit_event(Event::<T>::InitialDepositUnlock {
-					owner_id: ledger.owner,
+					cluster_id,
+					owner_id: owner,
 					amount: value,
 				});
 			}
@@ -455,12 +500,16 @@ pub mod pallet {
 		///
 		/// See also [`Call::unlock_deposit`].
 		#[pallet::call_index(4)]
-		#[pallet::weight(T::WeightInfo::withdraw_unlocked_deposit_kill())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::withdraw_unlocked_deposit_kill())]
 		#[allow(clippy::useless_conversion)]
-		pub fn withdraw_unlocked_deposit(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
+		pub fn withdraw_unlocked_deposit(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
-			let mut ledger = Ledger::<T>::get(&owner).ok_or(Error::<T>::NotOwner)?;
-			let (owner, old_total) = (ledger.owner.clone(), ledger.total);
+			let mut ledger =
+				ClusterLedger::<T>::get(cluster_id, &owner).ok_or(Error::<T>::NotOwner)?;
+			let (owner, old_total) = (owner.clone(), ledger.total);
 			let current_block = <polkadot_sdk::frame_system::Pallet<T>>::block_number();
 			ledger = ledger.consolidate_unlocked(current_block);
 
@@ -471,14 +520,14 @@ pub mod pallet {
 				// This account must have called `unlock_deposit()` with some value that caused the
 				// active portion to fall below existential deposit + will have no more unlocking
 				// chunks left. We can now safely remove all accounts-related information.
-				Self::kill_owner(&owner)?;
+				Self::kill_owner(&owner, &cluster_id)?;
 				// This is worst case scenario, so we use the full weight and return None
 				None
 			} else {
 				log::debug!("Updating ledger");
 				// This was the consequence of a partial deposit unlock. just update the ledger and
 				// move on.
-				<Ledger<T>>::insert(&owner, &ledger);
+				<ClusterLedger<T>>::insert(cluster_id, &owner, &ledger);
 				// This is only an update, so we use less overall weight.
 				Some(<T as pallet::Config>::WeightInfo::withdraw_unlocked_deposit_update())
 			};
@@ -495,12 +544,16 @@ pub mod pallet {
 					old_total.checked_sub(&ledger.total).ok_or(Error::<T>::ArithmeticUnderflow)?;
 
 				<T as pallet::Config>::Currency::transfer(
-					&Self::account_id(),
+					&Self::cluster_vault_id(&cluster_id),
 					&owner,
 					value,
 					ExistenceRequirement::AllowDeath,
 				)?;
-				Self::deposit_event(Event::<T>::Withdrawn { owner_id: owner, amount: value });
+				Self::deposit_event(Event::<T>::Withdrawn {
+					cluster_id,
+					owner_id: owner,
+					amount: value,
+				});
 			}
 
 			Ok(post_info_weight.into())
@@ -512,7 +565,7 @@ pub mod pallet {
 		///
 		/// Emits `BucketUpdated`.
 		#[pallet::call_index(5)]
-		#[pallet::weight(T::WeightInfo::set_bucket_params())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_bucket_params())]
 		pub fn set_bucket_params(
 			origin: OriginFor<T>,
 			bucket_id: BucketId,
@@ -523,8 +576,9 @@ pub mod pallet {
 			ensure!(bucket.owner_id == owner, Error::<T>::NotBucketOwner);
 
 			bucket.is_public = bucket_params.is_public;
+			let cluster_id = bucket.cluster_id;
 			<Buckets<T>>::insert(bucket_id, bucket);
-			Self::deposit_event(Event::<T>::BucketUpdated { bucket_id });
+			Self::deposit_event(Event::<T>::BucketUpdated { cluster_id, bucket_id });
 
 			Ok(())
 		}
@@ -533,34 +587,36 @@ pub mod pallet {
 		///
 		/// Only an owner can remove a bucket
 		#[pallet::call_index(6)]
-		#[pallet::weight(T::WeightInfo::remove_bucket())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::remove_bucket())]
 		pub fn remove_bucket(origin: OriginFor<T>, bucket_id: BucketId) -> DispatchResult {
+			// todo! can we set total_usage to None and save bytes
 			let owner = ensure_signed(origin)?;
+			let mut cluster_id = ClusterId::default();
 
 			<Buckets<T>>::try_mutate(bucket_id, |maybe_bucket| -> DispatchResult {
 				let bucket = maybe_bucket.as_mut().ok_or(Error::<T>::NoBucketWithId)?;
 				ensure!(bucket.owner_id == owner, Error::<T>::NotBucketOwner);
 				ensure!(!bucket.is_removed, Error::<T>::AlreadyRemoved);
-
+				cluster_id = bucket.cluster_id;
 				// Mark the bucket as removed
 				bucket.is_removed = true;
 
 				Ok(())
 			})?;
 
-			Self::deposit_event(Event::<T>::BucketRemoved { bucket_id });
+			Self::deposit_event(Event::<T>::BucketRemoved { cluster_id, bucket_id });
 
 			Ok(())
 		}
 	}
 
 	impl<T: Config> Pallet<T> {
-		pub fn account_id() -> T::AccountId {
+		pub fn pallet_account_id() -> T::AccountId {
 			T::PalletId::get().into_account_truncating()
 		}
 
-		pub fn sub_account_id(account_id: &T::AccountId) -> T::AccountId {
-			let hash = blake2_128(&account_id.encode());
+		pub fn cluster_vault_id(cluster_id: &ClusterId) -> T::AccountId {
+			let hash = blake2_128(&cluster_id.encode());
 
 			// hash is 28 bytes
 			T::PalletId::get().into_sub_account_truncating(hash)
@@ -571,16 +627,18 @@ pub mod pallet {
 		/// This will also deposit the funds to pallet.
 		fn update_ledger_and_deposit(
 			owner: &T::AccountId,
-			ledger: &AccountsLedger<T>,
+			ledger: &CustomerLedger<T>,
+			cluster_id: &ClusterId,
 			amount: BalanceOf<T>,
+			funder: Option<&T::AccountId>,
 		) -> DispatchResult {
 			<T as pallet::Config>::Currency::transfer(
-				owner,
-				&Self::account_id(),
+				funder.unwrap_or(owner),
+				&Self::cluster_vault_id(cluster_id),
 				amount,
-				ExistenceRequirement::AllowDeath,
+				ExistenceRequirement::KeepAlive,
 			)?;
-			<Ledger<T>>::insert(owner, ledger);
+			<ClusterLedger<T>>::insert(cluster_id, owner, ledger);
 
 			Ok(())
 		}
@@ -591,8 +649,8 @@ pub mod pallet {
 		///
 		/// This is called:
 		/// - after a `withdraw_unlocked_deposit()` call that frees all of a owner's locked balance.
-		fn kill_owner(owner: &T::AccountId) -> DispatchResult {
-			<Ledger<T>>::remove(owner);
+		fn kill_owner(owner: &T::AccountId, cluster_id: &ClusterId) -> DispatchResult {
+			<ClusterLedger<T>>::remove(cluster_id, owner);
 
 			polkadot_sdk::frame_system::Pallet::<T>::dec_consumers(owner);
 
@@ -603,9 +661,9 @@ pub mod pallet {
 		///
 		/// Returns the updated ledger, and the amount actually charged.
 		fn charge_unlocking(
-			mut ledger: AccountsLedger<T>,
+			mut ledger: CustomerLedger<T>,
 			value: BalanceOf<T>,
-		) -> Result<(AccountsLedger<T>, BalanceOf<T>), Error<T>> {
+		) -> Result<(CustomerLedger<T>, BalanceOf<T>), Error<T>> {
 			let mut unlocking_balance = BalanceOf::<T>::zero();
 
 			while let Some(last) = ledger.unlocking.last_mut() {
@@ -634,16 +692,63 @@ pub mod pallet {
 
 			Ok((ledger, unlocking_balance))
 		}
+
+		fn do_create_bucket(
+			cluster_id: ClusterId,
+			bucket_id: BucketId,
+			owner_id: T::AccountId,
+			bucket_params: BucketParams,
+		) -> DispatchResult {
+			ensure!(
+				<T::ClusterProtocol as ClusterQuery<T::AccountId>>::cluster_exists(&cluster_id),
+				Error::<T>::ClusterDoesNotExist
+			);
+
+			let bucket = Bucket {
+				bucket_id,
+				owner_id,
+				cluster_id,
+				is_public: bucket_params.is_public,
+				is_removed: false,
+			};
+
+			<BucketsCount<T>>::set(bucket_id);
+			<Buckets<T>>::insert(bucket_id, bucket);
+
+			Self::deposit_event(Event::<T>::BucketCreated { cluster_id, bucket_id });
+
+			Ok(())
+		}
+	}
+
+	impl<T: Config> BucketManager<T> for Pallet<T> {
+		fn get_bucket_owner_id(bucket_id: BucketId) -> Result<T::AccountId, DispatchError> {
+			let bucket = Buckets::<T>::get(bucket_id).ok_or(Error::<T>::BucketDoesNotExist)?;
+			Ok(bucket.owner_id)
+		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		fn create_bucket(
+			cluster_id: &ClusterId,
+			bucket_id: BucketId,
+			owner_id: T::AccountId,
+			bucket_params: BucketParams,
+		) -> Result<(), DispatchError> {
+			Self::do_create_bucket(*cluster_id, bucket_id, owner_id, bucket_params)?;
+			Ok(())
+		}
 	}
 
 	impl<T: Config> CustomerCharger<T> for Pallet<T> {
-		fn charge_content_owner(
-			content_owner: T::AccountId,
-			billing_vault: T::AccountId,
+		fn charge_customer(
+			bucket_owner: T::AccountId,
+			payout_vault: T::AccountId,
+			cluster_id: ClusterId,
 			amount: u128,
 		) -> Result<u128, DispatchError> {
 			let actually_charged: BalanceOf<T>;
-			let mut ledger = Ledger::<T>::get(&content_owner).ok_or(Error::<T>::NotOwner)?;
+			let mut ledger =
+				ClusterLedger::<T>::get(cluster_id, &bucket_owner).ok_or(Error::<T>::NotOwner)?;
 			let amount_to_deduct = amount.saturated_into::<BalanceOf<T>>();
 
 			if ledger.active >= amount_to_deduct {
@@ -675,17 +780,18 @@ pub mod pallet {
 			}
 
 			<T as pallet::Config>::Currency::transfer(
-				&Self::account_id(),
-				&billing_vault,
+				&Self::cluster_vault_id(&cluster_id),
+				&payout_vault,
 				actually_charged,
 				ExistenceRequirement::AllowDeath,
 			)?;
 
-			<Ledger<T>>::insert(&content_owner, &ledger); // update state after successful transfer
+			<ClusterLedger<T>>::insert(cluster_id, &bucket_owner, &ledger); // update state after successful transfer
 			Self::deposit_event(Event::<T>::Charged {
-				owner_id: content_owner,
+				cluster_id,
+				owner_id: bucket_owner,
 				charged: actually_charged,
-				expected_to_charge: amount_to_deduct,
+				expected: amount_to_deduct,
 			});
 
 			Ok(actually_charged.saturated_into::<u128>())
@@ -693,10 +799,14 @@ pub mod pallet {
 	}
 
 	impl<T: Config> CustomerDepositor<T> for Pallet<T> {
-		fn deposit(owner: T::AccountId, amount: u128) -> Result<(), DispatchError> {
+		fn deposit(
+			owner: T::AccountId,
+			cluster_id: ClusterId,
+			amount: u128,
+		) -> Result<(), DispatchError> {
 			let value = amount.saturated_into::<BalanceOf<T>>();
 
-			if <Ledger<T>>::contains_key(&owner) {
+			if <ClusterLedger<T>>::contains_key(cluster_id, &owner) {
 				Err(Error::<T>::AlreadyPaired)?
 			}
 
@@ -710,23 +820,33 @@ pub mod pallet {
 
 			let owner_balance = <T as pallet::Config>::Currency::free_balance(&owner);
 			let value = value.min(owner_balance);
-			let ledger = AccountsLedger {
+			let ledger = CustomerLedger {
 				owner: owner.clone(),
 				total: value,
 				active: value,
 				unlocking: Default::default(),
 			};
 
-			Self::update_ledger_and_deposit(&owner, &ledger, value)
+			Self::update_ledger_and_deposit(&owner, &ledger, &cluster_id, value, None)
 				.map_err(|_| Error::<T>::TransferFailed)?;
-			Self::deposit_event(Event::<T>::Deposited { owner_id: owner, amount: value });
+
+			Self::deposit_event(Event::<T>::Deposited {
+				cluster_id,
+				owner_id: owner,
+				amount: value,
+			});
 
 			Ok(())
 		}
 
-		fn deposit_extra(owner: T::AccountId, amount: u128) -> Result<(), DispatchError> {
+		fn deposit_extra(
+			owner: T::AccountId,
+			cluster_id: ClusterId,
+			amount: u128,
+		) -> Result<(), DispatchError> {
 			let max_additional = amount.saturated_into::<BalanceOf<T>>();
-			let mut ledger = Ledger::<T>::get(&owner).ok_or(Error::<T>::NotOwner)?;
+			let mut ledger =
+				ClusterLedger::<T>::get(cluster_id, &owner).ok_or(Error::<T>::NotOwner)?;
 
 			let owner_balance = <T as pallet::Config>::Currency::free_balance(&owner);
 			let extra = owner_balance.min(max_additional);
@@ -741,11 +861,220 @@ pub mod pallet {
 				Error::<T>::InsufficientDeposit
 			);
 
-			Self::update_ledger_and_deposit(&owner, &ledger, extra)
+			Self::update_ledger_and_deposit(&owner, &ledger, &cluster_id, extra, None)
 				.map_err(|_| Error::<T>::TransferFailed)?;
-			Self::deposit_event(Event::<T>::Deposited { owner_id: owner, amount: extra });
+
+			Self::deposit_event(Event::<T>::Deposited {
+				cluster_id,
+				owner_id: owner,
+				amount: extra,
+			});
 
 			Ok(())
+		}
+
+		fn deposit_for(
+			funder: T::AccountId,
+			owner: T::AccountId,
+			cluster_id: ClusterId,
+			amount: u128,
+		) -> Result<(), DispatchError> {
+			if !<ClusterLedger<T>>::contains_key(cluster_id, &owner) {
+				let existential_deposit = <T as pallet::Config>::Currency::minimum_balance();
+				let mut deposit_amount = amount.saturated_into::<BalanceOf<T>>();
+
+				if deposit_amount < existential_deposit {
+					Err(Error::<T>::InsufficientDeposit)?
+				}
+
+				let funder_balance = <T as pallet::Config>::Currency::free_balance(&funder);
+				if funder_balance < deposit_amount {
+					Err(Error::<T>::NotEnoughBalance)?
+				}
+
+				let owner_balance = <T as pallet::Config>::Currency::free_balance(&owner);
+				if owner_balance < existential_deposit {
+					<T as pallet::Config>::Currency::transfer(
+						&funder,
+						&owner,
+						existential_deposit,
+						ExistenceRequirement::KeepAlive,
+					)?;
+
+					deposit_amount = deposit_amount
+						.checked_sub(&existential_deposit)
+						.ok_or(Error::<T>::InsufficientDeposit)?;
+
+					if deposit_amount < existential_deposit || funder_balance < deposit_amount {
+						Err(Error::<T>::InsufficientDeposit)?;
+					}
+				}
+
+				polkadot_sdk::frame_system::Pallet::<T>::inc_consumers(&owner)
+					.map_err(|_| Error::<T>::BadState)?;
+
+				let ledger = CustomerLedger {
+					owner: owner.clone(),
+					total: deposit_amount,
+					active: deposit_amount,
+					unlocking: Default::default(),
+				};
+
+				Self::update_ledger_and_deposit(
+					&owner,
+					&ledger,
+					&cluster_id,
+					deposit_amount,
+					Some(&funder),
+				)
+				.map_err(|_| Error::<T>::TransferFailed)?;
+
+				Self::deposit_event(Event::<T>::Deposited {
+					cluster_id,
+					owner_id: owner,
+					amount: deposit_amount,
+				});
+			} else {
+				let deposit_amount = amount.saturated_into::<BalanceOf<T>>();
+
+				let funder_balance = <T as pallet::Config>::Currency::free_balance(&funder);
+				if funder_balance < deposit_amount {
+					return Err(Error::<T>::NotEnoughBalance.into());
+				}
+
+				let mut ledger =
+					ClusterLedger::<T>::get(cluster_id, &owner).ok_or(Error::<T>::NotOwner)?;
+
+				ledger.total = ledger
+					.total
+					.checked_add(&deposit_amount)
+					.ok_or(Error::<T>::ArithmeticOverflow)?;
+				ledger.active = ledger
+					.active
+					.checked_add(&deposit_amount)
+					.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+				ensure!(
+					ledger.active >= <T as pallet::Config>::Currency::minimum_balance(),
+					Error::<T>::InsufficientDeposit
+				);
+
+				Self::update_ledger_and_deposit(
+					&owner,
+					&ledger,
+					&cluster_id,
+					deposit_amount,
+					Some(&funder),
+				)
+				.map_err(|_| Error::<T>::TransferFailed)?;
+
+				Self::deposit_event(Event::<T>::Deposited {
+					cluster_id,
+					owner_id: owner,
+					amount: deposit_amount,
+				});
+			}
+
+			Ok(())
+		}
+	}
+
+	impl<T: Config> CustomerVisitor<T> for Pallet<T> {
+		fn get_bucket_owner(bucket_id: &BucketId) -> Result<T::AccountId, DispatchError> {
+			let bucket = Buckets::<T>::get(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
+			Ok(bucket.owner_id)
+		}
+	}
+
+	pub trait ContractMigrator<AccountId, Balance> {
+		fn deploy_contract(
+			deployer: AccountId,
+			value: Balance,
+			gas_limit: Weight,
+			storage_deposit_limit: Option<Balance>,
+			code: Vec<u8>,
+			data: Vec<u8>,
+			salt: Vec<u8>,
+		) -> DispatchResult;
+
+		fn call_contract(
+			caller: AccountId,
+			dest: AccountId,
+			value: Balance,
+			gas_limit: Weight,
+			storage_deposit_limit: Option<Balance>,
+			data: Vec<u8>,
+		) -> DispatchResult;
+	}
+
+	impl<T: Config> ContractMigrator<T::AccountId, ContractsBalanceOf<T>> for Pallet<T>
+	where
+		ContractsBalanceOf<T>: codec::HasCompact,
+		<ContractsBalanceOf<T> as codec::HasCompact>::Type:
+			Clone + Eq + PartialEq + Debug + TypeInfo + Encode,
+		<<T as polkadot_sdk::frame_system::Config>::Lookup as StaticLookup>::Source:
+			From<<T as polkadot_sdk::frame_system::Config>::AccountId>,
+	{
+		fn deploy_contract(
+			deployer: T::AccountId,
+			value: ContractsBalanceOf<T>,
+			gas_limit: Weight,
+			storage_deposit_limit: Option<ContractsBalanceOf<T>>,
+			code: Vec<u8>,
+			data: Vec<u8>,
+			salt: Vec<u8>,
+		) -> DispatchResult {
+			let instantiate_call: polkadot_sdk::pallet_contracts::Call<T> =
+				polkadot_sdk::pallet_contracts::Call::instantiate_with_code {
+					value,
+					gas_limit,
+					storage_deposit_limit: storage_deposit_limit.map(Into::into),
+					code,
+					data,
+					salt,
+				};
+
+			let result = instantiate_call.dispatch_bypass_filter(
+				polkadot_sdk::frame_system::RawOrigin::Signed(deployer).into(),
+			);
+
+			match result {
+				Ok(_) => Ok(()),
+				Err(e) => {
+					log::error!("❌ Error deploying contract: {:?}", e.error);
+					Err(e.error)
+				},
+			}
+		}
+
+		fn call_contract(
+			caller: T::AccountId,
+			dest: T::AccountId,
+			value: ContractsBalanceOf<T>,
+			gas_limit: Weight,
+			storage_deposit_limit: Option<ContractsBalanceOf<T>>,
+			data: Vec<u8>,
+		) -> DispatchResult {
+			let call_call: polkadot_sdk::pallet_contracts::Call<T> =
+				polkadot_sdk::pallet_contracts::Call::call {
+					dest: dest.into(),
+					value,
+					gas_limit,
+					storage_deposit_limit: storage_deposit_limit.map(Into::into),
+					data,
+				};
+
+			let result = call_call.dispatch_bypass_filter(
+				polkadot_sdk::frame_system::RawOrigin::Signed(caller).into(),
+			);
+
+			match result {
+				Ok(_) => Ok(()),
+				Err(e) => {
+					log::error!("❌ Error calling contract: {:?}", e.error);
+					Err(e.error)
+				},
+			}
 		}
 	}
 }

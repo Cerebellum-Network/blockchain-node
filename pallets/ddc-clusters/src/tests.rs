@@ -22,6 +22,7 @@ fn create_cluster_works() {
 		let cluster_manager_id = AccountId::from([1; 32]);
 		let cluster_reserve_id = AccountId::from([2; 32]);
 		let auth_contract = AccountId::from([3; 32]);
+		let customer_deposit_contract = AccountId::from([4; 32]);
 
 		let cluster_protocol_params = ClusterProtocolParams {
 			treasury_share: Perquintill::from_float(0.05),
@@ -30,10 +31,14 @@ fn create_cluster_works() {
 			storage_bond_size: 100,
 			storage_chill_delay: 50,
 			storage_unbonding_delay: 50,
-			unit_per_mb_stored: 10,
-			unit_per_mb_streamed: 10,
-			unit_per_put_request: 10,
-			unit_per_get_request: 10,
+			cost_per_mb_stored: 10,
+			cost_per_mb_streamed: 10,
+			cost_per_put_request: 10,
+			cost_per_get_request: 10,
+			cost_per_gpu_unit: 0,
+			cost_per_cpu_unit: 0,
+			cost_per_ram_unit: 0,
+			customer_deposit_contract,
 		};
 
 		// Creating 1 cluster should work fine
@@ -45,7 +50,8 @@ fn create_cluster_works() {
 				node_provider_auth_contract: Some(auth_contract.clone()),
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
-				replication_total: 3
+				replication_total: 3,
+				inspection_dry_run_params: None,
 			},
 			cluster_protocol_params.clone()
 		));
@@ -82,20 +88,20 @@ fn create_cluster_works() {
 			cluster_protocol_params.storage_unbonding_delay
 		);
 		assert_eq!(
-			created_cluster_protocol_params.unit_per_mb_stored,
-			cluster_protocol_params.unit_per_mb_stored
+			created_cluster_protocol_params.cost_per_mb_stored,
+			cluster_protocol_params.cost_per_mb_stored
 		);
 		assert_eq!(
-			created_cluster_protocol_params.unit_per_mb_streamed,
-			cluster_protocol_params.unit_per_mb_streamed
+			created_cluster_protocol_params.cost_per_mb_streamed,
+			cluster_protocol_params.cost_per_mb_streamed
 		);
 		assert_eq!(
-			created_cluster_protocol_params.unit_per_put_request,
-			cluster_protocol_params.unit_per_put_request
+			created_cluster_protocol_params.cost_per_put_request,
+			cluster_protocol_params.cost_per_put_request
 		);
 		assert_eq!(
-			created_cluster_protocol_params.unit_per_get_request,
-			cluster_protocol_params.unit_per_get_request
+			created_cluster_protocol_params.cost_per_get_request,
+			cluster_protocol_params.cost_per_get_request
 		);
 
 		// Creating cluster with same id should fail
@@ -108,7 +114,8 @@ fn create_cluster_works() {
 					node_provider_auth_contract: Some(auth_contract),
 					erasure_coding_required: 4,
 					erasure_coding_total: 6,
-					replication_total: 3
+					replication_total: 3,
+					inspection_dry_run_params: None,
 				},
 				cluster_protocol_params
 			),
@@ -125,7 +132,7 @@ fn create_cluster_works() {
 }
 
 #[test]
-fn add_and_delete_node_works() {
+fn add_join_and_delete_node_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
@@ -133,6 +140,8 @@ fn add_and_delete_node_works() {
 		let cluster_manager_id = AccountId::from([1; 32]);
 		let cluster_reserve_id = AccountId::from([2; 32]);
 		let node_pub_key = AccountId::from([3; 32]);
+		let node_pub_key2 = AccountId::from([4; 32]);
+		let customer_deposit_contract = AccountId::from([5; 32]);
 
 		let contract_id = deploy_contract();
 
@@ -146,6 +155,14 @@ fn add_and_delete_node_works() {
 			),
 			Error::<Test>::ClusterDoesNotExist
 		);
+		assert_noop!(
+			DdcClusters::join_cluster(
+				RuntimeOrigin::signed(cluster_manager_id.clone()),
+				cluster_id,
+				NodePubKey::StoragePubKey(node_pub_key.clone()),
+			),
+			Error::<Test>::ClusterDoesNotExist
+		);
 
 		// Creating 1 cluster should work fine
 		assert_ok!(DdcClusters::create_cluster(
@@ -153,10 +170,11 @@ fn add_and_delete_node_works() {
 			cluster_id,
 			cluster_reserve_id.clone(),
 			ClusterParams {
-				node_provider_auth_contract: Some(cluster_manager_id.clone()),
+				node_provider_auth_contract: None,
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
-				replication_total: 3
+				replication_total: 3,
+				inspection_dry_run_params: None,
 			},
 			ClusterProtocolParams {
 				treasury_share: Perquintill::from_float(0.05),
@@ -165,11 +183,38 @@ fn add_and_delete_node_works() {
 				storage_bond_size: 100,
 				storage_chill_delay: 50,
 				storage_unbonding_delay: 50,
-				unit_per_mb_stored: 10,
-				unit_per_mb_streamed: 10,
-				unit_per_put_request: 10,
-				unit_per_get_request: 10,
+				cost_per_mb_stored: 10,
+				cost_per_mb_streamed: 10,
+				cost_per_put_request: 10,
+				cost_per_get_request: 10,
+				cost_per_gpu_unit: 0,
+				cost_per_cpu_unit: 0,
+				cost_per_ram_unit: 0,
+				customer_deposit_contract,
 			}
+		));
+
+		// Cluster has no auth smart contract
+		assert_noop!(
+			DdcClusters::join_cluster(
+				RuntimeOrigin::signed(cluster_manager_id.clone()),
+				cluster_id,
+				NodePubKey::StoragePubKey(node_pub_key.clone()),
+			),
+			Error::<Test>::NodeIsNotAuthorized
+		);
+
+		// Set an incorrect address for auth contract
+		assert_ok!(DdcClusters::set_cluster_params(
+			RuntimeOrigin::signed(cluster_manager_id.clone()),
+			cluster_id,
+			ClusterParams {
+				node_provider_auth_contract: Some(cluster_manager_id.clone()),
+				erasure_coding_required: 4,
+				erasure_coding_total: 6,
+				replication_total: 3,
+				inspection_dry_run_params: None,
+			},
 		));
 
 		// Not Cluster Manager
@@ -193,6 +238,14 @@ fn add_and_delete_node_works() {
 			),
 			Error::<Test>::AttemptToAddNonExistentNode
 		);
+		assert_noop!(
+			DdcClusters::join_cluster(
+				RuntimeOrigin::signed(cluster_manager_id.clone()),
+				cluster_id,
+				NodePubKey::StoragePubKey(node_pub_key.clone()),
+			),
+			Error::<Test>::AttemptToAddNonExistentNode
+		);
 
 		let storage_node_params = StorageNodeParams {
 			mode: StorageNodeMode::Storage,
@@ -208,18 +261,17 @@ fn add_and_delete_node_works() {
 		assert_ok!(DdcNodes::create_node(
 			RuntimeOrigin::signed(cluster_manager_id.clone()),
 			NodePubKey::StoragePubKey(node_pub_key.clone()),
-			NodeParams::StorageParams(storage_node_params)
+			NodeParams::StorageParams(storage_node_params.clone()),
 		));
 
-		// Node doesn't exist
+		// Not node provider
 		assert_noop!(
-			DdcClusters::add_node(
-				RuntimeOrigin::signed(cluster_manager_id.clone()),
+			DdcClusters::join_cluster(
+				RuntimeOrigin::signed(node_pub_key.clone()),
 				cluster_id,
 				NodePubKey::StoragePubKey(node_pub_key.clone()),
-				ClusterNodeKind::Genesis
 			),
-			Error::<Test>::NodeAuthContractCallFailed
+			Error::<Test>::OnlyNodeProvider
 		);
 
 		// Set the correct address for auth contract
@@ -230,13 +282,29 @@ fn add_and_delete_node_works() {
 				node_provider_auth_contract: Some(contract_id),
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
-				replication_total: 3
+				replication_total: 3,
+				inspection_dry_run_params: None,
 			},
 		));
 
 		assert_ok!(DdcClusters::bond_cluster(&cluster_id));
 
-		// Node added succesfully
+		// Node is not authorized to join
+		assert_ok!(DdcNodes::create_node(
+			RuntimeOrigin::signed(cluster_manager_id.clone()),
+			NodePubKey::StoragePubKey(node_pub_key2.clone()),
+			NodeParams::StorageParams(storage_node_params.clone()),
+		));
+		assert_noop!(
+			DdcClusters::join_cluster(
+				RuntimeOrigin::signed(cluster_manager_id.clone()),
+				cluster_id,
+				NodePubKey::StoragePubKey(node_pub_key2.clone()),
+			),
+			Error::<Test>::NodeIsNotAuthorized
+		);
+
+		// Node added successfully
 		assert_ok!(DdcClusters::add_node(
 			RuntimeOrigin::signed(cluster_manager_id.clone()),
 			cluster_id,
@@ -244,7 +312,7 @@ fn add_and_delete_node_works() {
 			ClusterNodeKind::Genesis
 		));
 
-		assert!(<DdcClusters as ClusterManager<Test>>::contains_node(
+		assert!(<DdcClusters as ClusterManager<AccountId, BlockNumberFor<Test>>>::contains_node(
 			&cluster_id,
 			&NodePubKey::StoragePubKey(node_pub_key.clone()),
 			None
@@ -257,6 +325,14 @@ fn add_and_delete_node_works() {
 				cluster_id,
 				NodePubKey::StoragePubKey(node_pub_key.clone()),
 				ClusterNodeKind::Genesis
+			),
+			Error::<Test>::AttemptToAddAlreadyAssignedNode
+		);
+		assert_noop!(
+			DdcClusters::join_cluster(
+				RuntimeOrigin::signed(cluster_manager_id.clone()),
+				cluster_id,
+				NodePubKey::StoragePubKey(node_pub_key.clone()),
 			),
 			Error::<Test>::AttemptToAddAlreadyAssignedNode
 		);
@@ -289,11 +365,33 @@ fn add_and_delete_node_works() {
 		// Remove node should fail
 		assert_noop!(
 			DdcClusters::remove_node(
-				RuntimeOrigin::signed(cluster_manager_id),
+				RuntimeOrigin::signed(cluster_manager_id.clone()),
 				cluster_id,
-				NodePubKey::StoragePubKey(node_pub_key),
+				NodePubKey::StoragePubKey(node_pub_key.clone()),
 			),
 			Error::<Test>::AttemptToRemoveNotAssignedNode
+		);
+
+		// Node joined successfully
+		assert_ok!(DdcClusters::join_cluster(
+			RuntimeOrigin::signed(cluster_manager_id.clone()),
+			cluster_id,
+			NodePubKey::StoragePubKey(node_pub_key.clone()),
+		));
+
+		assert!(<DdcClusters as ClusterManager<AccountId, BlockNumberFor<Test>>>::contains_node(
+			&cluster_id,
+			&NodePubKey::StoragePubKey(node_pub_key.clone()),
+			None
+		));
+
+		// Checking that event was emitted
+		System::assert_last_event(
+			Event::ClusterNodeAdded {
+				cluster_id,
+				node_pub_key: NodePubKey::StoragePubKey(node_pub_key.clone()),
+			}
+			.into(),
 		);
 
 		pub const CTOR_SELECTOR: [u8; 4] = hex!("9bae9d5e");
@@ -373,6 +471,7 @@ fn set_cluster_params_works() {
 		let cluster_reserve_id = AccountId::from([2; 32]);
 		let auth_contract_1 = AccountId::from([3; 32]);
 		let auth_contract_2 = AccountId::from([4; 32]);
+		let customer_deposit_contract = AccountId::from([5; 32]);
 
 		// Cluster doesn't exist
 		assert_noop!(
@@ -383,7 +482,8 @@ fn set_cluster_params_works() {
 					node_provider_auth_contract: Some(auth_contract_1.clone()),
 					erasure_coding_required: 4,
 					erasure_coding_total: 6,
-					replication_total: 3
+					replication_total: 3,
+					inspection_dry_run_params: None,
 				},
 			),
 			Error::<Test>::ClusterDoesNotExist
@@ -398,7 +498,8 @@ fn set_cluster_params_works() {
 				node_provider_auth_contract: Some(auth_contract_1),
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
-				replication_total: 3
+				replication_total: 3,
+				inspection_dry_run_params: None,
 			},
 			ClusterProtocolParams {
 				treasury_share: Perquintill::from_float(0.05),
@@ -407,10 +508,14 @@ fn set_cluster_params_works() {
 				storage_bond_size: 100,
 				storage_chill_delay: 50,
 				storage_unbonding_delay: 50,
-				unit_per_mb_stored: 10,
-				unit_per_mb_streamed: 10,
-				unit_per_put_request: 10,
-				unit_per_get_request: 10,
+				cost_per_mb_stored: 10,
+				cost_per_mb_streamed: 10,
+				cost_per_put_request: 10,
+				cost_per_get_request: 10,
+				cost_per_gpu_unit: 0,
+				cost_per_cpu_unit: 0,
+				cost_per_ram_unit: 0,
+				customer_deposit_contract,
 			}
 		));
 
@@ -422,7 +527,8 @@ fn set_cluster_params_works() {
 					node_provider_auth_contract: Some(auth_contract_2.clone()),
 					erasure_coding_required: 4,
 					erasure_coding_total: 6,
-					replication_total: 3
+					replication_total: 3,
+					inspection_dry_run_params: None,
 				},
 			),
 			Error::<Test>::OnlyClusterManager
@@ -436,7 +542,8 @@ fn set_cluster_params_works() {
 					node_provider_auth_contract: Some(auth_contract_2.clone()),
 					erasure_coding_required: 1,
 					erasure_coding_total: 6,
-					replication_total: 3
+					replication_total: 3,
+					inspection_dry_run_params: None,
 				},
 			),
 			Error::<Test>::ErasureCodingRequiredDidNotMeetMinimum
@@ -450,7 +557,8 @@ fn set_cluster_params_works() {
 					node_provider_auth_contract: Some(auth_contract_2.clone()),
 					erasure_coding_required: 4,
 					erasure_coding_total: 1,
-					replication_total: 3
+					replication_total: 3,
+					inspection_dry_run_params: None,
 				},
 			),
 			Error::<Test>::ErasureCodingTotalNotMeetMinimum
@@ -464,7 +572,8 @@ fn set_cluster_params_works() {
 					node_provider_auth_contract: Some(auth_contract_2.clone()),
 					erasure_coding_required: 4,
 					erasure_coding_total: 6,
-					replication_total: 1
+					replication_total: 1,
+					inspection_dry_run_params: None,
 				},
 			),
 			Error::<Test>::ReplicationTotalDidNotMeetMinimum
@@ -477,7 +586,8 @@ fn set_cluster_params_works() {
 				node_provider_auth_contract: Some(auth_contract_2.clone()),
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
-				replication_total: 3
+				replication_total: 3,
+				inspection_dry_run_params: None,
 			},
 		));
 
@@ -494,6 +604,65 @@ fn set_cluster_params_works() {
 }
 
 #[test]
+fn set_last_validated_era_works() {
+	ExtBuilder.build_and_execute(|| {
+		System::set_block_number(1);
+
+		let cluster_id = ClusterId::from([1; 20]);
+		let cluster_manager_id = AccountId::from([1; 32]);
+		let cluster_reserve_id = AccountId::from([2; 32]);
+		let auth_contract_1 = AccountId::from([3; 32]);
+		let era_id: EhdEra = 22;
+		let customer_deposit_contract = AccountId::from([4; 32]);
+
+		// Cluster doesn't exist
+		assert_noop!(
+			<DdcClusters as ClusterValidator>::set_last_paid_era(&cluster_id, era_id),
+			Error::<Test>::ClusterDoesNotExist
+		);
+
+		// Creating 1 cluster should work fine
+		assert_ok!(DdcClusters::create_cluster(
+			RuntimeOrigin::signed(cluster_manager_id.clone()),
+			cluster_id,
+			cluster_reserve_id.clone(),
+			ClusterParams {
+				node_provider_auth_contract: Some(auth_contract_1),
+				erasure_coding_required: 4,
+				erasure_coding_total: 6,
+				replication_total: 3,
+				inspection_dry_run_params: None,
+			},
+			ClusterProtocolParams {
+				treasury_share: Perquintill::from_float(0.05),
+				validators_share: Perquintill::from_float(0.01),
+				cluster_reserve_share: Perquintill::from_float(0.02),
+				storage_bond_size: 100,
+				storage_chill_delay: 50,
+				storage_unbonding_delay: 50,
+				cost_per_mb_stored: 10,
+				cost_per_mb_streamed: 10,
+				cost_per_put_request: 10,
+				cost_per_get_request: 10,
+				cost_per_gpu_unit: 0,
+				cost_per_cpu_unit: 0,
+				cost_per_ram_unit: 0,
+				customer_deposit_contract,
+			}
+		));
+
+		assert_ok!(<DdcClusters as ClusterValidator>::set_last_paid_era(&cluster_id, era_id));
+
+		let updated_cluster = Clusters::<Test>::get(cluster_id).unwrap();
+		assert_eq!(updated_cluster.last_paid_era, era_id);
+
+		// Checking that event was emitted
+		assert_eq!(System::events().len(), 3);
+		System::assert_last_event(Event::ClusterEraPaid { cluster_id, era_id }.into())
+	})
+}
+
+#[test]
 fn cluster_visitor_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
@@ -502,6 +671,7 @@ fn cluster_visitor_works() {
 		let cluster_manager_id = AccountId::from([1; 32]);
 		let cluster_reserve_id = AccountId::from([2; 32]);
 		let auth_contract = AccountId::from([3; 32]);
+		let customer_deposit_contract = AccountId::from([4; 32]);
 
 		let cluster_protocol_params = ClusterProtocolParams {
 			treasury_share: Perquintill::from_float(0.05),
@@ -510,10 +680,14 @@ fn cluster_visitor_works() {
 			storage_bond_size: 100,
 			storage_chill_delay: 50,
 			storage_unbonding_delay: 50,
-			unit_per_mb_stored: 10,
-			unit_per_mb_streamed: 10,
-			unit_per_put_request: 10,
-			unit_per_get_request: 10,
+			cost_per_mb_stored: 10,
+			cost_per_mb_streamed: 10,
+			cost_per_put_request: 10,
+			cost_per_get_request: 10,
+			cost_per_gpu_unit: 0,
+			cost_per_cpu_unit: 0,
+			cost_per_ram_unit: 0,
+			customer_deposit_contract,
 		};
 
 		// Creating 1 cluster should work fine
@@ -525,15 +699,16 @@ fn cluster_visitor_works() {
 				node_provider_auth_contract: Some(auth_contract),
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
-				replication_total: 3
+				replication_total: 3,
+				inspection_dry_run_params: None,
 			},
 			cluster_protocol_params
 		));
 
-		assert!(<DdcClusters as ClusterQuery<Test>>::cluster_exists(&cluster_id));
+		assert!(<DdcClusters as ClusterQuery<AccountId>>::cluster_exists(&cluster_id));
 
 		assert_eq!(
-			<DdcClusters as ClusterProtocol<Test, BalanceOf<Test>>>::get_bond_size(
+			<DdcClusters as ClusterProtocol<AccountId, BlockNumberFor<Test>, BalanceOf<Test>>>::get_bond_size(
 				&cluster_id,
 				NodeType::Storage
 			)
@@ -541,7 +716,7 @@ fn cluster_visitor_works() {
 			100u128
 		);
 		assert_eq!(
-			<DdcClusters as ClusterProtocol<Test, BalanceOf<Test>>>::get_bond_size(
+			<DdcClusters as ClusterProtocol<AccountId, BlockNumberFor<Test>, BalanceOf<Test>>>::get_bond_size(
 				&cluster_id,
 				NodeType::Storage
 			)
@@ -550,20 +725,23 @@ fn cluster_visitor_works() {
 		);
 
 		assert_eq!(
-			<DdcClusters as ClusterProtocol<Test, BalanceOf<Test>>>::get_pricing_params(
+			<DdcClusters as ClusterProtocol<AccountId, BlockNumberFor<Test>, BalanceOf<Test>>>::get_pricing_params(
 				&cluster_id
 			)
 			.unwrap(),
 			ClusterPricingParams {
-				unit_per_mb_stored: 10,
-				unit_per_mb_streamed: 10,
-				unit_per_put_request: 10,
-				unit_per_get_request: 10,
+				cost_per_mb_stored: 10,
+				cost_per_mb_streamed: 10,
+				cost_per_put_request: 10,
+				cost_per_get_request: 10,
+				cost_per_gpu_unit: 0,
+				cost_per_cpu_unit: 0,
+				cost_per_ram_unit: 0,
 			}
 		);
 
 		assert_eq!(
-			<DdcClusters as ClusterProtocol<Test, BalanceOf<Test>>>::get_fees_params(&cluster_id)
+			<DdcClusters as ClusterProtocol<AccountId, BlockNumberFor<Test>, BalanceOf<Test>>>::get_fees_params(&cluster_id)
 				.unwrap(),
 			ClusterFeesParams {
 				treasury_share: Perquintill::from_float(0.05),
@@ -573,7 +751,7 @@ fn cluster_visitor_works() {
 		);
 
 		assert_eq!(
-			<DdcClusters as ClusterProtocol<Test, BalanceOf<Test>>>::get_reserve_account_id(
+			<DdcClusters as ClusterProtocol<AccountId, BlockNumberFor<Test>, BalanceOf<Test>>>::get_reserve_account_id(
 				&cluster_id
 			)
 			.unwrap(),
@@ -581,7 +759,7 @@ fn cluster_visitor_works() {
 		);
 
 		assert_eq!(
-			<DdcClusters as ClusterProtocol<Test, BalanceOf<Test>>>::get_chill_delay(
+			<DdcClusters as ClusterProtocol<AccountId, BlockNumberFor<Test>, BalanceOf<Test>>>::get_chill_delay(
 				&cluster_id,
 				NodeType::Storage
 			)
@@ -589,24 +767,7 @@ fn cluster_visitor_works() {
 			50
 		);
 		assert_eq!(
-			<DdcClusters as ClusterProtocol<Test, BalanceOf<Test>>>::get_chill_delay(
-				&cluster_id,
-				NodeType::Storage
-			)
-			.unwrap(),
-			50
-		);
-
-		assert_eq!(
-			<DdcClusters as ClusterProtocol<Test, BalanceOf<Test>>>::get_unbonding_delay(
-				&cluster_id,
-				NodeType::Storage
-			)
-			.unwrap(),
-			50
-		);
-		assert_eq!(
-			<DdcClusters as ClusterProtocol<Test, BalanceOf<Test>>>::get_unbonding_delay(
+			<DdcClusters as ClusterProtocol<AccountId, BlockNumberFor<Test>, BalanceOf<Test>>>::get_chill_delay(
 				&cluster_id,
 				NodeType::Storage
 			)
@@ -615,7 +776,24 @@ fn cluster_visitor_works() {
 		);
 
 		assert_eq!(
-			<DdcClusters as ClusterProtocol<Test, BalanceOf<Test>>>::get_bonding_params(
+			<DdcClusters as ClusterProtocol<AccountId, BlockNumberFor<Test>, BalanceOf<Test>>>::get_unbonding_delay(
+				&cluster_id,
+				NodeType::Storage
+			)
+			.unwrap(),
+			50
+		);
+		assert_eq!(
+			<DdcClusters as ClusterProtocol<AccountId, BlockNumberFor<Test>, BalanceOf<Test>>>::get_unbonding_delay(
+				&cluster_id,
+				NodeType::Storage
+			)
+			.unwrap(),
+			50
+		);
+
+		assert_eq!(
+			<DdcClusters as ClusterProtocol<AccountId, BlockNumberFor<Test>, BalanceOf<Test>>>::get_bonding_params(
 				&cluster_id
 			)
 			.unwrap(),
@@ -637,6 +815,7 @@ fn cluster_creator_works() {
 		let cluster_manager_id = AccountId::from([1; 32]);
 		let cluster_reserve_id = AccountId::from([2; 32]);
 		let auth_contract = AccountId::from([3; 32]);
+		let customer_deposit_contract = AccountId::from([4; 32]);
 
 		let cluster_protocol_params = ClusterProtocolParams {
 			treasury_share: Perquintill::from_float(0.05),
@@ -645,13 +824,21 @@ fn cluster_creator_works() {
 			storage_bond_size: 100,
 			storage_chill_delay: 50,
 			storage_unbonding_delay: 50,
-			unit_per_mb_stored: 10,
-			unit_per_mb_streamed: 10,
-			unit_per_put_request: 10,
-			unit_per_get_request: 10,
+			cost_per_mb_stored: 10,
+			cost_per_mb_streamed: 10,
+			cost_per_put_request: 10,
+			cost_per_get_request: 10,
+			cost_per_gpu_unit: 0,
+			cost_per_cpu_unit: 0,
+			cost_per_ram_unit: 0,
+			customer_deposit_contract,
 		};
 
-		assert_ok!(<DdcClusters as ClusterCreator<Test, BalanceOf<Test>>>::create_cluster(
+		assert_ok!(<DdcClusters as ClusterCreator<
+			AccountId,
+			BlockNumberFor<Test>,
+			BalanceOf<Test>,
+		>>::create_cluster(
 			cluster_id,
 			cluster_manager_id,
 			cluster_reserve_id,
@@ -659,7 +846,8 @@ fn cluster_creator_works() {
 				node_provider_auth_contract: Some(auth_contract),
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
-				replication_total: 3
+				replication_total: 3,
+				inspection_dry_run_params: None,
 			},
 			cluster_protocol_params,
 		));

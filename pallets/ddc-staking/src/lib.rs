@@ -33,7 +33,7 @@ use core::fmt::Debug;
 use codec::{Decode, Encode, HasCompact};
 use ddc_primitives::traits::{
 	cluster::{ClusterCreator, ClusterProtocol, ClusterQuery},
-	node::{NodeCreator, NodeVisitor},
+	node::NodeManager,
 	staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 };
 pub use ddc_primitives::{ClusterId, ClusterNodesCount, NodePubKey, NodeType};
@@ -175,15 +175,17 @@ pub mod pallet {
 		/// Weight information for extrinsics in this pallet.
 		type WeightInfo: WeightInfo;
 
-		type ClusterProtocol: ClusterProtocol<Self, BalanceOf<Self>>;
+		type ClusterProtocol: ClusterProtocol<
+			Self::AccountId,
+			BlockNumberFor<Self>,
+			BalanceOf<Self>,
+		>;
 
-		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
+		type ClusterCreator: ClusterCreator<Self::AccountId, BlockNumberFor<Self>, BalanceOf<Self>>;
 
-		type ClusterManager: ClusterManager<Self>;
+		type ClusterManager: ClusterManager<Self::AccountId, BlockNumberFor<Self>>;
 
-		type NodeVisitor: NodeVisitor<Self>;
-
-		type NodeCreator: NodeCreator<Self>;
+		type NodeManager: NodeManager<Self::AccountId>;
 
 		type ClusterBondingAmount: Get<BalanceOf<Self>>;
 
@@ -413,7 +415,7 @@ pub mod pallet {
 			}
 
 			// Checks that the node is registered in the network
-			ensure!(T::NodeVisitor::exists(&node), Error::<T>::NodeIsNotFound);
+			ensure!(T::NodeManager::exists(&node), Error::<T>::NodeIsNotFound);
 
 			polkadot_sdk::frame_system::Pallet::<T>::inc_consumers(&stash)
 				.map_err(|_| Error::<T>::BadState)?;
@@ -503,8 +505,8 @@ pub mod pallet {
 				let node_pub_key =
 					<Providers<T>>::get(&ledger.stash).ok_or(Error::<T>::BadState)?;
 
-				let unbonding_delay = if T::NodeVisitor::exists(&node_pub_key) {
-					let node_cluster_id = T::NodeVisitor::get_cluster_id(&node_pub_key)
+				let unbonding_delay = if T::NodeManager::exists(&node_pub_key) {
+					let node_cluster_id = T::NodeManager::get_cluster_id(&node_pub_key)
 						.map_err(|_| Error::<T>::NoCluster)?;
 
 					if let Some(cluster_id) = node_cluster_id {
@@ -633,7 +635,7 @@ pub mod pallet {
 			let controller = ensure_signed(origin)?;
 
 			ensure!(
-				<T::ClusterProtocol as ClusterQuery<T>>::cluster_exists(&cluster_id),
+				<T::ClusterProtocol as ClusterQuery<T::AccountId>>::cluster_exists(&cluster_id),
 				Error::<T>::NoCluster
 			);
 
@@ -825,7 +827,9 @@ pub mod pallet {
 		pub fn bond_cluster(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
 			let cluster_stash = ensure_signed(origin)?;
 			let (controller, stash) =
-				<T::ClusterProtocol as ClusterQuery<T>>::get_manager_and_reserve_id(&cluster_id)?;
+				<T::ClusterProtocol as ClusterQuery<T::AccountId>>::get_manager_and_reserve_id(
+					&cluster_id,
+				)?;
 
 			ensure!(stash == cluster_stash, Error::<T>::NotStash);
 
@@ -1155,6 +1159,12 @@ pub mod pallet {
 				.is_some();
 
 			Ok(is_chilling_attempt)
+		}
+
+		fn stash_by_ctrl(controller: &T::AccountId) -> Result<T::AccountId, StakingVisitorError> {
+			Ledger::<T>::get(controller)
+				.map(|l| l.stash)
+				.ok_or(StakingVisitorError::ControllerDoesNotExist)
 		}
 	}
 }

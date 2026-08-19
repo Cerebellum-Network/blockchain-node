@@ -1,4 +1,7 @@
 //! DdcClustersGov pallet benchmarking.
+#![allow(clippy::extra_unused_type_parameters)]
+
+use polkadot_sdk::*;
 
 use ddc_primitives::{
 	ClusterBondingParams, ClusterId, ClusterNodeKind, ClusterParams, ClusterProtocolParams,
@@ -9,8 +12,6 @@ use polkadot_sdk::frame_system::RawOrigin;
 use polkadot_sdk::pallet_referenda::Pallet as Referenda;
 use polkadot_sdk::sp_runtime::{Perquintill, SaturatedConversion};
 use polkadot_sdk::sp_std::prelude::*;
-#[allow(unused_imports)]
-use polkadot_sdk::*;
 
 use super::*;
 use crate::Pallet as DdcClustersGov;
@@ -35,12 +36,17 @@ pub fn fund_user<T: Config>(user: T::AccountId, balance_factor: u128) -> T::Acco
 	user
 }
 
+pub fn create_account<T: Config>(name: &'static str) -> T::AccountId {
+	account(name, 0, 0)
+}
+
 pub fn create_cluster_with_nodes<T: Config>(
 	cluster_id: ClusterId,
 	cluster_manager_id: T::AccountId,
 	cluster_reserve_id: T::AccountId,
 	nodes_keys: Vec<(NodePubKey, T::AccountId)>,
 	is_activated: bool,
+	customer_deposit_contract: T::AccountId,
 ) {
 	let bond_size: BalanceOf<T> = 10000_u32.saturated_into::<BalanceOf<T>>();
 	let cluster_protocol_params = ClusterProtocolParams {
@@ -50,10 +56,14 @@ pub fn create_cluster_with_nodes<T: Config>(
 		storage_bond_size: bond_size,
 		storage_chill_delay: BlockNumberFor::<T>::from(20_u32),
 		storage_unbonding_delay: BlockNumberFor::<T>::from(20_u32),
-		unit_per_mb_stored: 97656,
-		unit_per_mb_streamed: 48828,
-		unit_per_put_request: 10,
-		unit_per_get_request: 5,
+		cost_per_mb_stored: 97656,
+		cost_per_mb_streamed: 48828,
+		cost_per_put_request: 10,
+		cost_per_get_request: 5,
+		cost_per_gpu_unit: 0,
+		cost_per_cpu_unit: 0,
+		cost_per_ram_unit: 0,
+		customer_deposit_contract,
 	};
 
 	let cluster_params = ClusterParams {
@@ -61,6 +71,7 @@ pub fn create_cluster_with_nodes<T: Config>(
 		erasure_coding_required: 0,
 		erasure_coding_total: 0,
 		replication_total: 0,
+		inspection_dry_run_params: None,
 	};
 
 	T::ClusterCreator::create_cluster(
@@ -90,7 +101,7 @@ pub fn create_cluster_with_nodes<T: Config>(
 			p2p_port: 9070_u16,
 		});
 
-		T::NodeCreator::create_node(node_pub_key.clone(), node_provider.clone(), node_params)
+		T::NodeManager::create_node(node_pub_key.clone(), node_provider.clone(), node_params)
 			.expect("Node is not created");
 
 		T::StakerCreator::bond_stake_and_participate(
@@ -135,6 +146,27 @@ fn assert_has_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
 	polkadot_sdk::frame_system::Pallet::<T>::assert_has_event(generic_event.into());
 }
 
+fn default_cluster_protocol_params<T: Config>(
+) -> ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>, T::AccountId> {
+	let customer_deposit_contract = create_account::<T>("customer-deposit-contract");
+	ClusterProtocolParams {
+		customer_deposit_contract,
+		treasury_share: Default::default(),
+		validators_share: Default::default(),
+		cluster_reserve_share: Default::default(),
+		storage_bond_size: Default::default(),
+		storage_chill_delay: Default::default(),
+		storage_unbonding_delay: Default::default(),
+		cost_per_mb_stored: Default::default(),
+		cost_per_mb_streamed: Default::default(),
+		cost_per_put_request: Default::default(),
+		cost_per_get_request: Default::default(),
+		cost_per_gpu_unit: 0,
+		cost_per_cpu_unit: 0,
+		cost_per_ram_unit: 0,
+	}
+}
+
 benchmarks! {
 
 	propose_activate_cluster_protocol {
@@ -142,6 +174,7 @@ benchmarks! {
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
 		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5);
+		let customer_deposit_contract = create_account::<T>("customer-deposit-contract");
 
 		let mut cluster_nodes: Vec<(NodePubKey, T::AccountId)> = Vec::new();
 		for i in 0 .. 3 {
@@ -150,9 +183,9 @@ benchmarks! {
 			cluster_nodes.push((node_pub_key.clone(), node_provider.clone()));
 		}
 
-		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
+		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false, customer_deposit_contract.clone());
 
-	}: propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id), cluster_id, ClusterProtocolParams::default())
+	}: propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id), cluster_id, default_cluster_protocol_params::<T>())
 	verify {
 		assert!(ClusterProposal::<T>::contains_key(cluster_id));
 		assert!(ClusterProposalVoting::<T>::contains_key(cluster_id));
@@ -163,6 +196,7 @@ benchmarks! {
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
 		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5);
+		let customer_deposit_contract = create_account::<T>("customer-deposit-contract");
 
 		let mut cluster_nodes: Vec<(NodePubKey, T::AccountId)> = Vec::new();
 		for i in 0 .. 3 {
@@ -171,9 +205,9 @@ benchmarks! {
 			cluster_nodes.push((node_pub_key.clone(), node_provider.clone()));
 		}
 
-		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes, true);
+		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes, true, customer_deposit_contract.clone());
 
-	}: propose_update_cluster_protocol(RawOrigin::Signed(cluster_manager_id), cluster_id, ClusterProtocolParams::default(), ClusterMember::ClusterManager)
+	}: propose_update_cluster_protocol(RawOrigin::Signed(cluster_manager_id), cluster_id, default_cluster_protocol_params::<T>(), ClusterMember::ClusterManager)
 	verify {
 		assert!(ClusterProposal::<T>::contains_key(cluster_id));
 		assert!(ClusterProposalVoting::<T>::contains_key(cluster_id));
@@ -184,6 +218,7 @@ benchmarks! {
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
 		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5);
+		let customer_deposit_contract = create_account::<T>("customer-deposit-contract");
 
 		let mut cluster_nodes: Vec<(NodePubKey, T::AccountId)> = Vec::new();
 		for i in 0 .. 3 {
@@ -192,10 +227,10 @@ benchmarks! {
 			cluster_nodes.push((node_pub_key.clone(), node_provider.clone()));
 		}
 
-		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
+		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false, customer_deposit_contract.clone());
 		next_block::<T>();
 
-		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterProtocolParams::default())?;
+		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, default_cluster_protocol_params::<T>())?;
 
 		let (node_pub_key_1, node_provider_1) = cluster_nodes.first()
 			.map(|(key, provider)| (key.clone(), provider.clone()))
@@ -213,6 +248,7 @@ benchmarks! {
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
 		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5);
+		let customer_deposit_contract = create_account::<T>("customer-deposit-contract");
 		let _ = fund_user::<T>(DdcClustersGov::<T>::account_id(), 1000);
 
 		let mut cluster_nodes: Vec<(NodePubKey, T::AccountId)> = Vec::new();
@@ -223,10 +259,10 @@ benchmarks! {
 			cluster_nodes.push((node_pub_key.clone(), node_provider.clone()));
 		}
 
-		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
+		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false, customer_deposit_contract.clone());
 		next_block::<T>();
 
-		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterProtocolParams::default())?;
+		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, default_cluster_protocol_params::<T>())?;
 
 		for j in 0 .. m {
 			let (node_pub_key, node_provider) = &cluster_nodes.get(j as usize).unwrap();
@@ -260,6 +296,7 @@ benchmarks! {
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
 		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5);
+		let customer_deposit_contract = create_account::<T>("customer-deposit-contract");
 		let _ = fund_user::<T>(DdcClustersGov::<T>::account_id(), 1000);
 
 		let mut cluster_nodes: Vec<(NodePubKey, T::AccountId)> = Vec::new();
@@ -270,10 +307,10 @@ benchmarks! {
 			cluster_nodes.push((node_pub_key.clone(), node_provider.clone()));
 		}
 
-		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
+		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false, customer_deposit_contract.clone());
 		next_block::<T>();
 
-		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterProtocolParams::default())?;
+		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, default_cluster_protocol_params::<T>())?;
 
 		fn is_unanimous<T: Config>() -> bool {
 			let max_seats = 100;
@@ -331,6 +368,7 @@ benchmarks! {
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
 		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5);
+		let customer_deposit_contract = create_account::<T>("customer-deposit-contract");
 
 		let mut cluster_nodes: Vec<(NodePubKey, T::AccountId)> = Vec::new();
 
@@ -340,10 +378,10 @@ benchmarks! {
 			cluster_nodes.push((node_pub_key.clone(), node_provider.clone()));
 		}
 
-		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
+		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false, customer_deposit_contract.clone());
 		next_block::<T>();
 
-		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterProtocolParams::default())?;
+		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, default_cluster_protocol_params::<T>())?;
 
 		for j in 0 .. m {
 			let (node_pub_key, node_provider) = &cluster_nodes.get(j as usize).unwrap();
@@ -377,6 +415,7 @@ benchmarks! {
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
 		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5);
+		let customer_deposit_contract = create_account::<T>("customer-deposit-contract");
 
 		let mut cluster_nodes: Vec<(NodePubKey, T::AccountId)> = Vec::new();
 
@@ -386,10 +425,10 @@ benchmarks! {
 			cluster_nodes.push((node_pub_key.clone(), node_provider.clone()));
 		}
 
-		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
+		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false, customer_deposit_contract.clone());
 		next_block::<T>();
 
-		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterProtocolParams::default())?;
+		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, default_cluster_protocol_params::<T>())?;
 
 		let votes = ClusterProposalVoting::<T>::get(cluster_id).unwrap();
 		fast_forward_to::<T>(votes.end + BlockNumberFor::<T>::from(1_u32));
@@ -406,6 +445,7 @@ benchmarks! {
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
 		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5);
+		let customer_deposit_contract = create_account::<T>("customer-deposit-contract");
 
 		let mut cluster_nodes: Vec<(NodePubKey, T::AccountId)> = Vec::new();
 		for i in 0 .. 3 {
@@ -414,10 +454,10 @@ benchmarks! {
 			cluster_nodes.push((node_pub_key.clone(), node_provider.clone()));
 		}
 
-		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
+		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false, customer_deposit_contract.clone());
 		next_block::<T>();
 
-		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterProtocolParams::default())?;
+		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, default_cluster_protocol_params::<T>())?;
 
 		assert!(ClusterProposal::<T>::contains_key(cluster_id));
 		assert!(ClusterProposalVoting::<T>::contains_key(cluster_id));
@@ -434,6 +474,7 @@ benchmarks! {
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
 		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5);
+		let customer_deposit_contract = create_account::<T>("customer-deposit-contract");
 		let _ = fund_user::<T>(DdcClustersGov::<T>::account_id(), 1000);
 
 		let mut cluster_nodes: Vec<(NodePubKey, T::AccountId)> = Vec::new();
@@ -443,10 +484,10 @@ benchmarks! {
 			cluster_nodes.push((node_pub_key.clone(), node_provider.clone()));
 		}
 
-		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
+		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false, customer_deposit_contract.clone());
 		next_block::<T>();
 
-		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterProtocolParams::default())?;
+		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, default_cluster_protocol_params::<T>())?;
 
 		for i in 0 .. 3 {
 			let (node_pub_key, node_provider) = &cluster_nodes.get(i as usize).unwrap();
@@ -483,6 +524,7 @@ benchmarks! {
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
 		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5);
+		let customer_deposit_contract = create_account::<T>("customer-deposit-contract");
 
 		let mut cluster_nodes: Vec<(NodePubKey, T::AccountId)> = Vec::new();
 		for i in 0 .. 3 {
@@ -491,13 +533,13 @@ benchmarks! {
 			cluster_nodes.push((node_pub_key.clone(), node_provider.clone()));
 		}
 
-		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
+		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false, customer_deposit_contract.clone());
 		next_block::<T>();
 
-	}: activate_cluster_protocol(RawOrigin::Root, cluster_id, ClusterProtocolParams::default())
+	}: activate_cluster_protocol(RawOrigin::Root, cluster_id, default_cluster_protocol_params::<T>())
 	verify {
 		let cluster_id = ClusterId::from([1; 20]);
-		let cluster_status = <T::ClusterProtocol as ClusterQuery<T>>::get_cluster_status(&cluster_id).unwrap();
+		let cluster_status = <T::ClusterProtocol as ClusterQuery<T::AccountId>>::get_cluster_status(&cluster_id).unwrap();
 		assert_eq!(cluster_status, ClusterStatus::Activated);
 	}
 
@@ -505,6 +547,7 @@ benchmarks! {
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
 		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5);
+		let customer_deposit_contract = create_account::<T>("customer-deposit-contract");
 
 		let mut cluster_nodes: Vec<(NodePubKey, T::AccountId)> = Vec::new();
 		for i in 0 .. 3 {
@@ -513,7 +556,7 @@ benchmarks! {
 			cluster_nodes.push((node_pub_key.clone(), node_provider.clone()));
 		}
 
-		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), true);
+		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), true, customer_deposit_contract.clone());
 		next_block::<T>();
 
 	}: update_cluster_protocol(RawOrigin::Root, cluster_id, ClusterProtocolParams {
@@ -523,10 +566,14 @@ benchmarks! {
 		storage_bond_size: 10000_u128.saturated_into::<BalanceOf<T>>(),
 		storage_chill_delay: BlockNumberFor::<T>::from(20_u32),
 		storage_unbonding_delay: BlockNumberFor::<T>::from(20_u32),
-		unit_per_mb_stored: 97656,
-		unit_per_mb_streamed: 48828,
-		unit_per_put_request: 10,
-		unit_per_get_request: 5,
+		cost_per_mb_stored: 97656,
+		cost_per_mb_streamed: 48828,
+		cost_per_put_request: 10,
+		cost_per_get_request: 5,
+		cost_per_gpu_unit: 0,
+		cost_per_cpu_unit: 0,
+		cost_per_ram_unit: 0,
+		customer_deposit_contract,
 	})
 	verify {
 		let cluster_id = ClusterId::from([1; 20]);
