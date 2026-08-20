@@ -2559,7 +2559,6 @@ dependencies = [
  "pallet-ddc-nodes",
  "pallet-ddc-payouts",
  "pallet-ddc-staking",
- "pallet-ddc-verification",
  "pallet-erc20",
  "pallet-erc721",
  "pallet-fee-handler",
@@ -2606,7 +2605,6 @@ dependencies = [
  "pallet-ddc-nodes",
  "pallet-ddc-payouts",
  "pallet-ddc-staking",
- "pallet-ddc-verification",
  "pallet-erc20",
  "pallet-erc721",
  "pallet-fee-handler",
@@ -10138,33 +10136,6 @@ dependencies = [
  "polkadot-sdk",
  "scale-info",
  "substrate-test-utils",
-]
-
-[[package]]
-name = "pallet-ddc-verification"
-version = "8.0.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=mainnet-launch#616ce83255068e19f57af1e8e95224c8220cc331"
-dependencies = [
- "array-bytes 6.2.3",
- "base64ct",
- "byte-unit",
- "ddc-api",
- "ddc-dac-host",
- "ddc-primitives",
- "hex",
- "itertools 0.13.0",
- "log",
- "parity-scale-codec",
- "polkadot-ckb-merkle-mountain-range",
- "polkadot-sdk",
- "prost 0.12.6",
- "prost-build 0.13.5",
- "rand 0.8.5",
- "scale-info",
- "scopeguard",
- "serde",
- "serde_json",
- "serde_with",
 ]
 
 [[package]]

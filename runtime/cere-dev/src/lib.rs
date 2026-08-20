@@ -573,24 +573,12 @@ impl polkadot_sdk::pallet_authorship::Config for Runtime {
 	type EventHandler = (Staking, ImOnline);
 }
 
-// The pre-upgrade key set, retained so `Session::upgrade_keys` can decode what
-// is already on chain.
-impl_opaque_keys! {
-	pub struct OldSessionKeys {
-		pub grandpa: Grandpa,
-		pub babe: Babe,
-		pub im_online: ImOnline,
-		pub authority_discovery: AuthorityDiscovery,
-	}
-}
-
 impl_opaque_keys! {
 	pub struct SessionKeys {
 		pub grandpa: Grandpa,
 		pub babe: Babe,
 		pub im_online: ImOnline,
 		pub authority_discovery: AuthorityDiscovery,
-		pub ddc_verification: DdcVerification,
 	}
 }
 
@@ -1488,6 +1476,37 @@ parameter_types! {
 	};
 }
 
+// Payout inspection is not enabled on the Mainnet line.
+//
+// `pallet-ddc-payouts` requires an `InspectorAuthority` to gate its payout
+// extrinsics. On Testnet that is `DdcVerification`, but bringing that pallet in
+// would also add a fifth `SessionKeys` entry, require `UpgradeSessionKeys` (a
+// flat 50% of `max_block`), and start its off-chain worker on Mainnet every
+// tenth block.
+//
+// DDC payouts have not run on Mainnet since 2024-06-30 -- 58 billing reports,
+// none newer. So this authority denies everything: payout extrinsics reject
+// with `Unauthorized`, which changes nothing operationally, and the storage
+// migrations are unaffected (no migration calls this trait).
+//
+// REPLACE WITH `DdcVerification` in the release that re-enables payouts. Until
+// then, payouts are frozen by construction.
+pub struct NoInspectorAuthority;
+impl ddc_primitives::traits::validator::InspectorAuthority<Runtime> for NoInspectorAuthority {
+	fn is_inspector(_caller: AccountId) -> bool {
+		false
+	}
+
+	fn is_quorum_reached(_quorum: Percent, _members_count: usize) -> bool {
+		false
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn add_inspector(_validator: AccountId) -> Result<(), DispatchError> {
+		Err(DispatchError::Other("inspection disabled on the Mainnet line"))
+	}
+}
+
 impl pallet_ddc_payouts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
@@ -1500,7 +1519,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type NominatorsAndValidatorsList =
 		polkadot_sdk::pallet_staking::UseNominatorsAndValidatorsMap<Self>;
 	type VoteScoreToU64 = IdentityConvert;
-	type InspectorAuthority = DdcVerification;
+	type InspectorAuthority = NoInspectorAuthority;
 	type NodeManager = DdcNodes;
 	type AccountIdConverter = AccountId32;
 	type Hasher = BlakeTwo256;
@@ -1595,40 +1614,6 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: polkadot_sdk::frame_system::Config> Ge
 	fn get() -> T::RuntimeOrigin {
 		DdcOrigin::get()
 	}
-}
-
-parameter_types! {
-	pub const VerificationPalletId: PalletId = PalletId(*b"verifypa");
-	pub const TenPercentOfValidators: Percent = Percent::from_percent(10);
-}
-
-impl pallet_ddc_verification::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type PalletId = VerificationPalletId;
-	type WeightInfo = pallet_ddc_verification::weights::SubstrateWeight<Runtime>;
-	type ClusterProtocol = DdcClusters;
-	type ClusterManager = DdcClusters;
-	type ClusterValidator = DdcClusters;
-	type NodeManager = DdcNodes;
-	type AuthorityId = ddc_primitives::sr25519::AuthorityId;
-	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
-	type Hasher = BlakeTwo256;
-	type ValidatorStaking = polkadot_sdk::pallet_staking::Pallet<Runtime>;
-	type Currency = Balances;
-	type CustomerVisitor = DdcCustomers;
-	type BucketManager = DdcCustomers;
-	type InspReceiptsInterceptor =
-		pallet_ddc_verification::simulations::v1::SimulationReceiptsInterceptor;
-
-	type InspRedundancyFactor = TenPercentOfValidators;
-	type InspBackupsFactor = TenPercentOfValidators;
-	type DacExecConfig = DacExecConfigConst;
-
-	const OCW_INTERVAL: u16 = 1; // every 10th block
-	const TCA_INSPECTION_STEP: u64 = 0;
-	const MIN_INSP_REDUNDANCY_FACTOR: u8 = 3;
-	const MIN_INSP_BACKUPS_FACTOR: u8 = 1;
-	const INSP_BACKUP_BLOCK_DELAY: u32 = 25;
 }
 
 parameter_types! {
@@ -1848,10 +1833,6 @@ mod runtime {
 	#[runtime::pallet_index(53)]
 	pub type PoolWithdrawalFix = pallet_pool_withdrawal_fix::Pallet<Runtime>;
 
-	// APPENDED, not inserted -- see runtime/cere for the rationale. Kept in
-	// step with the cere runtime so both share one index map.
-	#[runtime::pallet_index(54)]
-	pub type DdcVerification = pallet_ddc_verification::Pallet<Runtime>;
 }
 
 /// The address format for describing accounts.
@@ -1971,7 +1952,6 @@ mod benches {
 		[pallet_ddc_staking, DdcStaking]
 		[pallet_ddc_nodes, DdcNodes]
 		[pallet_ddc_payouts, DdcPayouts]
-		[pallet_ddc_verification, DdcVerification]
 		[frame_system, SystemBench::<Runtime>]
 		[pallet_timestamp, Timestamp]
 		[pallet_treasury, Treasury]

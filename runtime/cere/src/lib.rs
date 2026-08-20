@@ -567,44 +567,15 @@ impl polkadot_sdk::pallet_authorship::Config for Runtime {
 	type EventHandler = (Staking, ImOnline);
 }
 
-// The pre-upgrade key set, retained so `Session::upgrade_keys` can decode what
-// is already on chain. Remove together with `UpgradeSessionKeys` once that
-// migration has shipped.
-impl_opaque_keys! {
-	pub struct OldSessionKeys {
-		pub grandpa: Grandpa,
-		pub babe: Babe,
-		pub im_online: ImOnline,
-		pub authority_discovery: AuthorityDiscovery,
-	}
-}
-
 impl_opaque_keys! {
 	pub struct SessionKeys {
 		pub grandpa: Grandpa,
 		pub babe: Babe,
 		pub im_online: ImOnline,
 		pub authority_discovery: AuthorityDiscovery,
-		pub ddc_verification: DdcVerification,
 	}
 }
 
-fn transform_session_keys(v: AccountId, old: OldSessionKeys) -> SessionKeys {
-	SessionKeys {
-		grandpa: old.grandpa,
-		babe: old.babe,
-		im_online: old.im_online,
-		authority_discovery: old.authority_discovery,
-		ddc_verification: {
-			let mut id: ddc_primitives::sr25519::AuthorityId =
-				polkadot_sdk::sp_core::sr25519::Public::from_raw([0u8; 32]).into();
-			let id_raw: &mut [u8] = id.as_mut();
-			id_raw[0..32].copy_from_slice(v.as_ref());
-			id_raw[0..4].copy_from_slice(b"cer!");
-			id
-		},
-	}
-}
 
 impl polkadot_sdk::pallet_session::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
@@ -1478,6 +1449,37 @@ parameter_types! {
 	};
 }
 
+// Payout inspection is not enabled on the Mainnet line.
+//
+// `pallet-ddc-payouts` requires an `InspectorAuthority` to gate its payout
+// extrinsics. On Testnet that is `DdcVerification`, but bringing that pallet in
+// would also add a fifth `SessionKeys` entry, require `UpgradeSessionKeys` (a
+// flat 50% of `max_block`), and start its off-chain worker on Mainnet every
+// tenth block.
+//
+// DDC payouts have not run on Mainnet since 2024-06-30 -- 58 billing reports,
+// none newer. So this authority denies everything: payout extrinsics reject
+// with `Unauthorized`, which changes nothing operationally, and the storage
+// migrations are unaffected (no migration calls this trait).
+//
+// REPLACE WITH `DdcVerification` in the release that re-enables payouts. Until
+// then, payouts are frozen by construction.
+pub struct NoInspectorAuthority;
+impl ddc_primitives::traits::validator::InspectorAuthority<Runtime> for NoInspectorAuthority {
+	fn is_inspector(_caller: AccountId) -> bool {
+		false
+	}
+
+	fn is_quorum_reached(_quorum: Percent, _members_count: usize) -> bool {
+		false
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn add_inspector(_validator: AccountId) -> Result<(), DispatchError> {
+		Err(DispatchError::Other("inspection disabled on the Mainnet line"))
+	}
+}
+
 impl pallet_ddc_payouts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
@@ -1490,7 +1492,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type NominatorsAndValidatorsList =
 		polkadot_sdk::pallet_staking::UseNominatorsAndValidatorsMap<Self>;
 	type VoteScoreToU64 = IdentityConvert;
-	type InspectorAuthority = DdcVerification;
+	type InspectorAuthority = NoInspectorAuthority;
 	type NodeManager = DdcNodes;
 	type AccountIdConverter = AccountId32;
 	type Hasher = BlakeTwo256;
@@ -1603,39 +1605,6 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: polkadot_sdk::frame_system::Config> Ge
 	fn get() -> T::RuntimeOrigin {
 		DdcOrigin::get()
 	}
-}
-
-parameter_types! {
-	pub const VerificationPalletId: PalletId = PalletId(*b"verifypa");
-	pub const TenPercentOfValidators: Percent = Percent::from_percent(10);
-}
-
-impl pallet_ddc_verification::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type PalletId = VerificationPalletId;
-	type WeightInfo = pallet_ddc_verification::weights::SubstrateWeight<Runtime>;
-	type ClusterProtocol = DdcClusters;
-	type ClusterManager = DdcClusters;
-	type ClusterValidator = DdcClusters;
-	type NodeManager = DdcNodes;
-	type AuthorityId = ddc_primitives::sr25519::AuthorityId;
-	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
-	type Hasher = BlakeTwo256;
-	type ValidatorStaking = polkadot_sdk::pallet_staking::Pallet<Runtime>;
-	type Currency = Balances;
-	type CustomerVisitor = DdcCustomers;
-	type BucketManager = DdcCustomers;
-	type InspReceiptsInterceptor = pallet_ddc_verification::NoReceiptsInterceptor;
-
-	type InspRedundancyFactor = TenPercentOfValidators;
-	type InspBackupsFactor = TenPercentOfValidators;
-	type DacExecConfig = DacExecConfigConst;
-
-	const OCW_INTERVAL: u16 = 10; // every 10th block
-	const TCA_INSPECTION_STEP: u64 = 0;
-	const MIN_INSP_REDUNDANCY_FACTOR: u8 = 3;
-	const MIN_INSP_BACKUPS_FACTOR: u8 = 3;
-	const INSP_BACKUP_BLOCK_DELAY: u32 = 25;
 }
 
 parameter_types! {
@@ -1862,14 +1831,6 @@ mod runtime {
 	#[runtime::pallet_index(53)]
 	pub type PoolWithdrawalFix = pallet_pool_withdrawal_fix::Pallet<Runtime>;
 
-	// APPENDED, not inserted. Staging places DdcVerification at index 40, which
-	// shifts every pallet below it and breaks stored values whose SCALE encoding
-	// embeds a pallet index: `RuntimeHoldReason` in `Balances::Holds`
-	// (24 entries / 17.16M CERE), `RuntimeCall` in `TechComm::ProposalOf`, and
-	// `OriginCaller` in `Scheduler::Agenda`. Appending leaves every existing
-	// Mainnet index untouched, so none of those need a migration.
-	#[runtime::pallet_index(54)]
-	pub type DdcVerification = pallet_ddc_verification::Pallet<Runtime>;
 }
 
 /// The address format for describing accounts.
@@ -1944,14 +1905,6 @@ type Migrations = (
 pub mod migrations {
 	use super::*;
 
-	/// When this is removed, should also remove `OldSessionKeys`.
-	pub struct UpgradeSessionKeys;
-	impl polkadot_sdk::frame_support::traits::OnRuntimeUpgrade for UpgradeSessionKeys {
-		fn on_runtime_upgrade() -> Weight {
-			Session::upgrade_keys::<OldSessionKeys, _>(transform_session_keys);
-			Perbill::from_percent(50) * RuntimeBlockWeights::get().max_block
-		}
-	}
 
 	pub type Unreleased = (
 		// pallet_ddc_customers::migrations::v2::MigrateToV2<Runtime>, // ignore the addition of
@@ -1959,7 +1912,6 @@ pub mod migrations {
 		pallet_ddc_clusters::migrations::v3::MigrateToV3<Runtime>,
 		// pallet_ddc_nodes::migrations::v1::MigrateToV1<Runtime>, // ignore the addition of
 		// `total_usage` field as it was never deployed on MAINNET
-		UpgradeSessionKeys,
 		// pallet_ddc_verification::migrations::v1::MigrateToV1<Runtime>, // ignore as the
 		// `ddc-verification` pallet was never deployed on MAINNET
 		pallet_ddc_payouts::migrations::v1::MigrateToV1<Runtime>,
@@ -2018,7 +1970,6 @@ mod benches {
 		[pallet_ddc_staking, DdcStaking]
 		[pallet_ddc_nodes, DdcNodes]
 		[pallet_ddc_payouts, DdcPayouts]
-		[pallet_ddc_verification, DdcVerification]
 		[pallet_election_provider_multi_phase, ElectionProviderMultiPhase]
 		[pallet_election_provider_support_benchmarking, EPSBench::<Runtime>]
 		[pallet_fast_unstake, FastUnstake]
