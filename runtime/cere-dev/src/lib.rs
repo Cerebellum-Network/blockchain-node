@@ -1766,8 +1766,13 @@ parameter_types! {
 /// operator submissions -- not a raw feed.
 pub struct CereUsdRate;
 impl pallet_ddc_payouts::PriceProvider for CereUsdRate {
-	fn current_rate() -> Option<u128> {
-		PriceOracle::get(&PriceKey::CereUsd).map(|timestamped| timestamped.value)
+	fn current_rate() -> Option<(u128, u64)> {
+		// The observation time travels with the rate. orml writes its combined
+		// value only on a feed and never expires it, so once the feeders fall
+		// silent this keeps returning the last median -- and the payouts pallet
+		// needs the timestamp to tell a frozen answer from a fresh one.
+		PriceOracle::get(&PriceKey::CereUsd)
+			.map(|timestamped| (timestamped.value, timestamped.timestamp))
 	}
 }
 
