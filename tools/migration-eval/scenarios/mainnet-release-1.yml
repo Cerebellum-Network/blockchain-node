@@ -1,0 +1,89 @@
+# Release 1 of the Mainnet launch line: spec 73158 -> 73159.
+#
+# This scenario is a SPECIFICATION, not a description: it asserts what release 1
+# must do to Mainnet state, independent of what the current code does. Every
+# assertion passes as of the fixes in `feat/migration-fixes`. Do not add
+# `expect: fails` to silence a regression — a failure here is the point.
+name: mainnet-release-1
+description: >
+  Ported DDC pallets with the payout inspector stubbed. Migrates
+  clusters 2->6, nodes 0->2, payouts 0->5, customers 1->4.
+  customers 4->5 is deliberately out of scope (release 2).
+
+fork:
+  endpoint: wss://rpc.mainnet.cere.network/ws
+  at: latest
+  # The runtime imports ext_ddc_dac_close_session_version_1 from ddc-dac-host.
+  # Chopsticks provides only the standard host set, so without this it fails at
+  # instantiation. Unresolved imports then trap only if actually called —
+  # migrations touch storage, not DAC sessions, so this is safe here.
+  allowUnresolvedImports: true
+  # Lazy per-key fetching against a ~1s-per-call endpoint stalls block building.
+  prefetch: [System, Balances, DdcCustomers, DdcClusters, DdcNodes, DdcPayouts, DdcStaking]
+
+runtime:
+  wasm: ../../../target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm
+  # Pin to refuse a run against a stale artifact. Omit to skip the check.
+  # sha256: ...
+  #
+  # Pin the git revisions actually compiled INTO the wasm. substrate-wasm-builder
+  # resolves dependencies through its own Cargo.lock beside the artifact, which
+  # can diverge from the workspace lock and silently produce a wasm built from
+  # stale sources. sha256 alone cannot detect that — it proves you tested the
+  # artifact you named, not that it came from the sources you think.
+  #
+  # Build with WASM_BUILD_WORKSPACE_HINT=<workspace root> so the two agree.
+  deps:
+    # Carries the payouts v1-v5 migration fixes. An earlier revision here
+    # corrupts PayoutReceipts reward sums, and the wasm looks identical.
+    ddc-payouts: 8178000c
+
+capture:
+  - DdcCustomers::Ledger
+  - DdcCustomers::Buckets
+  - DdcPayouts::ActiveBillingReports
+  - Balances::Holds
+
+drive:
+  until: mbm-cursor-clear
+  maxBlocks: 400
+
+assert:
+  weight:
+    # A block over 100% would be rejected by validators.
+    peakBlock: "<100%"
+    warnAbove: "90%"
+
+  storage:
+    - item: DdcCustomers::ClusterLedger
+      count: { equals: 535 }
+      because: v4_mbm must move all 535 ledgers, not a subset
+    - item: DdcCustomers::Ledger
+      # NOT `count:`. The new runtime renames this item to ClusterLedger, so it
+      # is absent from post-upgrade metadata and a metadata-driven query cannot
+      # distinguish "empty" from "no longer exists". Only a raw key count over
+      # the twox128 prefix can see data orphaned there.
+      rawCount: { equals: 0 }
+      because: >
+        v4_mbm must remove each source entry as it writes the destination.
+        Copying without removing strands all 535 under the old prefix, where
+        nothing reads them and nothing reports them.
+    - item: DdcCustomers::Buckets
+      count: { unchanged: true }
+      because: Bucket is byte-identical between refs, so nothing should touch it
+    - item: DdcPayouts::PayoutReceipts
+      count: { equals: 58 }
+      sum:
+        field: total_distributed_rewards
+        equalsBefore: { item: DdcPayouts::ActiveBillingReports, field: total_distributed_reward }
+      because: >
+        All 58 records must survive with reward totals byte-preserved. The
+        failure mode is silent: v1::CustomerCharge and v2 differ by one field
+        but both encode to 167 bytes, so a misaligned read decodes cleanly and
+        inflates rewards ~2.1e12x rather than erroring.
+    - item: Balances::Holds
+      count: { unchanged: true }
+      sum: { field: amount, unchanged: true }
+      because: >
+        RuntimeHoldReason's outer variant is the pallet index. Appending
+        DdcVerification instead of inserting keeps all 914 entries decodable.
