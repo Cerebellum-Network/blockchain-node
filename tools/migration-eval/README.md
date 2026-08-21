@@ -1,0 +1,101 @@
+# migration-eval
+
+Evaluates a candidate runtime's storage migrations against **real chain state**.
+
+## Why this exists
+
+Migration bugs on this chain do not look like crashes. They look like success.
+
+Evaluation round 1 found `ddc-payouts` v2 skipping all 58 Mainnet billing
+reports, then v3 reading the same bytes under a different layout that is *also*
+exactly 167 bytes — decoding cleanly and writing rewards inflated by 4.2e12×.
+try-runtime's own checks passed, because the migration's `pre_upgrade` and
+`post_upgrade` both counted undecodable entries and compared `0 == 0`.
+
+A tool that asks "did it error?" ships that. This one asks whether the **values
+still mean the same thing**, by capturing storage before and after and comparing
+the two decodings.
+
+## Usage
+
+```bash
+cargo build --release -p cere-runtime          # produce the candidate wasm
+cd tools/migration-eval && npm install
+npm run eval -- scenarios/mainnet-release-1.yml
+```
+
+Exit code is non-zero if any assertion fails.
+
+## How it works
+
+1. Fork the target chain with Chopsticks — **without** the candidate runtime, so
+   the first capture decodes with pre-upgrade metadata.
+2. Snapshot the storage items named under `capture:`.
+3. Write the candidate wasm to `:code`. `on_runtime_upgrade` fires on the next
+   block, exactly as it would from a real `set_code`.
+4. Drive blocks until `MultiBlockMigrations::Cursor` clears, recording per-block
+   weight and migration events. Capped by `maxBlocks`, so a migration that never
+   terminates fails loudly instead of hanging.
+5. Reconnect, so metadata is now post-upgrade, and snapshot again.
+6. Evaluate the assertions across the two snapshots.
+
+Steps 1 and 5 are the point: the same bytes decoded under two type universes is
+what makes a misaligned-layout migration visible.
+
+## Scenarios are specifications
+
+A scenario states what a release **must** do, and is written from evaluation
+findings *before* the fix exists. `expect: fails` marks an assertion that is
+known to fail today, so an unexpected failure is distinguishable from a known
+one.
+
+If a fix cannot satisfy an assertion and the assertion is changed instead, that
+shows up as its own diff. Treat it as a question, not a detail.
+
+## Assertions
+
+| Form | Meaning |
+|---|---|
+| `count: {equals: N}` | exactly N entries after |
+| `count: {unchanged: true}` | same count before and after |
+| `sum: {field: f, unchanged: true}` | Σf identical before and after |
+| `sum: {field: f, equalsBefore: {item, field}}` | Σf after equals Σ of another item before — for renamed storage |
+| `weight: {peakBlock: "<100%"}` | no block exceeds the limit |
+
+`because:` is required prose explaining what the assertion protects. It is
+printed on failure, so a red run explains itself.
+
+## Two Chopsticks requirements, both non-obvious
+
+- **`allowUnresolvedImports: true`** — the runtime imports
+  `ext_ddc_dac_close_session_version_1` from `ddc-dac-host`. Chopsticks provides
+  only the standard host-function set, so without this it fails at
+  instantiation. Unresolved imports then trap only if *called*; migrations touch
+  storage rather than DAC sessions, so this is safe. **A migration that calls a
+  `ddc-dac-host` function cannot be evaluated here** — use try-runtime.
+- **`prefetch:`** — lazy per-key fetching against a ~1s-per-call endpoint stalls
+  block building past any sane RPC timeout.
+
+## Runtime pinning
+
+`runtime.sha256` makes the tool refuse to run against an artifact the scenario
+was not written for. This is not theoretical: during development a scenario was
+run against a stale wasm and the unchanged result was briefly read as a fix
+failing to work. Pin it.
+
+## Limits
+
+- Chopsticks mocks consensus, so wall-clock timing means nothing. Block *counts*
+  are meaningful; block *durations* are not.
+- Migration `pre_upgrade`/`post_upgrade` hooks do not run — those need
+  try-runtime. Given round 1, that is a small loss.
+- `sum:` walks decoded JSON for a named field, matching either the Rust
+  snake_case name or the camelCase that `toJSON()` emits. A field that resolves
+  on neither side is reported as **FIELD NOT FOUND — assertion proved nothing**,
+  never as a value comparison. That distinction matters: an assertion that
+  silently reads nothing and passes is the same failure mode as a migration's
+  `ensure!(0 == 0)`, which is what this tool exists to catch.
+- The reported `spec` version does not change after the `:code` write —
+  Chopsticks caches it. Cosmetic only; the metadata genuinely updates, which is
+  observable in that `DdcCustomers::Ledger` reads as absent afterwards because
+  the new runtime renamed it to `ClusterLedger`.
