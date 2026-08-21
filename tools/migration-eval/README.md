@@ -19,10 +19,18 @@ the two decodings.
 ## Usage
 
 ```bash
-cargo build --release -p cere-runtime          # produce the candidate wasm
+# WASM_BUILD_WORKSPACE_HINT is not optional. Without it, substrate-wasm-builder
+# cannot find the workspace Cargo.lock, generates its own beside the artifact,
+# and can pin different git revisions than the workspace — producing a wasm built
+# from stale sources while the native build uses current ones.
+WASM_BUILD_WORKSPACE_HINT="$PWD" cargo build --release -p cere-runtime
+
 cd tools/migration-eval && npm install
 npm run eval -- scenarios/mainnet-release-1.yml
 ```
+
+The tool prints the git revisions it found in the wasm build's own lock file, and
+a scenario can pin them under `runtime.deps` to make a mismatch fatal.
 
 Exit code is non-zero if any assertion fails.
 
@@ -82,6 +90,19 @@ printed on failure, so a red run explains itself.
 was not written for. This is not theoretical: during development a scenario was
 run against a stale wasm and the unchanged result was briefly read as a fix
 failing to work. Pin it.
+
+**`sha256` is not sufficient on its own.** It proves you tested the artifact you
+named — not that the artifact was built from the sources you think.
+substrate-wasm-builder runs a nested cargo build with its own `Cargo.lock`
+written beside the wasm; if it cannot find the workspace lock it generates one
+independently. That happened here: the workspace resolved
+`ddc-payouts#8178000c` while the wasm was built from `#b8988623`, so a verified
+fix appeared not to work and the runtime hash was byte-identical across the
+change — correctly, because it *was* the same wasm.
+
+So the tool reads that lock and reports the revisions compiled into the artifact.
+Pin them under `runtime.deps` when a scenario depends on a specific fix being
+present.
 
 ## Limits
 

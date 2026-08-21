@@ -11,7 +11,10 @@ const scenario = parse(readFileSync(scenarioPath, 'utf8'));
 console.log(`\n  scenario  ${scenario.name}`);
 const rt = checkRuntime(scenarioPath, scenario.runtime);
 console.log(`  runtime   ${rt.wasm.split('/').slice(-1)[0]}  sha256=${rt.sha.slice(0, 16)}…  ${rt.bytes.length} bytes`);
-console.log(`  fork      ${scenario.fork.endpoint} @ ${scenario.fork.at}\n`);
+console.log(`  fork      ${scenario.fork.endpoint} @ ${scenario.fork.at}`);
+for (const [crate, d] of Object.entries(rt.deps ?? {}))
+  console.log(`  dep       ${crate.padEnd(18)} ${d.rev.slice(0, 8)}  (${d.branch})`);
+console.log('');
 
 const { proc, url } = await startFork(scenario.fork);
 let api = await connect(url);

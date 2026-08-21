@@ -17,7 +17,37 @@ export function checkRuntime(scenarioPath, runtime) {
   if (runtime.sha256 && runtime.sha256 !== sha) {
     throw new Error(`runtime sha256 mismatch\n  scenario expects ${runtime.sha256}\n  artifact is       ${sha}\nRefusing to evaluate a runtime the scenario was not written for.`);
   }
-  return { wasm, sha, bytes };
+
+  const deps = readWasmDeps(wasm);
+  for (const [crate, want] of Object.entries(runtime.deps ?? {})) {
+    const got = deps[crate];
+    if (!got) throw new Error(`scenario pins ${crate}, but it is not in the wasm build's lock file`);
+    if (!got.rev.startsWith(want))
+      throw new Error(
+        `${crate} revision mismatch\n  scenario expects ${want}\n  wasm was built from ${got.rev} (branch ${got.branch})\n` +
+        `Rebuild with WASM_BUILD_WORKSPACE_HINT set to the workspace root — wasm-builder\n` +
+        `resolves dependencies through its own lock file, which can diverge from the workspace's.`);
+  }
+  return { wasm, sha, bytes, deps };
+}
+
+/**
+ * Read the git revisions actually compiled into the wasm.
+ *
+ * substrate-wasm-builder runs a nested cargo build with its OWN Cargo.lock,
+ * written beside the artifact. If it cannot find the workspace lock it generates
+ * one independently, which can pin different revisions than the workspace —
+ * silently producing a wasm built from stale sources while the native build uses
+ * current ones. `sha256` cannot catch that: it proves you tested the artifact you
+ * named, not that the artifact came from the sources you think.
+ */
+export function readWasmDeps(wasmPath) {
+  const lock = resolve(dirname(wasmPath), 'Cargo.lock');
+  if (!existsSync(lock)) return {};
+  const out = {};
+  for (const m of readFileSync(lock, 'utf8').matchAll(/source = "git\+[^"]*\/([a-z0-9-]+)\.git\?branch=([^#"]+)#([0-9a-f]+)"/g))
+    out[m[1]] = { branch: m[2], rev: m[3] };
+  return out;
 }
 
 /**

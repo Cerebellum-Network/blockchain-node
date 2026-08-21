@@ -24,6 +24,16 @@ runtime:
   wasm: ../../../target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm
   # Pin to refuse a run against a stale artifact. Omit to skip the check.
   # sha256: ...
+  #
+  # Pin the git revisions actually compiled INTO the wasm. substrate-wasm-builder
+  # resolves dependencies through its own Cargo.lock beside the artifact, which
+  # can diverge from the workspace lock and silently produce a wasm built from
+  # stale sources. sha256 alone cannot detect that — it proves you tested the
+  # artifact you named, not that it came from the sources you think.
+  #
+  # Build with WASM_BUILD_WORKSPACE_HINT=<workspace root> so the two agree.
+  # deps:
+  #   ddc-payouts: 8178000c
 
 capture:
   - DdcCustomers::Ledger
