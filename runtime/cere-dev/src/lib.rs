@@ -174,7 +174,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 80014,
+	spec_version: 80015,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 27,
@@ -1474,6 +1474,14 @@ parameter_types! {
 
 impl pallet_ddc_payouts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
+	// USD-denominated pricing (ADR-001). Cluster protocol params are quoted in
+	// atto-USD; the rate below converts each emitted amount into CERE.
+	type PriceOracle = CereUsdRate;
+	type GovernanceOrigin = EnsureRoot<AccountId>;
+	type EpochLength = RateEpochLength;
+	type HistoryDepth = RateHistoryDepth;
+	type TimeProvider = Timestamp;
+	type MaxRateAge = MaxRateAge;
 	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
 	type PalletId = PayoutsPalletId;
 	type Currency = Balances;
@@ -1714,10 +1722,21 @@ pub enum PriceKey {
 impl orml_oracle::Config for Runtime {
 	type OnNewData = ();
 	// Median over unexpired operator submissions. Below MinimumCount fresh
-	// values the previous median is kept rather than stalling. ADR-001:
-	// MinimumCount = 2 of 3 operators, ExpiresIn = 3h.
+	// values the previous median is kept rather than stalling.
+	//
+	// MinimumCount is 1 while the feeder set is being stood up, against
+	// ADR-001's 2-of-3. At 2 a lone operator submits successfully and still
+	// produces no median at all -- `combine_data` returns the previous value,
+	// `Values` is never written, and the oracle reads empty forever. Setting 1
+	// now means oracle-operator works the day it starts rather than needing a
+	// second runtime upgrade. Raise to 2 once three feeders are live; that is a
+	// runtime change, so it wants doing before the oracle is load-bearing.
+	//
+	// Inert while rates are set by governance through `force_set_rate`, which
+	// does not consult the oracle at all. ExpiresIn stays 3h; it only bites once
+	// a feeder actually runs.
 	type CombineData =
-		orml_oracle::DefaultCombineData<Runtime, ConstU32<2>, ConstU64<10_800_000>, ()>;
+		orml_oracle::DefaultCombineData<Runtime, ConstU32<1>, ConstU64<10_800_000>, ()>;
 	type Time = Timestamp;
 	type OracleKey = PriceKey;
 	type OracleValue = u128;
@@ -1732,6 +1751,55 @@ impl orml_oracle::Config for Runtime {
 	type MaxFeedValues = ConstU32<1>;
 	#[cfg(feature = "runtime-benchmarks")]
 	type BenchmarkHelper = ();
+}
+
+parameter_types! {
+	/// How often the payouts pallet samples the oracle median into its ring.
+	/// Ten minutes: short enough that an era is priced close to the rate that
+	/// held while it ran, long enough that the ring spans days rather than hours.
+	pub const RateEpochLength: BlockNumber = 10 * MINUTES;
+	/// 4320 entries at ten minutes apart is 30 days of history. ADR-001 requires
+	/// `HistoryDepth x EpochLength` to exceed the worst-case payout lag, so that
+	/// an era retried long after the fact can still find the rate that applied
+	/// when it ran instead of halting.
+	///
+	/// Inert while rates are being forced by governance -- a forced rate is
+	/// appended about once a year, so even a 288-ring would hold centuries. It
+	/// earns its place the moment a feeder starts filling the ring every ten
+	/// minutes: at 288 the ring wraps every 48 hours, so retrying an era from
+	/// last week finds no entry effective at or before it and halts regardless
+	/// of how generous `MaxRateAge` is. 4320 costs roughly 100 KB.
+	pub const RateHistoryDepth: u32 = 4320;
+	/// One year.
+	///
+	/// The bound exists so a stalled feed halts payouts instead of billing
+	/// against a rate nobody is still vouching for. While the rate is set by
+	/// governance through `force_set_rate` there is no staleness to detect -- a
+	/// manual set is a deliberate act -- and a three-hour bound would halt every
+	/// era three hours afterwards.
+	///
+	/// This is the wrong value once a feeder is live: at a year, a feed that
+	/// died in January still prices eras in December. Shorten it to hours in the
+	/// same change that raises MinimumCount to 2.
+	pub const MaxRateAge: u64 = 31_536_000_000;
+}
+
+/// Exposes the oracle's combined CERE/USD median to the payouts pallet.
+///
+/// The pallet deliberately does not depend on orml: it declares its own
+/// `PriceProvider` boundary and this adapter is the only place the two meet.
+/// Read here is the aggregate the oracle already combined -- median of unexpired
+/// operator submissions -- not a raw feed.
+pub struct CereUsdRate;
+impl pallet_ddc_payouts::PriceProvider for CereUsdRate {
+	fn current_rate() -> Option<(u128, u64)> {
+		// The observation time travels with the rate. orml writes its combined
+		// value only on a feed and never expires it, so once the feeders fall
+		// silent this keeps returning the last median -- and the payouts pallet
+		// needs the timestamp to tell a frozen answer from a fresh one.
+		PriceOracle::get(&PriceKey::CereUsd)
+			.map(|timestamped| (timestamped.value, timestamped.timestamp))
+	}
 }
 
 #[polkadot_sdk::frame_support::runtime]
