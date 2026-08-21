@@ -9,6 +9,14 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
+env:
+  # Feed the GH_READ_TOKEN rewrite to git through its environment form rather
+  # than `git config --global`. The self-hosted pool does not set HOME, so the
+  # config-file form exits 128 there and the token never gets installed.
+  GIT_CONFIG_COUNT: 1
+  GIT_CONFIG_KEY_0: url.https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/.insteadOf
+  GIT_CONFIG_VALUE_0: https://github.com/
+
 permissions:
   id-token: write
   contents: read
@@ -50,8 +58,6 @@ jobs:
           toolchain: 1.91.0
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
-      - name: Configure Git
-        run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
       - name: Basic vulnerability check
         run: |
           # Use cargo tree to check for known vulnerabilities
@@ -75,7 +81,7 @@ jobs:
         with:
           submodules: true
       - name: Install linux dependencies
-        run: sudo apt update && sudo apt install -y cargo clang libclang-dev libssl-dev llvm libudev-dev protobuf-compiler
+        run: sudo apt update && sudo apt install -y clang libclang-dev libssl-dev llvm libudev-dev protobuf-compiler
       - name: Install toolchain and rust-src
         uses: dtolnay/rust-toolchain@master
         with:
@@ -87,8 +93,6 @@ jobs:
         with:
           shared-key: "runtime-build"
           cache-on-failure: true
-      - name: Configure Git
-        run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
       - name: Check Runtime Build (Optimized)
         run: |
           # Build with optimizations for speed
@@ -108,7 +112,7 @@ jobs:
         with:
           submodules: true
       - name: Install linux dependencies
-        run: sudo apt update && sudo apt install -y cargo clang libclang-dev libssl-dev llvm libudev-dev protobuf-compiler
+        run: sudo apt update && sudo apt install -y clang libclang-dev libssl-dev llvm libudev-dev protobuf-compiler
       - name: Install toolchain and rust-src
         uses: dtolnay/rust-toolchain@master
         with:
@@ -120,8 +124,6 @@ jobs:
         with:
           shared-key: "runtime-build"
           cache-on-failure: true
-      - name: Configure Git
-        run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
       - name: Install try-runtime
         run: cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.8.0 --locked
       - name: Build for try-runtime
@@ -142,7 +144,7 @@ jobs:
         with:
           submodules: true
       - name: Install linux dependencies
-        run: sudo apt update && sudo apt install -y cargo clang libclang-dev libssl-dev llvm libudev-dev protobuf-compiler
+        run: sudo apt update && sudo apt install -y clang libclang-dev libssl-dev llvm libudev-dev protobuf-compiler
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -154,8 +156,6 @@ jobs:
         with:
           shared-key: "clippy-build"
           cache-on-failure: true
-      - name: Configure Git
-        run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
       - name: Check with Clippy (Optimized)
         run: |
           # Run clippy with incremental compilation.
@@ -187,15 +187,13 @@ jobs:
             echo "HOME=${RUNNER_TEMP}" >> "$GITHUB_ENV"
           fi
       - name: Install linux dependencies
-        run: sudo apt update && sudo apt install -y cargo clang libclang-dev libssl-dev llvm libudev-dev protobuf-compiler make pkg-config
+        run: sudo apt update && sudo apt install -y clang libclang-dev libssl-dev llvm libudev-dev protobuf-compiler make pkg-config
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.91.0
           targets: wasm32-unknown-unknown
           components: rust-src
-      - name: Configure Git
-        run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
       - name: Enhanced Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
