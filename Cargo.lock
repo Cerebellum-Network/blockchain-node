@@ -10101,7 +10101,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=mainnet-launch#7368b9e908851d2e7a10fd994b5e5b33aeed026c"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=mainnet-launch#8178000cd9a2549a204ef59e724aade1b6669f8f"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",

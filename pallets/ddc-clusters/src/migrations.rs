@@ -459,7 +459,12 @@ pub mod v3 {
 			on_chain_version
 		);
 
-		if on_chain_version == 2 && current_version == 3 {
+		// `>=`, not `==`. The pallet declares STORAGE_VERSION = 6, so an equality
+		// test against 3 can never hold and this migration silently no-ops --
+		// leaving the chain at version 2 while the runtime decodes its storage as
+		// 6, and stalling v4/v5/v6 which each guard on the previous version. v3 is
+		// the first link, so the whole 2 -> 6 chain depends on this comparison.
+		if on_chain_version == 2 && current_version >= 3 {
 			let mut translated = 0u64;
 			let count = v2::Clusters::<T>::iter().count();
 			info!(
