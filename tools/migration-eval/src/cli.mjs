@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parse } from 'yaml';
 import { checkRuntime, startFork } from './fork.mjs';
-import { connect, capture, drive, evaluate } from './engine.mjs';
+import { connect, capture, drive, evaluate, countRawPrefix } from './engine.mjs';
 
 const scenarioPath = resolve(process.argv[2] ?? 'scenarios/mainnet-release-1.yml');
 const scenario = parse(readFileSync(scenarioPath, 'utf8'));
@@ -45,7 +45,12 @@ try {
   console.log(`\n  spec ${specBefore} -> ${specAfter},  blocks driven ${run.blocks.length}`);
 
   const after = await capture(api, [...(scenario.capture ?? []), ...(scenario.assert?.storage ?? []).map((s) => s.item)]);
-  const results = evaluate(scenario, before, after, run);
+  // Raw-prefix counts, for items whose metadata entry disappears in the upgrade.
+  const raw = {};
+  for (const s of scenario.assert?.storage ?? [])
+    if (s.rawCount) raw[s.item] = await countRawPrefix(api, s.item);
+
+  const results = evaluate(scenario, before, after, run, raw);
 
   console.log(`\n  ${'-'.repeat(66)}`);
   let failed = 0, surprises = 0;

@@ -65,6 +65,7 @@ shows up as its own diff. Treat it as a question, not a detail.
 | Form | Meaning |
 |---|---|
 | `count: {equals: N}` | exactly N entries after |
+| `rawCount: {equals: N}` | N keys under the raw `twox128` prefix, bypassing metadata |
 | `count: {unchanged: true}` | same count before and after |
 | `sum: {field: f, unchanged: true}` | Σf identical before and after |
 | `sum: {field: f, equalsBefore: {item, field}}` | Σf after equals Σ of another item before — for renamed storage |
@@ -72,6 +73,15 @@ shows up as its own diff. Treat it as a question, not a detail.
 
 `because:` is required prose explaining what the assertion protects. It is
 printed on failure, so a red run explains itself.
+
+**Use `rawCount:` when a migration renames a storage item.** The old item is
+absent from post-upgrade metadata, so a metadata-driven `count:` cannot tell
+"the prefix is empty" from "the item no longer exists" — it reports `n/a` either
+way, and the assertion can never pass however the migration behaves. `rawCount:`
+pages `state_getKeysPaged` over `twox128(pallet) ++ twox128(item)` and sees data
+orphaned under a prefix the runtime has stopped declaring. That is the shape of
+the `v4_mbm` copy-without-remove bug: 535 entries left somewhere the runtime no
+longer looks.
 
 ## Two Chopsticks requirements, both non-obvious
 

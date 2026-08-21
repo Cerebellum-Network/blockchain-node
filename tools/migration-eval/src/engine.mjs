@@ -1,10 +1,38 @@
 import { ApiPromise, WsProvider } from '@polkadot/api';
+import { xxhashAsU8a, } from '@polkadot/util-crypto';
+import { u8aConcat, u8aToHex } from '@polkadot/util';
 
 export const connect = (url) =>
   ApiPromise.create({ provider: new WsProvider(url, 2500, {}, 900000), noInitWarn: true });
 
 const split = (spec) => { const [p, i] = spec.split('::'); return [lower(p), lower(i)]; };
 const lower = (s) => s.charAt(0).toLowerCase() + s.slice(1);
+
+/**
+ * Count keys under a storage prefix by raw hash, bypassing metadata entirely.
+ *
+ * Needed because a migration that renames a storage item leaves the OLD prefix
+ * absent from post-upgrade metadata — so a metadata-driven query cannot tell
+ * "the prefix is empty" from "the item no longer exists". Data orphaned under a
+ * dead prefix is invisible to `capture()` and visible here.
+ */
+export async function countRawPrefix(api, spec) {
+  const [pallet, item] = spec.split('::');
+  const prefix = api.query[lower(pallet)]?.[lower(item)]?.keyPrefix?.();
+  // If the item is gone from metadata, derive the prefix from the names instead.
+  const hex = prefix
+    ? prefix.toHex()
+    : u8aToHex(u8aConcat(xxhashAsU8a(pallet, 128), xxhashAsU8a(item, 128)));
+  let total = 0, start = undefined;
+  for (;;) {
+    const page = await api.rpc.state.getKeysPaged(hex, 1000, start);
+    if (!page.length) break;
+    total += page.length;
+    start = page[page.length - 1].toHex();
+    if (page.length < 1000) break;
+  }
+  return total;
+}
 
 /**
  * Snapshot named storage items, decoded with whatever metadata the connection
@@ -68,8 +96,9 @@ export async function drive(api, { maxBlocks = 400 } = {}) {
   return { maxBlock, blocks, terminated: done };
 }
 
-/** Evaluate the scenario's assertions against before/after captures. */
-export function evaluate(scenario, before, after, run) {
+/** Evaluate the scenario's assertions against before/after captures.
+ *  `raw` holds raw-prefix key counts for items asserted with `rawCount:`. */
+export function evaluate(scenario, before, after, run, raw = {}) {
   const results = [];
   const a = scenario.assert ?? {};
 
@@ -96,6 +125,12 @@ export function evaluate(scenario, before, after, run) {
     if (s.sum?.unchanged) {
       const b = sumField(bef, s.sum.field), f = sumField(aft, s.sum.field);
       results.push(sumResult(s, `sum(${s.sum.field}) unchanged`, b, f, b !== null && b === f));
+    }
+    if (s.rawCount?.equals !== undefined) {
+      const got = raw[s.item];
+      results.push(check(s, `raw prefix key count == ${s.rawCount.equals}`,
+        got === s.rawCount.equals,
+        `${got} keys under twox128 prefix${got === s.rawCount.equals ? '' : ' — data orphaned under a prefix the runtime no longer declares'}`));
     }
     if (s.sum?.equalsBefore) {
       const b = sumField(before[s.sum.equalsBefore.item], s.sum.equalsBefore.field);

@@ -57,8 +57,12 @@ assert:
       because: v4_mbm must move all 535 ledgers, not a subset
       expect: fails
     - item: DdcCustomers::Ledger
-      count: { equals: 0 }
-      because: v4_mbm currently copies without removing, stranding the source prefix
+      # NOT `count:`. The new runtime renames this item to ClusterLedger, so it
+      # is absent from post-upgrade metadata and a metadata-driven query cannot
+      # distinguish "empty" from "no longer exists". Only a raw key count over
+      # the twox128 prefix can see data orphaned there.
+      rawCount: { equals: 0 }
+      because: v4_mbm currently copies without removing, stranding all 535 entries
       expect: fails
     - item: DdcCustomers::Buckets
       count: { unchanged: true }
