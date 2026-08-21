@@ -41,8 +41,12 @@ try {
   // Reconnect so polkadot-js picks up POST-upgrade metadata.
   await api.disconnect();
   api = await connect(url);
-  const specAfter = (await api.rpc.state.getRuntimeVersion()).specVersion.toNumber();
-  console.log(`\n  spec ${specBefore} -> ${specAfter},  blocks driven ${run.blocks.length}`);
+  // `state_getRuntimeVersion` reports the version chopsticks resolved for the
+  // fork, not the one the head is running, so it does not move across a
+  // `:code` swap. System::LastRuntimeUpgrade is written by frame_executive
+  // itself while applying the upgrade, so it is the authoritative record.
+  const specAfter = (await api.query.system.lastRuntimeUpgrade()).unwrap().specVersion.toNumber();
+  console.log(`\n  spec ${specBefore} -> ${specAfter} (System::LastRuntimeUpgrade),  blocks driven ${run.blocks.length}`);
 
   const after = await capture(api, [...(scenario.capture ?? []), ...(scenario.assert?.storage ?? []).map((s) => s.item)]);
   // Raw-prefix counts, for items whose metadata entry disappears in the upgrade.
@@ -51,6 +55,18 @@ try {
     if (s.rawCount) raw[s.item] = await countRawPrefix(api, s.item);
 
   const results = evaluate(scenario, before, after, run, raw);
+
+  // A candidate that forgets to bump spec_version is a silent no-op on a real
+  // chain: frame_executive only runs on_runtime_upgrade when the runtime's
+  // spec_version differs from System::LastRuntimeUpgrade. Assert it explicitly
+  // rather than leaving it to a reader to notice two equal numbers.
+  results.unshift({
+    name: 'spec_version bumped by the candidate runtime',
+    ok: specAfter > specBefore,
+    severity: 'fail',
+    detail: `${specBefore} -> ${specAfter}`,
+    because: 'frame_executive skips on_runtime_upgrade entirely when spec_version is unchanged, so no migration would run on Mainnet',
+  });
 
   console.log(`\n  ${'-'.repeat(66)}`);
   let failed = 0, surprises = 0;

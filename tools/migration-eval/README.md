@@ -30,7 +30,21 @@ npm run eval -- scenarios/mainnet-release-1.yml
 ```
 
 The tool prints the git revisions it found in the wasm build's own lock file, and
-a scenario can pin them under `runtime.deps` to make a mismatch fatal.
+a scenario can pin them under `runtime.deps` to make a mismatch fatal. Printing
+is not checking: a revision that only appears in the log proves nothing about
+what the run enforced. Pin what the scenario depends on.
+
+To evaluate a build outside the default target dir — a second worktree, a shared
+`CARGO_TARGET_DIR` — set `MIGRATION_EVAL_WASM` rather than editing the scenario's
+`wasm:` path. Editing it forks the file, and a scenario that diverges from the one
+in git is a scenario nobody has actually run:
+
+```bash
+MIGRATION_EVAL_WASM=/path/to/cere_runtime.compact.compressed.wasm \
+  npm run eval -- scenarios/mainnet-release-1.yml
+```
+
+The override is announced in the output, never silent.
 
 Exit code is non-zero if any assertion fails.
 
@@ -56,6 +70,11 @@ A scenario states what a release **must** do, and is written from evaluation
 findings *before* the fix exists. `expect: fails` marks an assertion that is
 known to fail today, so an unexpected failure is distinguishable from a known
 one.
+
+**Remove `expect: fails` the moment the fix lands.** Left behind, it reclassifies
+a future regression as already-known and drops it out of the unexpected count —
+the scenario goes quiet exactly when it should shout. It is scaffolding for a
+known-broken window, not a permanent annotation.
 
 If a fix cannot satisfy an assertion and the assertion is changed instead, that
 shows up as its own diff. Treat it as a question, not a detail.
@@ -126,7 +145,11 @@ present.
   never as a value comparison. That distinction matters: an assertion that
   silently reads nothing and passes is the same failure mode as a migration's
   `ensure!(0 == 0)`, which is what this tool exists to catch.
-- The reported `spec` version does not change after the `:code` write —
-  Chopsticks caches it. Cosmetic only; the metadata genuinely updates, which is
-  observable in that `DdcCustomers::Ledger` reads as absent afterwards because
-  the new runtime renamed it to `ClusterLedger`.
+- `state_getRuntimeVersion` reports the version Chopsticks resolved for the fork,
+  not the one the head is executing, so it does not move across a `:code` write.
+  The tool therefore reads the applied version from `System::LastRuntimeUpgrade`,
+  which `frame_executive` writes while applying the upgrade, and asserts that it
+  advanced. This is not cosmetic: `frame_executive` runs `on_runtime_upgrade`
+  only when the runtime's `spec_version` differs from that value, so a release
+  that forgets the bump is a silent no-op on a real chain — every migration
+  skipped, no error anywhere. It is the one check that catches that.

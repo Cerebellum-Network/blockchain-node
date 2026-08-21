@@ -1,8 +1,9 @@
 # Release 1 of the Mainnet launch line: spec 73158 -> 73159.
 #
-# This scenario is a SPECIFICATION, not a description. It asserts what release 1
-# must do to Mainnet state. It is expected to FAIL until the migration fixes
-# land — see `expect` on each assertion for the currently-known result.
+# This scenario is a SPECIFICATION, not a description: it asserts what release 1
+# must do to Mainnet state, independent of what the current code does. Every
+# assertion passes as of the fixes in `feat/migration-fixes`. Do not add
+# `expect: fails` to silence a regression — a failure here is the point.
 name: mainnet-release-1
 description: >
   Ported DDC pallets with the payout inspector stubbed. Migrates
@@ -32,8 +33,10 @@ runtime:
   # artifact you named, not that it came from the sources you think.
   #
   # Build with WASM_BUILD_WORKSPACE_HINT=<workspace root> so the two agree.
-  # deps:
-  #   ddc-payouts: 8178000c
+  deps:
+    # Carries the payouts v1-v5 migration fixes. An earlier revision here
+    # corrupts PayoutReceipts reward sums, and the wasm looks identical.
+    ddc-payouts: 8178000c
 
 capture:
   - DdcCustomers::Ledger
@@ -55,15 +58,16 @@ assert:
     - item: DdcCustomers::ClusterLedger
       count: { equals: 535 }
       because: v4_mbm must move all 535 ledgers, not a subset
-      expect: fails
     - item: DdcCustomers::Ledger
       # NOT `count:`. The new runtime renames this item to ClusterLedger, so it
       # is absent from post-upgrade metadata and a metadata-driven query cannot
       # distinguish "empty" from "no longer exists". Only a raw key count over
       # the twox128 prefix can see data orphaned there.
       rawCount: { equals: 0 }
-      because: v4_mbm currently copies without removing, stranding all 535 entries
-      expect: fails
+      because: >
+        v4_mbm must remove each source entry as it writes the destination.
+        Copying without removing strands all 535 under the old prefix, where
+        nothing reads them and nothing reports them.
     - item: DdcCustomers::Buckets
       count: { unchanged: true }
       because: Bucket is byte-identical between refs, so nothing should touch it
@@ -73,9 +77,10 @@ assert:
         field: total_distributed_rewards
         equalsBefore: { item: DdcPayouts::ActiveBillingReports, field: total_distributed_reward }
       because: >
-        payouts v2 skips all 58 records and v3 reads them under a misaligned
-        layout that is also 167 bytes, inflating rewards ~4.2e12x
-      expect: fails
+        All 58 records must survive with reward totals byte-preserved. The
+        failure mode is silent: v1::CustomerCharge and v2 differ by one field
+        but both encode to 167 bytes, so a misaligned read decodes cleanly and
+        inflates rewards ~2.1e12x rather than erroring.
     - item: Balances::Holds
       count: { unchanged: true }
       sum: { field: amount, unchanged: true }

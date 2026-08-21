@@ -10,7 +10,13 @@ const toolDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 /** Verify the candidate wasm is the artifact the scenario expects. */
 export function checkRuntime(scenarioPath, runtime) {
-  const wasm = resolve(dirname(scenarioPath), runtime.wasm);
+  // MIGRATION_EVAL_WASM points a scenario at a build outside the default target
+  // dir (a second worktree, a shared CARGO_TARGET_DIR) without editing — and so
+  // forking — the scenario file. Announced, never silent: evaluating a different
+  // artifact than the scenario names must be visible in the log.
+  const override = process.env.MIGRATION_EVAL_WASM;
+  const wasm = override ? resolve(override) : resolve(dirname(scenarioPath), runtime.wasm);
+  if (override) console.log(`  NOTE      wasm overridden by MIGRATION_EVAL_WASM, not the scenario's path`);
   if (!existsSync(wasm)) throw new Error(`runtime wasm not found: ${wasm}\nBuild it first: cargo build --release -p cere-runtime`);
   const bytes = readFileSync(wasm);
   const sha = createHash('sha256').update(bytes).digest('hex');
