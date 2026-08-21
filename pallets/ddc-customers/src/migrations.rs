@@ -740,7 +740,7 @@ pub mod v4_mbm {
 						Self::ledgers_step(Some(maybe_last_ledger), Some(maybe_cluster_id))
 					},
 					Some(MigrationState::TransferringBalance(cluster_id)) => {
-						Self::transfer_balance_step(cluster_id)
+						Self::transfer_balance_step(cluster_id)?
 					},
 					Some(MigrationState::Finished) => {
 						StorageVersion::new(Self::id().version_to as u16).put::<Pallet<T>>();
@@ -872,15 +872,29 @@ pub mod v4_mbm {
 
 			if let Some((key, ledger)) = iter.next() {
 				ClusterLedger::<T>::insert(cluster_id, key.clone(), ledger);
+				// Remove the source entry. Without this the migration only
+				// COPIES: every ledger stays under `DdcCustomers::Ledger`, a
+				// prefix the post-migration runtime no longer declares, so the
+				// data is orphaned where nothing will ever read it again and no
+				// metadata-driven query can even see it.
+				v4_mbm::Ledger::<T>::remove(&key);
 				MigrationState::MigratingLedgers(key, cluster_id)
 			} else {
 				MigrationState::TransferringBalance(cluster_id)
 			}
 		}
 
+		/// Sweep the pallet account into the cluster vault.
+		///
+		/// Returns `Err` on failure rather than logging and continuing. The
+		/// previous behaviour advanced to `Finished` regardless, which bumped
+		/// the storage version with the customer deposits still sitting in the
+		/// pallet account -- a migration reporting success having moved no
+		/// money. `FailedMigrationHandler` is `FreezeChainOnFailedMigration`, so
+		/// failing here halts rather than proceeding on false state.
 		pub(crate) fn transfer_balance_step(
 			cluster_id: &ClusterId,
-		) -> MigrationState<T::AccountId> {
+		) -> Result<MigrationState<T::AccountId>, SteppedMigrationError> {
 			let pallet_account_id = crate::Pallet::<T>::pallet_account_id();
 			let cluster_vault_id = crate::Pallet::<T>::cluster_vault_id(cluster_id);
 
@@ -893,7 +907,12 @@ pub mod v4_mbm {
 					pallet_balance,
 					ExistenceRequirement::AllowDeath,
 				) {
-					log::error!("❌ Error transferring balance: {:?}. Resolve this issue manually after the migration.", e);
+					log::error!(
+						"❌ Error transferring {:?} from pallet {:?} to cluster vault {:?}: {:?}. \
+						 Failing the migration rather than advancing with the deposits unmoved.",
+						pallet_balance, pallet_account_id, cluster_vault_id, e
+					);
+					return Err(SteppedMigrationError::Failed);
 				} else {
 					log::info!(
 						"✅ Successfully transferred {:?} tokens from pallet {:?} to cluster vault {:?}",
@@ -904,7 +923,7 @@ pub mod v4_mbm {
 				}
 			}
 
-			MigrationState::Finished
+			Ok(MigrationState::Finished)
 		}
 
 		pub(crate) fn required_weight(step: &MigrationState<T::AccountId>) -> Weight {

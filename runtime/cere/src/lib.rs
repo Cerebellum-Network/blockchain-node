@@ -1614,7 +1614,7 @@ parameter_types! {
 impl pallet_migrations::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	#[cfg(not(feature = "runtime-benchmarks"))]
-	type Migrations = ();
+	type Migrations = migrations::UnreleasedMultiblock;
 	#[cfg(feature = "runtime-benchmarks")]
 	type Migrations = pallet_migrations::mock_helpers::MockedMigrations;
 	type CursorMaxLen = ConstU32<65_536>;
@@ -1895,6 +1895,7 @@ type Migrations = (
 		Runtime,
 		polkadot_sdk::pallet_staking::migrations::v17::MigrateDisabledToSession<Runtime>,
 	>,
+	migrations::Unreleased,
 );
 // Migrations for the DDC pallets, unreleased to Mainnet.
 //
@@ -1927,16 +1928,31 @@ pub mod migrations {
 		// removal of `total_usage` field as it was never deployed on MAINNET
 		// pallet_ddc_verification::migrations::v3::MigrateToV3<Runtime>, // ignore as the
 		// `ddc-verification` pallet was never deployed on MAINNET
-		// pallet_ddc_nodes::migrations::v0_v2::MigrateFromV0ToV2<Runtime>,
+		// Mainnet's DdcNodes storage version key is absent, ie. 0, while the
+		// pallet declares 2. StorageNode and StorageNodeProps are unchanged
+		// between the two refs apart from an append-only StorageNodeMode variant,
+		// so v1 (which added total_usage) and v2_mbm (which removed it) net out on
+		// a chain that had neither. v0_v2 bumps 0 -> 2 and touches no data.
+		// Without it the version counter lies, and the next migration guarding on
+		// `on_chain == 2` would silently skip.
+		pallet_ddc_nodes::migrations::v0_v2::MigrateFromV0ToV2<Runtime>,
 		pallet_ddc_clusters::migrations::v4::MigrateToV4<Runtime>,
 		pallet_ddc_clusters::migrations::v5::MigrateToV5<Runtime>,
 		pallet_ddc_clusters::migrations::v6::MigrateToV6<Runtime>,
 	);
 
-	pub type UnreleasedMultiblock = (
-		pallet_ddc_customers::migrations::v4_mbm::LazyMigrationV3ToV4<Runtime>,
-		pallet_ddc_customers::migrations::v5_mbm::LazyMigrationV4ToV5<Runtime>,
-	);
+	// Release 1 stops at customers v4.
+	//
+	// v5_mbm drains ClusterLedger into a per-cluster deposit contract. Mainnet has
+	// no contracts at all -- Contracts::ContractInfoOf, CodeInfoOf and
+	// PristineCode are all empty -- and the address it reads from
+	// ClustersGovParams.customer_deposit_contract cannot be bound until a
+	// referendum sets it. Wiring it now empties all 535 ledgers into nothing.
+	//
+	// v4 leaves storage coherent at version 4, so v5 ships separately once the
+	// contract is live. See docs/MAINNET_LAUNCH_PORT_RECORD.md.
+	pub type UnreleasedMultiblock =
+		(pallet_ddc_customers::migrations::v4_mbm::LazyMigrationV3ToV4<Runtime>,);
 }
 
 
