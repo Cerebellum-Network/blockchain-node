@@ -2,6 +2,8 @@
 
 #![allow(dead_code)]
 
+use polkadot_sdk::*;
+
 use ddc_primitives::{
 	traits::staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 	ClusterId, NodePubKey,
@@ -21,8 +23,6 @@ use polkadot_sdk::sp_runtime::{
 	traits::{Convert, IdentifyAccount, IdentityLookup, Verify},
 	BuildStorage, DispatchResult, MultiSignature, Perbill, Perquintill,
 };
-#[allow(unused_imports)]
-use polkadot_sdk::*;
 
 use crate::{self as pallet_ddc_clusters, *};
 
@@ -45,7 +45,7 @@ construct_runtime!(
 		Balances: polkadot_sdk::pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		DdcNodes: pallet_ddc_nodes::{Pallet, Call, Storage, Event<T>},
 		DdcClusters: pallet_ddc_clusters::{Pallet, Call, Storage, Event<T>},
-		Randomness: polkadot_sdk::pallet_insecure_randomness_collective_flip::{Pallet, Storage},
+		Randomness: pallet_insecure_randomness_collective_flip::{Pallet, Storage},
 	}
 );
 
@@ -125,7 +125,7 @@ where
 	type RuntimeCall = RuntimeCall;
 	type Extrinsic = Extrinsic;
 }
-impl polkadot_sdk::pallet_insecure_randomness_collective_flip::Config for Test {}
+impl pallet_insecure_randomness_collective_flip::Config for Test {}
 
 impl<LocalCall> polkadot_sdk::frame_system::offchain::CreateTransaction<LocalCall> for Test
 where
@@ -228,6 +228,9 @@ impl<T: Config> StakingVisitor<T> for TestStakingVisitor {
 	fn has_chilling_attempt(_node_pub_key: &NodePubKey) -> Result<bool, StakingVisitorError> {
 		Ok(false)
 	}
+	fn stash_by_ctrl(_controller: &T::AccountId) -> Result<T::AccountId, StakingVisitorError> {
+		todo!()
+	}
 }
 
 impl<T: Config> StakerCreator<T, BalanceOf<T>> for TestStaker {
@@ -254,7 +257,7 @@ pub struct ExtBuilder;
 
 impl ExtBuilder {
 	pub fn build(self) -> TestExternalities {
-		polkadot_sdk::sp_tracing::try_init_simple();
+		sp_tracing::try_init_simple();
 
 		let mut t = polkadot_sdk::frame_system::GenesisConfig::<Test>::default()
 			.build_storage()
@@ -270,7 +273,7 @@ impl ExtBuilder {
 			..Default::default()
 		}
 		.assimilate_storage(&mut t);
-
+		let customer_deposit_contract = AccountId::from([5; 32]);
 		let cluster_protocol_params = ClusterProtocolParams {
 			treasury_share: Perquintill::from_float(0.05),
 			validators_share: Perquintill::from_float(0.01),
@@ -278,10 +281,14 @@ impl ExtBuilder {
 			storage_bond_size: 100,
 			storage_chill_delay: 50,
 			storage_unbonding_delay: 50,
-			unit_per_mb_stored: 10,
-			unit_per_mb_streamed: 10,
-			unit_per_put_request: 10,
-			unit_per_get_request: 10,
+			cost_per_mb_stored: 10,
+			cost_per_mb_streamed: 10,
+			cost_per_put_request: 10,
+			cost_per_get_request: 10,
+			cost_per_gpu_unit: 0,
+			cost_per_cpu_unit: 0,
+			cost_per_ram_unit: 0,
+			customer_deposit_contract,
 		};
 
 		let node_pub_key = NodePubKey::StoragePubKey(AccountId::from([0; 32]));
@@ -295,6 +302,7 @@ impl ExtBuilder {
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
 				replication_total: 3,
+				inspection_dry_run_params: None,
 			},
 		);
 
@@ -315,7 +323,7 @@ impl ExtBuilder {
 		TestExternalities::new(t)
 	}
 	pub fn build_and_execute(self, test: impl FnOnce()) {
-		polkadot_sdk::sp_tracing::try_init_simple();
+		sp_tracing::try_init_simple();
 		let mut ext = self.build();
 		ext.execute_with(test);
 	}

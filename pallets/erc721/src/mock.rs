@@ -1,5 +1,7 @@
 #![cfg(test)]
 
+use polkadot_sdk::*;
+
 use pallet_chainbridge as bridge;
 use polkadot_sdk::frame_support::{
 	derive_impl, ord_parameter_types, parameter_types, weights::Weight,
@@ -8,8 +10,6 @@ use polkadot_sdk::frame_system::{self as system, mocking::MockBlock};
 pub use polkadot_sdk::pallet_balances as balances;
 use polkadot_sdk::sp_core::hashing::blake2_128;
 use polkadot_sdk::sp_runtime::{BuildStorage, Perbill};
-#[allow(unused_imports)]
-use polkadot_sdk::*;
 
 use crate::{self as erc721, Config};
 

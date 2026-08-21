@@ -1,0 +1,25 @@
+[package]
+name = "customer-deposit"
+version = "5.1.0"
+authors = ["Use Ink <ink@use.ink>"]
+edition = "2021"
+publish = false
+
+[dependencies]
+base64ct = { version = "=1.6.0" } # the version of `base64ct` should be pinned for ink-related requirements
+ddc-primitives = { git = "https://github.com/Cerebellum-Network/ddc-primitives.git", branch = "mainnet-launch", default-features = false }
+ink.workspace = true
+polkadot-sdk = { workspace = true, features = ["sp-runtime"] }
+
+[lib]
+path = "lib.rs"
+
+[features]
+default = ["std"]
+std = [
+  "ink/std",
+  "ddc-primitives/std",
+  "polkadot-sdk/std",
+]
+
+ink-as-dependency = []

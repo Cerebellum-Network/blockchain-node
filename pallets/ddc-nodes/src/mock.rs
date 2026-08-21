@@ -2,6 +2,8 @@
 
 #![allow(dead_code)]
 
+use polkadot_sdk::*;
+
 use ddc_primitives::traits::staking::{StakingVisitor, StakingVisitorError};
 use polkadot_sdk::frame_support::{
 	construct_runtime, derive_impl, parameter_types,
@@ -9,17 +11,19 @@ use polkadot_sdk::frame_support::{
 };
 use polkadot_sdk::frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
 use polkadot_sdk::sp_io::TestExternalities;
-use polkadot_sdk::sp_runtime::{traits::IdentityLookup, BuildStorage};
-#[allow(unused_imports)]
-use polkadot_sdk::*;
+use polkadot_sdk::sp_runtime::{
+	traits::{IdentifyAccount, IdentityLookup, Verify},
+	BuildStorage, MultiSignature,
+};
 
 use crate::{self as pallet_ddc_nodes, *};
 
 /// The AccountId alias in this test module.
-pub(crate) type AccountId = u64;
+pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 pub(crate) type AccountIndex = u64;
 pub(crate) type BlockNumber = u64;
 pub(crate) type Balance = u128;
+pub type Signature = MultiSignature;
 
 type UncheckedExtrinsic = MockUncheckedExtrinsic<Test>;
 type Block = MockBlock<Test>;
@@ -90,6 +94,10 @@ impl<T: Config> StakingVisitor<T> for TestStakingVisitor {
 	fn has_chilling_attempt(_node_pub_key: &NodePubKey) -> Result<bool, StakingVisitorError> {
 		Ok(false)
 	}
+
+	fn stash_by_ctrl(_controller: &T::AccountId) -> Result<T::AccountId, StakingVisitorError> {
+		todo!()
+	}
 }
 
 pub(crate) type TestRuntimeCall = <Test as polkadot_sdk::frame_system::Config>::RuntimeCall;
@@ -98,14 +106,15 @@ pub struct ExtBuilder;
 
 impl ExtBuilder {
 	pub fn build(self) -> TestExternalities {
-		polkadot_sdk::sp_tracing::try_init_simple();
+		sp_tracing::try_init_simple();
 
 		let mut t = polkadot_sdk::frame_system::GenesisConfig::<Test>::default()
 			.build_storage()
 			.unwrap();
-
+		let account_id1 = AccountId::from([1; 32]);
+		let account_id2 = AccountId::from([2; 32]);
 		let _ = polkadot_sdk::pallet_balances::GenesisConfig::<Test> {
-			balances: vec![(1, 100), (2, 100)],
+			balances: vec![(account_id1, 100), (account_id2, 100)],
 			..Default::default()
 		}
 		.assimilate_storage(&mut t);
@@ -113,7 +122,7 @@ impl ExtBuilder {
 		TestExternalities::new(t)
 	}
 	pub fn build_and_execute(self, test: impl FnOnce()) {
-		polkadot_sdk::sp_tracing::try_init_simple();
+		sp_tracing::try_init_simple();
 		let mut ext = self.build();
 		ext.execute_with(test);
 	}

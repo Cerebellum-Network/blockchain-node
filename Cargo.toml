@@ -1,5 +1,5 @@
 [workspace.package]
-version = "7.4.0"
+version = "7.5.0"
 authors = ["Cerebellum-Network"]
 edition = "2021"
 homepage = "https://cere.network/"
@@ -23,9 +23,9 @@ members = [
   "pallets/origins",
   "pallets/pool-withdrawal-fix",
   "pallets/fee-handler",
-  "primitives",
   "runtime/cere",
   "runtime/cere-dev",
+  "contracts/customer-deposit",
 ]
 resolver = "2"
 
@@ -50,15 +50,18 @@ lazy_static = { version = "1.5.0", default-features = false }
 log = { version = "0.4.22", default-features = false }
 parking_lot = { version = "0.12.1", default-features = false }
 polkadot-ckb-merkle-mountain-range = { version = "0.8.1", default-features = false }
+prost = { version = "0.12.4", default-features = false, features = ["prost-derive"] }
 rand = { version = "0.8.5", default-features = false }
 rand_chacha = { version = "0.3.1", default-features = false }
 scale-info = { version = "2.11.6", default-features = false, features = ["derive"] }
 serde = { version = "1.0.214", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0.132", default-features = false }
+serde_with = { version = "3.12.0", default-features = false, features = ["base64", "macros"] }
 static_assertions = { version = "1.1.0" }
 url = { version = "2.5.2" }
 array-bytes = { version = "6.2.2" }
 itertools = { version = "0.13.0", default-features = false, features = ["use_alloc"] }
+scopeguard = { version = "1.2.0", default-features = false }
 
 # Substrate Dependencies
 # Please keey format such that:
@@ -176,6 +179,7 @@ substrate-frame-rpc-system = { version = "49.0.0", default-features = false }
 substrate-state-trie-migration-rpc = { version = "48.0.0", default-features = false }
 substrate-test-utils = { version = "3.0.0", default-features = false }
 substrate-wasm-builder = { version = "31.0.0", default-features = false }
+ink = { version = "5.1.0", default-features = false }
 pallet-delegated-staking = { version = "12.0.0", default-features = false }
 
 # Cere Dependenies
@@ -185,19 +189,27 @@ cere-rpc = { path = "node/rpc" }
 cere-runtime = { path = "runtime/cere" }
 cere-runtime-common = { path = "runtime/common", default-features = false }
 cere-service = { path = "node/service" }
-ddc-primitives = { path = "primitives", default-features = false }
 pallet-chainbridge = { path = "pallets/chainbridge", default-features = false }
 pallet-ddc-clusters = { path = "pallets/ddc-clusters", default-features = false }
 pallet-ddc-clusters-gov = { path = "pallets/ddc-clusters-gov", default-features = false }
 pallet-ddc-customers = { path = "pallets/ddc-customers", default-features = false }
 pallet-ddc-nodes = { path = "pallets/ddc-nodes", default-features = false }
-pallet-ddc-payouts = { path = "pallets/ddc-payouts", default-features = false }
 pallet-ddc-staking = { path = "pallets/ddc-staking", default-features = false }
 pallet-erc20 = { path = "pallets/erc20", default-features = false }
 pallet-erc721 = { path = "pallets/erc721", default-features = false }
 pallet-origins = { path = "pallets/origins", default-features = false }
 pallet-pool-withdrawal-fix = { path = "pallets/pool-withdrawal-fix", default-features = false }
 pallet-fee-handler = { path = "pallets/fee-handler", default-features = false }
+
+# Cere external dependencies.
+# All five must use the SAME branch label. Cargo keys a git source by URL *and*
+# branch, so one reference left on "staging" resolves the same commit as a
+# second, distinct crate and breaks trait bounds with unrelated-looking errors.
+ddc-primitives = { git = "https://github.com/Cerebellum-Network/ddc-primitives.git", branch = "mainnet-launch", default-features = false }
+ddc-api = { git = "https://github.com/Cerebellum-Network/ddc-api.git", branch = "mainnet-launch", default-features = false }
+ddc-dac-host = { git = "https://github.com/Cerebellum-Network/ddc-dac-host.git", branch = "mainnet-launch", default-features = false }
+pallet-ddc-verification = { git = "https://github.com/Cerebellum-Network/ddc-verification.git", branch = "mainnet-launch", default-features = false }
+pallet-ddc-payouts = { git = "https://github.com/Cerebellum-Network/ddc-payouts.git", branch = "mainnet-launch", default-features = false }
 
 # Hyperbridge (polkadot-stable2512). Only these pallets are wired into the
 # runtime; `ismp` and `pallet-ismp-runtime-api` are required transitively to

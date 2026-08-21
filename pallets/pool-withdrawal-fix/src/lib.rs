@@ -10,14 +10,13 @@ use polkadot_sdk::frame_support::pallet_prelude::Weight;
 
 #[polkadot_sdk::frame_support::pallet]
 pub mod pallet {
-	use polkadot_sdk::frame_support::{
-		pallet_prelude::*,
-		traits::{Currency, EnsureOrigin, LockableCurrency},
-	};
+	use crate::WeightInfo;
+	use polkadot_sdk::frame_support::pallet_prelude::*;
+	use polkadot_sdk::frame_support::traits::Currency;
+	use polkadot_sdk::frame_support::traits::EnsureOrigin;
+	use polkadot_sdk::frame_support::traits::LockableCurrency;
 	use polkadot_sdk::frame_system::pallet_prelude::*;
 	use polkadot_sdk::sp_staking::OnStakingUpdate;
-
-	use crate::WeightInfo;
 
 	pub type BalanceOf<T> = <<T as Config>::Currency as Currency<
 		<T as polkadot_sdk::frame_system::Config>::AccountId,
@@ -28,7 +27,11 @@ pub mod pallet {
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
-	pub trait Config: polkadot_sdk::frame_system::Config<RuntimeEvent: From<Event<Self>>> {
+	pub trait Config: polkadot_sdk::frame_system::Config {
+		/// Because this pallet emits events, it depends on the runtime's definition of an event.
+		#[allow(deprecated)]
+		type RuntimeEvent: From<Event<Self>>
+			+ IsType<<Self as polkadot_sdk::frame_system::Config>::RuntimeEvent>;
 		type Currency: LockableCurrency<Self::AccountId, Moment = BlockNumberFor<Self>>;
 		/// Integrate Delegated Pallet
 		type DelegationPalletConnector: OnStakingUpdate<Self::AccountId, BalanceOf<Self>>;

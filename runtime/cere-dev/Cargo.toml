@@ -24,6 +24,8 @@ polkadot-sdk = { workspace = true, features = ["frame-benchmarking", "frame-syst
 
 # cere dependencies
 cere-runtime-common.workspace = true
+ddc-api.workspace = true
+ddc-dac-host.workspace = true
 ddc-primitives.workspace = true
 pallet-chainbridge.workspace = true
 pallet-ddc-clusters.workspace = true
@@ -57,6 +59,8 @@ std = [
   "scale-info/std",
   "log/std",
   "polkadot-sdk/std",
+  "ddc-api/std",
+  "ddc-dac-host/std",
   "ddc-primitives/std",
   "pallet-chainbridge/std",
   "pallet-erc721/std",

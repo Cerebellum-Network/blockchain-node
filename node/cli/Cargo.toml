@@ -21,6 +21,8 @@ name = "cere"
 path = "src/main.rs"
 
 [dependencies]
+# Needed at this scope so its host functions are nameable for the benchmark dispatch.
+ddc-dac-host = { workspace = true, default-features = true }
 # 3rd-party dependencies
 clap = { workspace = true, optional = true }
 url.workspace = true
@@ -41,7 +43,7 @@ cere-service = { workspace = true, optional = true }
 substrate-build-script-utils = { workspace = true, default-features = true }
 
 [features]
-default = ["cli", "cere-dev-native"]
+default = ["cli", "cere-native", "cere-dev-native"]
 cli = [
   "clap",
   "cere-client",

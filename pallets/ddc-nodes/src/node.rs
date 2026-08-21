@@ -1,4 +1,4 @@
-#![allow(clippy::needless_lifetimes)] // ToDo
+#![allow(clippy::needless_lifetimes)]
 
 use codec::{Decode, Encode};
 use ddc_primitives::{NodeParams, NodePubKey, NodeType};

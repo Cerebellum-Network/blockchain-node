@@ -15,7 +15,6 @@
 #![allow(clippy::manual_inspect)]
 pub mod weights;
 use crate::weights::WeightInfo;
-
 #[cfg(feature = "runtime-benchmarks")]
 pub mod benchmarking;
 #[cfg(any(feature = "runtime-benchmarks", test))]
@@ -31,12 +30,12 @@ const LOG_TARGET: &str = "runtime::ddc-clusters";
 
 use ddc_primitives::{
 	traits::{
-		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery},
+		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery, ClusterValidator},
 		staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterNodeKind, ClusterNodeState,
 	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
-	ClusterProtocolParams, ClusterStatus, NodePubKey, NodeType,
+	ClusterProtocolParams, ClusterStatus, EhdEra, InspectionDryRunParams, NodePubKey, NodeType,
 };
 pub use pallet::*;
 use pallet_ddc_nodes::{NodeRepository, NodeTrait};
@@ -71,7 +70,7 @@ pub mod pallet {
 
 	/// The current storage version.
 	const STORAGE_VERSION: polkadot_sdk::frame_support::traits::StorageVersion =
-		polkadot_sdk::frame_support::traits::StorageVersion::new(2);
+		polkadot_sdk::frame_support::traits::StorageVersion::new(6);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -111,6 +110,7 @@ pub mod pallet {
 		ClusterUnbonding { cluster_id: ClusterId },
 		ClusterUnbonded { cluster_id: ClusterId },
 		ClusterNodeValidated { cluster_id: ClusterId, node_pub_key: NodePubKey, succeeded: bool },
+		ClusterEraPaid { cluster_id: ClusterId, era_id: EhdEra },
 	}
 
 	#[pallet::error]
@@ -123,10 +123,10 @@ pub mod pallet {
 		AttemptToRemoveNonExistentNode,
 		AttemptToRemoveNotAssignedNode,
 		OnlyClusterManager,
+		OnlyNodeProvider,
 		NodeIsNotAuthorized,
 		NodeHasNoActivatedStake,
 		NodeStakeIsInvalid,
-		/// Cluster candidate should not plan to chill.
 		NodeChillingIsProhibited,
 		NodeAuthContractCallFailed,
 		NodeAuthContractDeployFailed,
@@ -140,6 +140,7 @@ pub mod pallet {
 		ClusterProtocolParamsNotSet,
 		ArithmeticOverflow,
 		NodeIsNotAssignedToCluster,
+		ControllerDoesNotExist,
 	}
 
 	#[pallet::storage]
@@ -151,7 +152,7 @@ pub mod pallet {
 		_,
 		Twox64Concat,
 		ClusterId,
-		ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
+		ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>, T::AccountId>,
 	>;
 
 	#[pallet::storage]
@@ -174,7 +175,7 @@ pub mod pallet {
 		pub clusters: Vec<Cluster<T::AccountId>>,
 		#[allow(clippy::type_complexity)]
 		pub clusters_protocol_params:
-			Vec<(ClusterId, ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>)>,
+			Vec<(ClusterId, ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>, T::AccountId>)>,
 		#[allow(clippy::type_complexity)]
 		pub clusters_nodes: Vec<(ClusterId, Vec<(NodePubKey, ClusterNodeKind, ClusterNodeStatus)>)>,
 	}
@@ -209,6 +210,7 @@ pub mod pallet {
 						erasure_coding_required: cluster.props.erasure_coding_required,
 						erasure_coding_total: cluster.props.erasure_coding_total,
 						replication_total: cluster.props.replication_total,
+						inspection_dry_run_params: cluster.props.inspection_dry_run_params.clone(),
 					},
 					self.clusters_protocol_params
 						.iter()
@@ -273,7 +275,11 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			cluster_reserve_id: T::AccountId,
 			cluster_params: ClusterParams<T::AccountId>,
-			initial_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
+			initial_protocol_params: ClusterProtocolParams<
+				BalanceOf<T>,
+				BlockNumberFor<T>,
+				T::AccountId,
+			>,
 		) -> DispatchResult {
 			let cluster_manager_id = ensure_signed(origin)?;
 			Self::do_create_cluster(
@@ -311,22 +317,8 @@ pub mod pallet {
 			ensure!(!has_chilling_attempt, Error::<T>::NodeChillingIsProhibited);
 
 			// Node with this node with this public key exists.
-			let node = T::NodeRepository::get(node_pub_key.clone())
+			T::NodeRepository::get(node_pub_key.clone())
 				.map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
-
-			// Cluster extension smart contract allows joining.
-			if let Some(address) = cluster.props.node_provider_auth_contract.clone() {
-				let auth_contract = NodeProviderAuthContract::<T>::new(address, caller_id);
-
-				let is_authorized = auth_contract
-					.is_authorized(
-						node.get_provider_id().to_owned(),
-						node.get_pub_key(),
-						node.get_type(),
-					)
-					.map_err(Into::<Error<T>>::into)?;
-				ensure!(is_authorized, Error::<T>::NodeIsNotAuthorized);
-			};
 
 			Self::do_add_node(cluster, node_pub_key, node_kind)
 		}
@@ -389,10 +381,59 @@ pub mod pallet {
 			let caller_id = ensure_signed(origin)?;
 			let cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
-			// todo: allow to execute this extrinsic to Validator's OCW only
+			// todo: allow to execute this extrinsic to Validator's manager only
 			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
 
 			Self::do_validate_node(cluster_id, node_pub_key, succeeded)
+		}
+
+		#[pallet::call_index(5)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::join_cluster())]
+		pub fn join_cluster(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			node_pub_key: NodePubKey,
+		) -> DispatchResult {
+			let caller_id = ensure_signed(origin)?;
+
+			// Cluster with a given id exists and has an auth smart contract.
+			let cluster =
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			let node_provider_auth_contract_address = cluster
+				.props
+				.node_provider_auth_contract
+				.clone()
+				.ok_or(Error::<T>::NodeIsNotAuthorized)?;
+
+			// Node with this public key exists and belongs to the caller.
+			let node = T::NodeRepository::get(node_pub_key.clone())
+				.map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
+			ensure!(*node.get_provider_id() == caller_id, Error::<T>::OnlyNodeProvider);
+
+			// Sufficient funds are locked at the DDC Staking module.
+			let has_activated_stake =
+				T::StakingVisitor::has_activated_stake(&node_pub_key, &cluster_id)
+					.map_err(Into::<Error<T>>::into)?;
+			ensure!(has_activated_stake, Error::<T>::NodeHasNoActivatedStake);
+
+			// Candidate is not planning to pause operations any time soon.
+			let has_chilling_attempt = T::StakingVisitor::has_chilling_attempt(&node_pub_key)
+				.map_err(Into::<Error<T>>::into)?;
+			ensure!(!has_chilling_attempt, Error::<T>::NodeChillingIsProhibited);
+
+			// Cluster auth smart contract allows joining.
+			let auth_contract =
+				NodeProviderAuthContract::<T>::new(node_provider_auth_contract_address, caller_id);
+			let is_authorized = auth_contract
+				.is_authorized(
+					node.get_provider_id().to_owned(),
+					node.get_pub_key(),
+					node.get_type(),
+				)
+				.map_err(Into::<Error<T>>::into)?;
+			ensure!(is_authorized, Error::<T>::NodeIsNotAuthorized);
+
+			Self::do_join_cluster(cluster, node_pub_key)
 		}
 	}
 
@@ -402,7 +443,11 @@ pub mod pallet {
 			cluster_manager_id: T::AccountId,
 			cluster_reserve_id: T::AccountId,
 			cluster_params: ClusterParams<T::AccountId>,
-			initial_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
+			initial_protocol_params: ClusterProtocolParams<
+				BalanceOf<T>,
+				BlockNumberFor<T>,
+				T::AccountId,
+			>,
 		) -> DispatchResult {
 			ensure!(!Clusters::<T>::contains_key(cluster_id), Error::<T>::ClusterAlreadyExists);
 
@@ -485,7 +530,11 @@ pub mod pallet {
 
 		fn do_update_cluster_protocol(
 			cluster_id: &ClusterId,
-			cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
+			cluster_protocol_params: ClusterProtocolParams<
+				BalanceOf<T>,
+				BlockNumberFor<T>,
+				T::AccountId,
+			>,
 		) -> DispatchResult {
 			ensure!(
 				ClustersGovParams::<T>::contains_key(cluster_id),
@@ -533,6 +582,44 @@ pub mod pallet {
 				.checked_add(1)
 				.ok_or(Error::<T>::ArithmeticOverflow)?;
 
+			ClustersNodesStats::<T>::insert(cluster.cluster_id, current_stats);
+
+			Ok(())
+		}
+
+		fn do_join_cluster(
+			cluster: Cluster<T::AccountId>,
+			node_pub_key: NodePubKey,
+		) -> DispatchResult {
+			ensure!(cluster.can_manage_nodes(), Error::<T>::UnexpectedClusterStatus);
+
+			let mut node: pallet_ddc_nodes::Node<T> = T::NodeRepository::get(node_pub_key.clone())
+				.map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
+			ensure!(node.get_cluster_id().is_none(), Error::<T>::AttemptToAddAlreadyAssignedNode);
+
+			node.set_cluster_id(Some(cluster.cluster_id));
+			T::NodeRepository::update(node).map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
+
+			ClustersNodes::<T>::insert(
+				cluster.cluster_id,
+				node_pub_key.clone(),
+				ClusterNodeState {
+					kind: ClusterNodeKind::External,
+					status: ClusterNodeStatus::ValidationSucceeded,
+					added_at: polkadot_sdk::frame_system::Pallet::<T>::block_number(),
+				},
+			);
+			Self::deposit_event(Event::<T>::ClusterNodeAdded {
+				cluster_id: cluster.cluster_id,
+				node_pub_key,
+			});
+
+			let mut current_stats = ClustersNodesStats::<T>::try_get(cluster.cluster_id)
+				.map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			current_stats.validation_succeeded = current_stats
+				.validation_succeeded
+				.checked_add(1)
+				.ok_or(Error::<T>::ArithmeticOverflow)?;
 			ClustersNodesStats::<T>::insert(cluster.cluster_id, current_stats);
 
 			Ok(())
@@ -690,7 +777,7 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> ClusterQuery<T> for Pallet<T> {
+	impl<T: Config> ClusterQuery<T::AccountId> for Pallet<T> {
 		fn cluster_exists(cluster_id: &ClusterId) -> bool {
 			Clusters::<T>::contains_key(cluster_id)
 		}
@@ -710,7 +797,7 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> ClusterProtocol<T, BalanceOf<T>> for Pallet<T>
+	impl<T: Config> ClusterProtocol<T::AccountId, BlockNumberFor<T>, BalanceOf<T>> for Pallet<T>
 	where
 		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 	{
@@ -733,10 +820,13 @@ pub mod pallet {
 			let cluster_protocol_params = ClustersGovParams::<T>::try_get(cluster_id)
 				.map_err(|_| Error::<T>::ClusterProtocolParamsNotSet)?;
 			Ok(ClusterPricingParams {
-				unit_per_mb_stored: cluster_protocol_params.unit_per_mb_stored,
-				unit_per_mb_streamed: cluster_protocol_params.unit_per_mb_streamed,
-				unit_per_put_request: cluster_protocol_params.unit_per_put_request,
-				unit_per_get_request: cluster_protocol_params.unit_per_get_request,
+				cost_per_mb_stored: cluster_protocol_params.cost_per_mb_stored,
+				cost_per_mb_streamed: cluster_protocol_params.cost_per_mb_streamed,
+				cost_per_put_request: cluster_protocol_params.cost_per_put_request,
+				cost_per_get_request: cluster_protocol_params.cost_per_get_request,
+				cost_per_gpu_unit: cluster_protocol_params.cost_per_gpu_unit,
+				cost_per_cpu_unit: cluster_protocol_params.cost_per_cpu_unit,
+				cost_per_ram_unit: cluster_protocol_params.cost_per_ram_unit,
 			})
 		}
 
@@ -793,13 +883,25 @@ pub mod pallet {
 			Ok(cluster.reserve_id)
 		}
 
+		fn get_customer_deposit_contract(
+			cluster_id: &ClusterId,
+		) -> Result<T::AccountId, DispatchError> {
+			let cluster_protocol_params = ClustersGovParams::<T>::try_get(cluster_id)
+				.map_err(|_| Error::<T>::ClusterProtocolParamsNotSet)?;
+			Ok(cluster_protocol_params.customer_deposit_contract.clone())
+		}
+
 		fn activate_cluster_protocol(cluster_id: &ClusterId) -> DispatchResult {
 			Self::do_activate_cluster_protocol(cluster_id)
 		}
 
 		fn update_cluster_protocol(
 			cluster_id: &ClusterId,
-			cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
+			cluster_protocol_params: ClusterProtocolParams<
+				BalanceOf<T>,
+				BlockNumberFor<T>,
+				T::AccountId,
+			>,
 		) -> DispatchResult {
 			Self::do_update_cluster_protocol(cluster_id, cluster_protocol_params)
 		}
@@ -817,11 +919,42 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> ClusterManager<T> for Pallet<T> {
+	impl<T: Config> ClusterValidator for Pallet<T> {
+		fn set_last_paid_era(cluster_id: &ClusterId, era_id: EhdEra) -> Result<(), DispatchError> {
+			let mut cluster =
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+
+			cluster.last_paid_era = era_id;
+			Clusters::<T>::insert(cluster_id, cluster);
+			Self::deposit_event(Event::<T>::ClusterEraPaid { cluster_id: *cluster_id, era_id });
+
+			Ok(())
+		}
+
+		fn get_last_paid_era(cluster_id: &ClusterId) -> Result<EhdEra, DispatchError> {
+			let cluster =
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+
+			Ok(cluster.last_paid_era)
+		}
+	}
+
+	impl<T: Config> ClusterManager<T::AccountId, BlockNumberFor<T>> for Pallet<T> {
 		fn get_manager_account_id(cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
 			let cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			Ok(cluster.manager_id)
+		}
+
+		fn get_nodes(cluster_id: &ClusterId) -> Result<Vec<NodePubKey>, DispatchError> {
+			let mut nodes = Vec::new();
+
+			// Iterate through all nodes associated with the cluster_id
+			for (node_pubkey, _) in ClustersNodes::<T>::iter_prefix(cluster_id) {
+				nodes.push(node_pubkey);
+			}
+
+			Ok(nodes)
 		}
 
 		fn contains_node(
@@ -878,9 +1011,27 @@ pub mod pallet {
 		) -> Result<(), DispatchError> {
 			Self::do_validate_node(*cluster_id, node_pub_key.clone(), succeeded)
 		}
+
+		fn get_clusters(status: ClusterStatus) -> Result<Vec<ClusterId>, DispatchError> {
+			let mut clusters_ids = Vec::new();
+			for (cluster_id, cluster) in <Clusters<T>>::iter() {
+				if cluster.status == status {
+					clusters_ids.push(cluster_id);
+				}
+			}
+			Ok(clusters_ids)
+		}
+
+		fn get_inspection_dry_run_params(
+			cluster_id: &ClusterId,
+		) -> Result<Option<InspectionDryRunParams>, DispatchError> {
+			let cluster =
+				Clusters::<T>::try_get(*cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			Ok(cluster.props.inspection_dry_run_params.clone())
+		}
 	}
 
-	impl<T: Config> ClusterCreator<T, BalanceOf<T>> for Pallet<T>
+	impl<T: Config> ClusterCreator<T::AccountId, BlockNumberFor<T>, BalanceOf<T>> for Pallet<T>
 	where
 		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 	{
@@ -889,7 +1040,11 @@ pub mod pallet {
 			cluster_manager_id: T::AccountId,
 			cluster_reserve_id: T::AccountId,
 			cluster_params: ClusterParams<T::AccountId>,
-			initial_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
+			initial_protocol_params: ClusterProtocolParams<
+				BalanceOf<T>,
+				BlockNumberFor<T>,
+				T::AccountId,
+			>,
 		) -> DispatchResult {
 			Self::do_create_cluster(
 				cluster_id,
@@ -906,6 +1061,7 @@ pub mod pallet {
 			match error {
 				StakingVisitorError::NodeStakeDoesNotExist => Error::<T>::NodeHasNoActivatedStake,
 				StakingVisitorError::NodeStakeIsInBadState => Error::<T>::NodeStakeIsInvalid,
+				StakingVisitorError::ControllerDoesNotExist => Error::<T>::ControllerDoesNotExist,
 			}
 		}
 	}

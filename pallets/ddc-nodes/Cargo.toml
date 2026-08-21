@@ -11,6 +11,8 @@ repository.workspace = true
 [dependencies]
 # 3rd-party dependencies
 codec.workspace = true
+hex.workspace = true
+log.workspace = true
 scale-info.workspace = true
 serde.workspace = true
 
@@ -21,12 +23,14 @@ polkadot-sdk = { workspace = true, features = ["frame-support", "frame-system", 
 ddc-primitives.workspace = true
 
 [dev-dependencies]
+# Substrate dev-deps via the umbrella.
 polkadot-sdk = { workspace = true, default-features = true, features = ["pallet-balances", "pallet-timestamp", "sp-core", "sp-io", "sp-tracing"] }
 substrate-test-utils = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]
 std = [
+  "hex/std",
   "codec/std",
   "ddc-primitives/std",
   "polkadot-sdk/std",

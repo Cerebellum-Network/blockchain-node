@@ -22,6 +22,7 @@ polkadot-sdk = { workspace = true, features = ["frame-support", "frame-system", 
 ddc-primitives.workspace = true
 
 [dev-dependencies]
+# Substrate dev-deps via the umbrella.
 lazy_static = { workspace = true, default-features = true }
 pallet-ddc-clusters = { workspace = true, default-features = true }
 pallet-ddc-nodes = { workspace = true, default-features = true }
@@ -42,7 +43,6 @@ runtime-benchmarks = [
   "polkadot-sdk/frame-benchmarking",
   "polkadot-sdk/runtime-benchmarks",
 ]
-
 try-runtime = [
   "polkadot-sdk/try-runtime",
 ]

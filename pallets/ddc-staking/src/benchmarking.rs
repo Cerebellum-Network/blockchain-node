@@ -1,5 +1,7 @@
 //! DdcStaking pallet benchmarking.
 
+use polkadot_sdk::*;
+
 use ddc_primitives::{
 	ClusterParams, ClusterProtocolParams, NodeParams, NodeType, StorageNodeMode, StorageNodeParams,
 	StorageNodePubKey,
@@ -9,10 +11,8 @@ pub use polkadot_sdk::frame_benchmarking::{
 };
 use polkadot_sdk::frame_support::traits::Currency;
 use polkadot_sdk::frame_system::RawOrigin;
-use polkadot_sdk::sp_runtime::traits::StaticLookup;
+use polkadot_sdk::sp_runtime::{traits::StaticLookup, Perquintill};
 use polkadot_sdk::sp_std::prelude::*;
-#[allow(unused_imports)]
-use polkadot_sdk::*;
 use testing_utils::*;
 
 use super::*;
@@ -32,6 +32,10 @@ fn fast_forward_to<T: Config>(n: BlockNumberFor<T>) {
 	}
 }
 
+fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
+	polkadot_sdk::frame_system::Pallet::<T>::assert_last_event(generic_event.into());
+}
+
 fn assert_has_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
 	polkadot_sdk::frame_system::Pallet::<T>::assert_has_event(generic_event.into());
 }
@@ -43,7 +47,7 @@ benchmarks! {
 		let controller_lookup: <T::Lookup as StaticLookup>::Source
 			= T::Lookup::unlookup(controller.clone());
 		let node = NodePubKey::StoragePubKey(StorageNodePubKey::new([0; 32]));
-		let _ = T::NodeCreator::create_node(
+		let _ = T::NodeManager::create_node(
 			node.clone(),
 			stash.clone(),
 			NodeParams::StorageParams(StorageNodeParams {
@@ -160,8 +164,9 @@ benchmarks! {
 
 	bond_cluster {
 		let cluster_id = ClusterId::from([1; 20]);
-		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5000);
-		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5000);
+		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 1_000_000);
+		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 1_000_000);
+		let customer_deposit_contract = create_funded_user_with_balance::<T>("customer-deposit-contract", 0, 1_000_000);
 
 		T::ClusterCreator::create_cluster(
 			cluster_id,
@@ -172,8 +177,24 @@ benchmarks! {
 				erasure_coding_required: 0,
 				erasure_coding_total: 0,
 				replication_total: 0,
+				inspection_dry_run_params: None,
 			},
-			ClusterProtocolParams::default()
+			ClusterProtocolParams {
+				treasury_share: Perquintill::default(),
+				validators_share: Perquintill::default(),
+				cluster_reserve_share: Perquintill::default(),
+				storage_bond_size: 100u32.into(),
+				storage_chill_delay: 50u32.into(),
+				storage_unbonding_delay: 50u32.into(),
+				cost_per_mb_stored: 10,
+				cost_per_mb_streamed: 10,
+				cost_per_put_request: 10,
+				cost_per_get_request: 10,
+				cost_per_gpu_unit: 0,
+				cost_per_cpu_unit: 0,
+				cost_per_ram_unit: 0,
+				customer_deposit_contract,
+			}
 		)?;
 
 		whitelist_account!(cluster_reserve_id);
@@ -188,8 +209,9 @@ benchmarks! {
 
 	unbond_cluster {
 		let cluster_id = ClusterId::from([1; 20]);
-		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5000);
-		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5000);
+		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 1_000_000);
+		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 1_000_000);
+		let customer_deposit_contract = create_funded_user_with_balance::<T>("customer-deposit-contract", 0, 1_000_000);
 
 		T::ClusterCreator::create_cluster(
 			cluster_id,
@@ -200,8 +222,24 @@ benchmarks! {
 				erasure_coding_required: 0,
 				erasure_coding_total: 0,
 				replication_total: 0,
+				inspection_dry_run_params: None,
 			},
-			ClusterProtocolParams::default()
+			ClusterProtocolParams {
+				treasury_share: Perquintill::default(),
+				validators_share: Perquintill::default(),
+				cluster_reserve_share: Perquintill::default(),
+				storage_bond_size: 100u32.into(),
+				storage_chill_delay: 50u32.into(),
+				storage_unbonding_delay: 50u32.into(),
+				cost_per_mb_stored: 10,
+				cost_per_mb_streamed: 10,
+				cost_per_put_request: 10,
+				cost_per_get_request: 10,
+				cost_per_gpu_unit: 0,
+				cost_per_cpu_unit: 0,
+				cost_per_ram_unit: 0,
+				customer_deposit_contract,
+			}
 		)?;
 
 		DdcStaking::<T>::bond_cluster(RawOrigin::Signed(cluster_reserve_id.clone()).into(), cluster_id)?;
@@ -211,13 +249,14 @@ benchmarks! {
 	}: _(RawOrigin::Signed(cluster_manager_id.clone()), cluster_id)
 	verify {
 		let amount = T::ClusterBondingAmount::get();
-		assert_has_event::<T>(Event::Unbonded(cluster_reserve_id, amount).into());
+		assert_last_event::<T>(Event::Unbonded(cluster_reserve_id, amount).into());
 	}
 
 	withdraw_unbonded_cluster {
 		let cluster_id = ClusterId::from([1; 20]);
-		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5000);
-		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5000);
+		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 1_000_000);
+		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 1_000_000);
+		let customer_deposit_contract = create_funded_user_with_balance::<T>("customer-deposit-contract", 0, 1_000_000);
 
 		T::ClusterCreator::create_cluster(
 			cluster_id,
@@ -228,8 +267,24 @@ benchmarks! {
 				erasure_coding_required: 0,
 				erasure_coding_total: 0,
 				replication_total: 0,
+				inspection_dry_run_params: None,
 			},
-			ClusterProtocolParams::default()
+			ClusterProtocolParams {
+				treasury_share: Perquintill::default(),
+				validators_share: Perquintill::default(),
+				cluster_reserve_share: Perquintill::default(),
+				storage_bond_size: 100u32.into(),
+				storage_chill_delay: 50u32.into(),
+				storage_unbonding_delay: 50u32.into(),
+				cost_per_mb_stored: 10,
+				cost_per_mb_streamed: 10,
+				cost_per_put_request: 10,
+				cost_per_get_request: 10,
+				cost_per_gpu_unit: 0,
+				cost_per_cpu_unit: 0,
+				cost_per_ram_unit: 0,
+				customer_deposit_contract,
+			}
 		)?;
 
 		DdcStaking::<T>::bond_cluster(RawOrigin::Signed(cluster_reserve_id.clone()).into(), cluster_id)?;
@@ -245,6 +300,6 @@ benchmarks! {
 		assert!(!ClusterBonded::<T>::contains_key(&cluster_reserve_id));
 		assert!(!ClusterLedger::<T>::contains_key(&cluster_manager_id));
 		let amount = T::ClusterBondingAmount::get();
-		assert_has_event::<T>(Event::Withdrawn(cluster_reserve_id, amount).into());
+		assert_last_event::<T>(Event::Withdrawn(cluster_reserve_id, amount).into());
 	}
 }

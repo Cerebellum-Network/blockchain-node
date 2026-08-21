@@ -1,5 +1,5 @@
 use codec::{Decode, Encode};
-use ddc_primitives::{ClusterId, ClusterParams, ClusterStatus};
+use ddc_primitives::{ClusterId, ClusterParams, ClusterStatus, EhdEra, InspectionDryRunParams};
 use polkadot_sdk::frame_support::{pallet_prelude::*, parameter_types};
 use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
@@ -15,6 +15,7 @@ pub struct Cluster<AccountId> {
 	pub reserve_id: AccountId,
 	pub props: ClusterProps<AccountId>,
 	pub status: ClusterStatus,
+	pub last_paid_era: EhdEra,
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
@@ -23,6 +24,7 @@ pub struct ClusterProps<AccountId> {
 	pub erasure_coding_required: u32,
 	pub erasure_coding_total: u32,
 	pub replication_total: u32,
+	pub inspection_dry_run_params: Option<InspectionDryRunParams>,
 }
 
 impl<AccountId> Cluster<AccountId> {
@@ -41,8 +43,10 @@ impl<AccountId> Cluster<AccountId> {
 				erasure_coding_required: cluster_params.erasure_coding_required,
 				erasure_coding_total: cluster_params.erasure_coding_total,
 				replication_total: cluster_params.replication_total,
+				inspection_dry_run_params: cluster_params.inspection_dry_run_params,
 			},
 			status: ClusterStatus::Unbonded,
+			last_paid_era: EhdEra::default(),
 		}
 	}
 
@@ -52,6 +56,7 @@ impl<AccountId> Cluster<AccountId> {
 			erasure_coding_required: cluster_params.erasure_coding_required,
 			erasure_coding_total: cluster_params.erasure_coding_total,
 			replication_total: cluster_params.replication_total,
+			inspection_dry_run_params: cluster_params.inspection_dry_run_params,
 		};
 	}
 

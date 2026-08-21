@@ -19,13 +19,16 @@ use polkadot_sdk::sp_runtime::{
 use polkadot_sdk::sp_storage::{ChildInfo, StorageData, StorageKey};
 
 pub type FullBackend = polkadot_sdk::sc_service::TFullBackend<Block>;
+
 #[cfg(not(feature = "runtime-benchmarks"))]
-pub type HostFunctions = polkadot_sdk::sp_io::SubstrateHostFunctions;
+pub type HostFunctions =
+	(polkadot_sdk::sp_io::SubstrateHostFunctions, ddc_dac_host::ddc_dac::HostFunctions);
 
 #[cfg(feature = "runtime-benchmarks")]
 pub type HostFunctions = (
 	polkadot_sdk::sp_io::SubstrateHostFunctions,
 	polkadot_sdk::frame_benchmarking::benchmarking::HostFunctions,
+	ddc_dac_host::ddc_dac::HostFunctions,
 );
 
 pub type ChainExecutor = WasmExecutor<HostFunctions>;
