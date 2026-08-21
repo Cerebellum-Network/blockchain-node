@@ -52,13 +52,13 @@ pub type TreasurySpender = EitherOf<EnsureRootWithSuccess<AccountId, MaxBalance>
 
 impl pallet_origins::Config for Runtime {}
 
-impl pallet_whitelist::Config for Runtime {
-	type WeightInfo = pallet_whitelist::weights::SubstrateWeight<Runtime>;
+impl polkadot_sdk::pallet_whitelist::Config for Runtime {
+	type WeightInfo = polkadot_sdk::pallet_whitelist::weights::SubstrateWeight<Runtime>;
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
 	type WhitelistOrigin = EitherOfDiverse<
 		EnsureRoot<AccountId>,
-		pallet_collective::EnsureMembers<AccountId, TechCommCollective, 2>,
+		polkadot_sdk::pallet_collective::EnsureMembers<AccountId, TechCommCollective, 2>,
 	>;
 	type DispatchWhitelistedOrigin = EitherOf<EnsureRoot<AccountId>, WhitelistedCaller>;
 	type Preimages = Preimage;

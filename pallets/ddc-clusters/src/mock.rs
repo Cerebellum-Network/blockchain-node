@@ -45,7 +45,7 @@ construct_runtime!(
 		Balances: polkadot_sdk::pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		DdcNodes: pallet_ddc_nodes::{Pallet, Call, Storage, Event<T>},
 		DdcClusters: pallet_ddc_clusters::{Pallet, Call, Storage, Event<T>},
-		Randomness: pallet_insecure_randomness_collective_flip::{Pallet, Storage},
+		Randomness: polkadot_sdk::pallet_insecure_randomness_collective_flip::{Pallet, Storage},
 	}
 );
 
@@ -125,7 +125,7 @@ where
 	type RuntimeCall = RuntimeCall;
 	type Extrinsic = Extrinsic;
 }
-impl pallet_insecure_randomness_collective_flip::Config for Test {}
+impl polkadot_sdk::pallet_insecure_randomness_collective_flip::Config for Test {}
 
 impl<LocalCall> polkadot_sdk::frame_system::offchain::CreateTransaction<LocalCall> for Test
 where

@@ -25,18 +25,12 @@ path = "src/main.rs"
 clap = { workspace = true, optional = true }
 url.workspace = true
 
-# Polkadot SDK
-polkadot-sdk = { workspace = true, default-features = true, features = ["frame-benchmarking-cli", "sc-cli", "sc-executor", "sc-network", "sc-service", "sp-io", "sp-runtime"] }
-# Restore sc-cli's default features (which include "rocksdb"). The umbrella
-# pulls sc-cli with default-features off, and the umbrella exposes no
-# passthrough feature for it — matching the pre-umbrella pattern where
-# each consuming crate individually opted into sc-cli's defaults.
-sc-cli = { workspace = true, default-features = true }
+# Substrate / Polkadot SDK
+polkadot-sdk = { workspace = true, default-features = false, features = ["sc-executor", "sc-network", "sp-io", "sp-runtime"] }
 
 # Local
 cere-client = { workspace = true, optional = true }
 cere-service = { workspace = true, optional = true }
-# Needed at this scope so its host functions are nameable for the benchmark dispatch.
 ddc-dac-host = { workspace = true, default-features = true }
 
 [build-dependencies]
@@ -46,6 +40,10 @@ substrate-build-script-utils = { workspace = true, default-features = true }
 default = ["cli", "cere-native", "cere-dev-native"]
 cli = [
   "clap",
+  "polkadot-sdk/sc-cli",
+  "polkadot-sdk/sc-service",
+  "polkadot-sdk/frame-benchmarking-cli",
+  "polkadot-sdk/std",
   "cere-client",
 ]
 runtime-benchmarks = ["cere-service/runtime-benchmarks"]

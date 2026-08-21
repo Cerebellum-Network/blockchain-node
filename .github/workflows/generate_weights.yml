@@ -6,7 +6,7 @@ on:
       branch:
         description: 'Git branch to build from'
         required: true
-        default: 'staging'
+        default: 'dev'
 
 jobs:
   build:
@@ -21,6 +21,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+        with:
+          submodules: true
 
       - name: Install hcloud CLI
         run: |
@@ -69,25 +71,25 @@ jobs:
           set -eux
           export GH_TOKEN="${{ secrets.GH_READ_TOKEN }}"
           export BRANCH="${{ github.event.inputs.branch }}"
-
+          
           apt update && apt install -y \
             curl git build-essential jq protobuf-compiler \
             llvm-dev libclang-dev clang pkg-config libssl-dev
-
+          
           curl https://sh.rustup.rs -sSf | bash -s -- -y
           source \$HOME/.cargo/env
-
+          
           rustup install 1.91.0
           rustup default 1.91.0
           rustup component add clippy rustfmt rust-src
           rustup target add wasm32-unknown-unknown
-
+          
           git config --global url."https://\${GH_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
           git clone --branch "\$BRANCH" --single-branch https://github.com/Cerebellum-Network/blockchain-node.git
           cd blockchain-node
-
+          
           cargo build --release --features=runtime-benchmarks --verbose
-
+          
           # Benchmark the external pallet_ddc_clusters
           ./target/release/cere benchmark pallet \
             --chain=dev \
@@ -97,7 +99,7 @@ jobs:
             --repeat=20 \
             --template=./.maintain/frame-weight-template.hbs \
             --output=./pallet_ddc_clusters_weights.rs
-
+          
           # Benchmark the external pallet_ddc_clusters_gov
           ./target/release/cere benchmark pallet \
             --chain=dev \
@@ -107,7 +109,7 @@ jobs:
             --repeat=20 \
             --template=./.maintain/frame-weight-template.hbs \
             --output=./pallet_ddc_clusters_gov_weights.rs
-
+          
           # Benchmark the external pallet_ddc_customers
           ./target/release/cere benchmark pallet \
             --chain=dev \
@@ -117,7 +119,7 @@ jobs:
             --repeat=20 \
             --template=./.maintain/frame-weight-template.hbs \
             --output=./pallet_ddc_customers_weights.rs
-
+          
           # Benchmark the external pallet_ddc_nodes
           ./target/release/cere benchmark pallet \
             --chain=dev \
@@ -127,7 +129,7 @@ jobs:
             --repeat=20 \
             --template=./.maintain/frame-weight-template.hbs \
             --output=./pallet_ddc_nodes_weights.rs
-
+          
           # Benchmark the external pallet_ddc_staking
           ./target/release/cere benchmark pallet \
             --chain=dev \
@@ -137,7 +139,7 @@ jobs:
             --repeat=20 \
             --template=./.maintain/frame-weight-template.hbs \
             --output=./pallet_ddc_staking_weights.rs
-
+          
           # Benchmark the external pallet_ddc_payouts
           # send_charging_customers_batch is excluded because its benchmark
           # path invokes the customer-deposit ink! contract via

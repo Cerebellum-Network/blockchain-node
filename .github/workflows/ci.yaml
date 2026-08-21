@@ -32,6 +32,8 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -51,6 +53,8 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -83,6 +87,8 @@ jobs:
     runs-on: ["self-hosted", "cere-network-memory-large"]
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: Install linux dependencies
         run: sudo apt update && sudo apt install -y build-essential cargo clang libclang-dev libssl-dev llvm libudev-dev make pkg-config protobuf-compiler
       - name: Install toolchain and rust-src
@@ -117,6 +123,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: Install linux dependencies
         run: sudo apt update && sudo apt install -y build-essential cargo clang libclang-dev libssl-dev llvm libudev-dev make pkg-config protobuf-compiler
       - name: Install toolchain and rust-src
@@ -154,6 +162,8 @@ jobs:
     runs-on: ["self-hosted", "cere-network-memory-large"]
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: Install linux dependencies
         run: sudo apt update && sudo apt install -y build-essential cargo clang libclang-dev libssl-dev llvm libudev-dev make pkg-config protobuf-compiler
       - name: Install toolchain and rust-src
@@ -190,6 +200,8 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: Install linux dependencies
         run: sudo apt update && sudo apt install -y build-essential cargo clang libclang-dev libssl-dev llvm libudev-dev make pkg-config protobuf-compiler
       - name: Install toolchain
@@ -219,6 +231,8 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: Install linux dependencies
         run: sudo apt update && sudo apt install -y build-essential cargo clang libclang-dev libssl-dev llvm libudev-dev make pkg-config protobuf-compiler
       - name: Install toolchain

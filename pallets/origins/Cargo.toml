@@ -15,15 +15,15 @@ codec.workspace = true
 scale-info.workspace = true
 serde.workspace = true
 
-# Polkadot SDK (umbrella crate; selects the substrate sub-crates this pallet uses)
+# Substrate / Polkadot SDK
 polkadot-sdk = { workspace = true, features = ["frame-support", "frame-system", "sp-core", "sp-runtime", "sp-std"] }
 
 [features]
 default = ["std"]
 std = [
   "codec/std",
-  "polkadot-sdk/std",
   "scale-info/std",
+  "polkadot-sdk/std",
 ]
 runtime-benchmarks = [
   "polkadot-sdk/frame-benchmarking",

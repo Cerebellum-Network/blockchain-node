@@ -16,7 +16,7 @@ log.workspace = true
 scale-info.workspace = true
 serde.workspace = true
 
-# Polkadot SDK
+# Substrate / Polkadot SDK
 polkadot-sdk = { workspace = true, features = ["frame-support", "frame-system", "pallet-contracts", "sp-core", "sp-io", "sp-runtime", "sp-std"] }
 
 # Cere dependencies
@@ -24,9 +24,12 @@ ddc-primitives.workspace = true
 pallet-ddc-nodes.workspace = true
 
 [dev-dependencies]
-# Substrate dev-deps via the umbrella to keep trait shapes aligned with main deps.
 hex-literal = { workspace = true, default-features = true }
-polkadot-sdk = { workspace = true, default-features = true, features = ["frame-benchmarking", "pallet-balances", "pallet-insecure-randomness-collective-flip", "pallet-timestamp", "sp-io", "sp-tracing"] }
+pallet-balances = { workspace = true, default-features = true }
+pallet-insecure-randomness-collective-flip = { workspace = true, default-features = true }
+pallet-timestamp = { workspace = true, default-features = true }
+sp-io = { workspace = true, default-features = true }
+sp-tracing = { workspace = true, default-features = true }
 substrate-test-utils = { workspace = true, default-features = true }
 
 [features]

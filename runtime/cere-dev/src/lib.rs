@@ -21,12 +21,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "512"]
-
-// Bring polkadot-sdk sub-crates (frame_support, frame_system, sp_*, pallet_*,
-// sc_*) into scope so macro expansions (`construct_runtime!`,
-// `#[frame_support::pallet]`, `#[derive_impl(...)]`, `generate_solution_type!`,
-// runtime-API impls) can resolve their unqualified references through the
-// umbrella's re-exports.
+// Bring all polkadot-sdk sub-crates (frame_support, frame_system, sp_*, pallet_*) into scope so
+// that `#[frame_support::pallet]`/`construct_runtime!`/etc. macro expansions can resolve their
+// unqualified `frame_support::…` / `frame_system::…` references through the umbrella crate.
 use polkadot_sdk::*;
 
 use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
@@ -39,7 +36,7 @@ use polkadot_sdk::frame_election_provider_support::{
 	bounds::ElectionBoundsBuilder, onchain, BalancingConfig, SequentialPhragmen, VoteWeight,
 };
 use polkadot_sdk::frame_support::traits::fungible::Balanced;
-//use pallet_treasury::{PositiveImbalanceOf, NegativeImbalanceOf};
+//use polkadot_sdk::pallet_treasury::{PositiveImbalanceOf, NegativeImbalanceOf};
 use polkadot_sdk::pallet_balances::WeightInfo;
 extern crate alloc;
 pub use pallet_chainbridge;
@@ -48,13 +45,6 @@ pub use pallet_ddc_customers;
 pub use pallet_ddc_nodes;
 pub use pallet_ddc_payouts;
 pub use pallet_ddc_staking;
-use pallet_election_provider_multi_phase::SolutionAccuracyOf;
-use pallet_grandpa::{
-	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
-};
-use pallet_identity::legacy::IdentityInfo;
-#[cfg(any(feature = "std", test))]
-pub use pallet_sudo::Call as SudoCall;
 use polkadot_sdk::frame_support::traits::tokens::Precision;
 use polkadot_sdk::frame_support::{
 	derive_impl,
@@ -92,9 +82,16 @@ use polkadot_sdk::pallet_contracts::{
 	chain_extension::{ChainExtension, Environment, Ext, InitState, RetVal},
 	Determinism,
 };
+use polkadot_sdk::pallet_election_provider_multi_phase::SolutionAccuracyOf;
+use polkadot_sdk::pallet_grandpa::{
+	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
+};
+use polkadot_sdk::pallet_identity::legacy::IdentityInfo;
 use polkadot_sdk::pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 use polkadot_sdk::pallet_session::historical::{self as pallet_session_historical};
 pub use polkadot_sdk::pallet_staking::StakerStatus;
+#[cfg(any(feature = "std", test))]
+pub use polkadot_sdk::pallet_sudo::Call as SudoCall;
 use polkadot_sdk::pallet_transaction_payment::{FeeDetails, FungibleAdapter, RuntimeDispatchInfo};
 pub use polkadot_sdk::pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use polkadot_sdk::sp_api::impl_runtime_apis;
@@ -143,17 +140,15 @@ use governance::{
 
 /// Generated voter bag information.
 mod voter_bags;
+use polkadot_sdk::pallet_treasury::TreasuryAccountId;
+mod hyperbridge_ismp;
+mod weights;
+
 use ismp::{
 	consensus::{ConsensusClientId, StateMachineHeight, StateMachineId},
 	host::StateMachine,
-	// `Response` was removed in ismp 2512.1+; the runtime API now operates on
-	// `GetResponse`.
 	router::{GetResponse, Request},
 };
-use pallet_treasury::TreasuryAccountId;
-use polkadot_sdk::sp_core::H256;
-mod hyperbridge_ismp;
-mod weights;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -179,7 +174,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 80011,
+	spec_version: 80015,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 27,
@@ -205,7 +200,7 @@ type NegativeImbalance = <Balances as Currency<AccountId>>::NegativeImbalance;
 pub struct ToAuthor<R>(core::marker::PhantomData<R>);
 impl<R> OnUnbalanced<Credit<R::AccountId, polkadot_sdk::pallet_balances::Pallet<R>>> for ToAuthor<R>
 where
-	R: polkadot_sdk::pallet_balances::Config + pallet_authorship::Config,
+	R: polkadot_sdk::pallet_balances::Config + polkadot_sdk::pallet_authorship::Config,
 	<R as polkadot_sdk::frame_system::Config>::AccountId: From<AccountId>,
 	<R as polkadot_sdk::frame_system::Config>::AccountId: Into<AccountId>,
 {
@@ -215,7 +210,7 @@ where
 			polkadot_sdk::pallet_balances::Pallet<R>,
 		>,
 	) {
-		if let Some(author) = <pallet_authorship::Pallet<R>>::author() {
+		if let Some(author) = <polkadot_sdk::pallet_authorship::Pallet<R>>::author() {
 			let _ = <polkadot_sdk::pallet_balances::Pallet<R>>::resolve(&author, amount);
 		}
 	}
@@ -225,7 +220,9 @@ pub struct DealWithFees<R>(core::marker::PhantomData<R>);
 impl<R> OnUnbalanced<Credit<R::AccountId, polkadot_sdk::pallet_balances::Pallet<R>>>
 	for DealWithFees<R>
 where
-	R: polkadot_sdk::pallet_balances::Config + pallet_authorship::Config + pallet_treasury::Config,
+	R: polkadot_sdk::pallet_balances::Config
+		+ polkadot_sdk::pallet_authorship::Config
+		+ polkadot_sdk::pallet_treasury::Config,
 	<R as polkadot_sdk::frame_system::Config>::AccountId: From<AccountId>,
 	<R as polkadot_sdk::frame_system::Config>::AccountId: Into<AccountId>,
 {
@@ -311,13 +308,13 @@ impl polkadot_sdk::frame_system::Config for Runtime {
 	type MultiBlockMigrator = MultiBlockMigrations;
 }
 
-impl pallet_insecure_randomness_collective_flip::Config for Runtime {}
+impl polkadot_sdk::pallet_insecure_randomness_collective_flip::Config for Runtime {}
 
-impl pallet_utility::Config for Runtime {
+impl polkadot_sdk::pallet_utility::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeCall = RuntimeCall;
 	type PalletsOrigin = OriginCaller;
-	type WeightInfo = pallet_utility::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = polkadot_sdk::pallet_utility::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
@@ -328,14 +325,14 @@ parameter_types! {
 	pub const MaxSignatories: u32 = 100;
 }
 
-impl pallet_multisig::Config for Runtime {
+impl polkadot_sdk::pallet_multisig::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeCall = RuntimeCall;
 	type Currency = Balances;
 	type DepositBase = DepositBase;
 	type DepositFactor = DepositFactor;
 	type MaxSignatories = MaxSignatories;
-	type WeightInfo = pallet_multisig::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = polkadot_sdk::pallet_multisig::weights::SubstrateWeight<Runtime>;
 	type BlockNumberProvider = polkadot_sdk::frame_system::Pallet<Runtime>;
 }
 
@@ -379,8 +376,9 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 			ProxyType::NonTransfer => !matches!(
 				c,
 				RuntimeCall::Balances(..)
-					| RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
-					| RuntimeCall::Indices(pallet_indices::Call::transfer { .. })
+					| RuntimeCall::Vesting(
+						polkadot_sdk::pallet_vesting::Call::vested_transfer { .. }
+					) | RuntimeCall::Indices(polkadot_sdk::pallet_indices::Call::transfer { .. })
 					| RuntimeCall::NominationPools(..)
 					| RuntimeCall::ConvictionVoting(..)
 					| RuntimeCall::Referenda(..)
@@ -407,7 +405,7 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 	}
 }
 
-impl pallet_proxy::Config for Runtime {
+impl polkadot_sdk::pallet_proxy::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeCall = RuntimeCall;
 	type Currency = Balances;
@@ -415,7 +413,7 @@ impl pallet_proxy::Config for Runtime {
 	type ProxyDepositBase = ProxyDepositBase;
 	type ProxyDepositFactor = ProxyDepositFactor;
 	type MaxProxies = ConstU32<32>;
-	type WeightInfo = pallet_proxy::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = polkadot_sdk::pallet_proxy::weights::SubstrateWeight<Runtime>;
 	type MaxPending = ConstU32<32>;
 	type CallHasher = BlakeTwo256;
 	type AnnouncementDepositBase = AnnouncementDepositBase;
@@ -427,11 +425,11 @@ parameter_types! {
 	pub const PreimageMaxSize: u32 = 4096 * 1024;
 	pub const PreimageBaseDeposit: Balance = deposit(2, 64);
 	pub const PreimageByteDeposit: Balance = deposit(0, 1);
-	pub const PreimageHoldReason: RuntimeHoldReason = RuntimeHoldReason::Preimage(pallet_preimage::HoldReason::Preimage);
+	pub const PreimageHoldReason: RuntimeHoldReason = RuntimeHoldReason::Preimage(polkadot_sdk::pallet_preimage::HoldReason::Preimage);
 }
 
-impl pallet_preimage::Config for Runtime {
-	type WeightInfo = pallet_preimage::weights::SubstrateWeight<Runtime>;
+impl polkadot_sdk::pallet_preimage::Config for Runtime {
+	type WeightInfo = polkadot_sdk::pallet_preimage::weights::SubstrateWeight<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type ManagerOrigin = EnsureRoot<AccountId>;
@@ -448,7 +446,7 @@ parameter_types! {
 		RuntimeBlockWeights::get().max_block;
 }
 
-impl pallet_scheduler::Config for Runtime {
+impl polkadot_sdk::pallet_scheduler::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type PalletsOrigin = OriginCaller;
@@ -456,7 +454,7 @@ impl pallet_scheduler::Config for Runtime {
 	type MaximumWeight = MaximumSchedulerWeight;
 	type ScheduleOrigin = EitherOf<EnsureRoot<AccountId>, Treasurer>;
 	type MaxScheduledPerBlock = ConstU32<512>;
-	type WeightInfo = pallet_scheduler::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = polkadot_sdk::pallet_scheduler::weights::SubstrateWeight<Runtime>;
 	type OriginPrivilegeCmp = EqualPrivilegeOnly;
 	type Preimages = Preimage;
 	type BlockNumberProvider = polkadot_sdk::frame_system::Pallet<Runtime>;
@@ -471,16 +469,20 @@ parameter_types! {
 		BondingDuration::get() as u64 * SessionsPerEra::get() as u64 * EpochDuration::get();
 }
 
-impl pallet_babe::Config for Runtime {
+impl polkadot_sdk::pallet_babe::Config for Runtime {
 	type EpochDuration = EpochDuration;
 	type ExpectedBlockTime = ExpectedBlockTime;
-	type EpochChangeTrigger = pallet_babe::ExternalTrigger;
+	type EpochChangeTrigger = polkadot_sdk::pallet_babe::ExternalTrigger;
 	type DisabledValidators = Session;
 
 	type KeyOwnerProof = polkadot_sdk::sp_session::MembershipProof;
 
-	type EquivocationReportSystem =
-		pallet_babe::EquivocationReportSystem<Self, Offences, Historical, ReportLongevity>;
+	type EquivocationReportSystem = polkadot_sdk::pallet_babe::EquivocationReportSystem<
+		Self,
+		Offences,
+		Historical,
+		ReportLongevity,
+	>;
 
 	type WeightInfo = ();
 	type MaxAuthorities = MaxAuthorities;
@@ -491,12 +493,12 @@ parameter_types! {
 	pub const IndexDeposit: Balance = 10 * DOLLARS;
 }
 
-impl pallet_indices::Config for Runtime {
+impl polkadot_sdk::pallet_indices::Config for Runtime {
 	type AccountIndex = AccountIndex;
 	type Currency = Balances;
 	type Deposit = IndexDeposit;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = pallet_indices::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = polkadot_sdk::pallet_indices::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
@@ -562,7 +564,7 @@ impl polkadot_sdk::pallet_timestamp::Config for Runtime {
 	type WeightInfo = polkadot_sdk::pallet_timestamp::weights::SubstrateWeight<Runtime>;
 }
 
-impl pallet_authorship::Config for Runtime {
+impl polkadot_sdk::pallet_authorship::Config for Runtime {
 	type FindAuthor = polkadot_sdk::pallet_session::FindAccountFromAuthorIndex<Self, Babe>;
 	type EventHandler = (Staking, ImOnline);
 }
@@ -609,7 +611,7 @@ impl polkadot_sdk::pallet_session::historical::Config for Runtime {
 	type FullIdentificationOf = polkadot_sdk::pallet_staking::ExposureOf<Self>;
 }
 
-pallet_staking_reward_curve::build! {
+polkadot_sdk::pallet_staking_reward_curve::build! {
 	const REWARD_CURVE: PiecewiseLinear<'static> = curve!(
 		min_inflation: 0_000_100,
 		max_inflation: 0_050_000,
@@ -714,7 +716,7 @@ impl polkadot_sdk::pallet_staking::Config for Runtime {
 	type MaxValidatorSet = ConstU32<1000>;
 }
 
-impl pallet_fast_unstake::Config for Runtime {
+impl polkadot_sdk::pallet_fast_unstake::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type ControlOrigin = EnsureRoot<AccountId>;
 	type Deposit = ConstU128<{ DOLLARS }>;
@@ -776,7 +778,9 @@ polkadot_sdk::frame_election_provider_support::generate_solution_type!(
 /// to ensure election snapshot will not run out of memory. For now, we set them to smaller values
 /// since the staking is bounded and the weight pipeline takes hours for this single pallet.
 pub struct ElectionProviderBenchmarkConfig;
-impl pallet_election_provider_multi_phase::BenchmarkingConfig for ElectionProviderBenchmarkConfig {
+impl polkadot_sdk::pallet_election_provider_multi_phase::BenchmarkingConfig
+	for ElectionProviderBenchmarkConfig
+{
 	const VOTERS: [u32; 2] = [1000, 2000];
 	const TARGETS: [u32; 2] = [500, 1000];
 	const ACTIVE_VOTERS: [u32; 2] = [500, 800];
@@ -824,13 +828,13 @@ impl onchain::Config for OnChainSeqPhragmen {
 	type MaxWinnersPerPage = MaxActiveValidators;
 }
 
-impl pallet_election_provider_multi_phase::MinerConfig for Runtime {
+impl polkadot_sdk::pallet_election_provider_multi_phase::MinerConfig for Runtime {
 	type AccountId = AccountId;
 	type MaxLength = MinerMaxLength;
 	type MaxWeight = MinerMaxWeight;
 	type Solution = NposSolution16;
 	type MaxVotesPerVoter = <
-	<Self as pallet_election_provider_multi_phase::Config>::DataProvider
+	<Self as polkadot_sdk::pallet_election_provider_multi_phase::Config>::DataProvider
 	as
 	polkadot_sdk::frame_election_provider_support::ElectionDataProvider
 	>::MaxVotesPerVoter;
@@ -840,9 +844,9 @@ impl pallet_election_provider_multi_phase::MinerConfig for Runtime {
 	// weight estimate function is wired to this call's weight.
 	fn solution_weight(v: u32, t: u32, a: u32, d: u32) -> Weight {
 		<
-		<Self as pallet_election_provider_multi_phase::Config>::WeightInfo
+		<Self as polkadot_sdk::pallet_election_provider_multi_phase::Config>::WeightInfo
 		as
-		pallet_election_provider_multi_phase::WeightInfo
+		polkadot_sdk::pallet_election_provider_multi_phase::WeightInfo
 		>::submit_unsigned(v, t, a, d)
 	}
 }
@@ -856,7 +860,7 @@ impl Convert<usize, u128> for FixedSignedDepositBase {
 	}
 }
 
-impl pallet_election_provider_multi_phase::Config for Runtime {
+impl polkadot_sdk::pallet_election_provider_multi_phase::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type EstimateCallFee = TransactionPayment;
@@ -872,7 +876,7 @@ impl pallet_election_provider_multi_phase::Config for Runtime {
 	type SignedMaxRefunds = ConstU32<3>;
 	type SignedDepositWeight = ();
 	type SignedMaxWeight =
-		<Self::MinerConfig as pallet_election_provider_multi_phase::MinerConfig>::MaxWeight;
+		<Self::MinerConfig as polkadot_sdk::pallet_election_provider_multi_phase::MinerConfig>::MaxWeight;
 	type MinerConfig = Self;
 	type SlashHandler = (); // burn slashes
 	type RewardHandler = (); // nothing to do upon rewards
@@ -884,7 +888,8 @@ impl pallet_election_provider_multi_phase::Config for Runtime {
 	type BenchmarkingConfig = ElectionProviderBenchmarkConfig;
 	type MaxWinners = MaxActiveValidators;
 	type ElectionBounds = ElectionBounds;
-	type WeightInfo = pallet_election_provider_multi_phase::weights::SubstrateWeight<Self>;
+	type WeightInfo =
+		polkadot_sdk::pallet_election_provider_multi_phase::weights::SubstrateWeight<Self>;
 	type MaxBackersPerWinner = MaxElectingVotersSolution;
 }
 
@@ -892,11 +897,11 @@ parameter_types! {
 	pub const BagThresholds: &'static [u64] = &voter_bags::THRESHOLDS;
 }
 
-type VoterBagsListInstance = pallet_bags_list::Instance1;
-impl pallet_bags_list::Config<VoterBagsListInstance> for Runtime {
+type VoterBagsListInstance = polkadot_sdk::pallet_bags_list::Instance1;
+impl polkadot_sdk::pallet_bags_list::Config<VoterBagsListInstance> for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type ScoreProvider = Staking;
-	type WeightInfo = pallet_bags_list::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = polkadot_sdk::pallet_bags_list::weights::SubstrateWeight<Runtime>;
 	type BagThresholds = BagThresholds;
 	type Score = VoteWeight;
 	type MaxAutoRebagPerBlock = ConstU32<0>;
@@ -920,7 +925,7 @@ parameter_types! {
 	pub TreasuryAccount: AccountId = Treasury::account_id();
 }
 
-impl pallet_treasury::Config for Runtime {
+impl polkadot_sdk::pallet_treasury::Config for Runtime {
 	type PalletId = TreasuryPalletId;
 	type Currency = Balances;
 	type RejectOrigin = EitherOfDiverse<EnsureRoot<AccountId>, Treasurer>;
@@ -929,7 +934,7 @@ impl pallet_treasury::Config for Runtime {
 	type Burn = Burn;
 	type BurnDestination = ();
 	type SpendFunds = Bounties;
-	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = polkadot_sdk::pallet_treasury::weights::SubstrateWeight<Runtime>;
 	type MaxApprovals = MaxApprovals;
 	type SpendOrigin = TreasurySpender;
 	type AssetKind = ();
@@ -954,7 +959,7 @@ parameter_types! {
 	pub const BountyUpdatePeriod: BlockNumber = 90 * DAYS;
 }
 
-impl pallet_bounties::Config for Runtime {
+impl polkadot_sdk::pallet_bounties::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type BountyDepositBase = BountyDepositBase;
 	type BountyDepositPayoutDelay = BountyDepositPayoutDelay;
@@ -965,7 +970,7 @@ impl pallet_bounties::Config for Runtime {
 	type BountyValueMinimum = BountyValueMinimum;
 	type DataDepositPerByte = DataDepositPerByte;
 	type MaximumReasonLength = MaximumReasonLength;
-	type WeightInfo = pallet_bounties::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = polkadot_sdk::pallet_bounties::weights::SubstrateWeight<Runtime>;
 	type ChildBountyManager = ChildBounties;
 	type OnSlash = Treasury;
 }
@@ -974,11 +979,11 @@ parameter_types! {
 	pub const ChildBountyValueMinimum: Balance = DOLLARS;
 }
 
-impl pallet_child_bounties::Config for Runtime {
+impl polkadot_sdk::pallet_child_bounties::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type MaxActiveChildBountyCount = ConstU32<5>;
 	type ChildBountyValueMinimum = ChildBountyValueMinimum;
-	type WeightInfo = pallet_child_bounties::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = polkadot_sdk::pallet_child_bounties::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
@@ -1064,10 +1069,10 @@ impl ChainExtension<Runtime> for CereChainExtension {
 	}
 }
 
-impl pallet_sudo::Config for Runtime {
+impl polkadot_sdk::pallet_sudo::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeCall = RuntimeCall;
-	type WeightInfo = pallet_sudo::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = polkadot_sdk::pallet_sudo::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
@@ -1174,13 +1179,13 @@ impl polkadot_sdk::pallet_im_online::Config for Runtime {
 	type MaxPeerInHeartbeats = MaxPeerInHeartbeats;
 }
 
-impl pallet_offences::Config for Runtime {
+impl polkadot_sdk::pallet_offences::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type IdentificationTuple = polkadot_sdk::pallet_session::historical::IdentificationTuple<Self>;
 	type OnOffenceHandler = Staking;
 }
 
-impl pallet_authority_discovery::Config for Runtime {
+impl polkadot_sdk::pallet_authority_discovery::Config for Runtime {
 	type MaxAuthorities = MaxAuthorities;
 }
 
@@ -1188,13 +1193,17 @@ parameter_types! {
 	pub MaxSetIdSessionEntries: u32 = BondingDuration::get() * SessionsPerEra::get();
 }
 
-impl pallet_grandpa::Config for Runtime {
+impl polkadot_sdk::pallet_grandpa::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 
 	type KeyOwnerProof = polkadot_sdk::sp_session::MembershipProof;
 
-	type EquivocationReportSystem =
-		pallet_grandpa::EquivocationReportSystem<Self, Offences, Historical, ReportLongevity>;
+	type EquivocationReportSystem = polkadot_sdk::pallet_grandpa::EquivocationReportSystem<
+		Self,
+		Offences,
+		Historical,
+		ReportLongevity,
+	>;
 
 	type WeightInfo = ();
 	type MaxAuthorities = MaxAuthorities;
@@ -1212,7 +1221,7 @@ parameter_types! {
 	pub const MaxRegistrars: u32 = 20;
 }
 
-impl pallet_identity::Config for Runtime {
+impl polkadot_sdk::pallet_identity::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type BasicDeposit = BasicDeposit;
@@ -1234,7 +1243,7 @@ impl pallet_identity::Config for Runtime {
 	type UsernameGracePeriod = ConstU32<{ 30 * DAYS }>;
 	type MaxSuffixLength = ConstU32<7>;
 	type MaxUsernameLength = ConstU32<32>;
-	type WeightInfo = pallet_identity::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = polkadot_sdk::pallet_identity::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
@@ -1244,9 +1253,9 @@ parameter_types! {
 	pub const RecoveryDeposit: Balance = 5 * DOLLARS;
 }
 
-impl pallet_recovery::Config for Runtime {
+impl polkadot_sdk::pallet_recovery::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = pallet_recovery::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = polkadot_sdk::pallet_recovery::weights::SubstrateWeight<Runtime>;
 	type RuntimeCall = RuntimeCall;
 	type Currency = Balances;
 	type ConfigDepositBase = ConfigDepositBase;
@@ -1262,12 +1271,12 @@ parameter_types! {
 		WithdrawReasons::except(WithdrawReasons::TRANSFER | WithdrawReasons::RESERVE);
 }
 
-impl pallet_vesting::Config for Runtime {
+impl polkadot_sdk::pallet_vesting::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type BlockNumberToBalance = ConvertInto;
 	type MinVestedTransfer = MinVestedTransfer;
-	type WeightInfo = pallet_vesting::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = polkadot_sdk::pallet_vesting::weights::SubstrateWeight<Runtime>;
 	type UnvestedFundsAllowedWithdrawReasons = UnvestedFundsAllowedWithdrawReasons;
 	type BlockNumberProvider = System;
 	// `VestingInfo` encode length is 36bytes. 28 schedules gets encoded as 1009 bytes, which is the
@@ -1321,7 +1330,7 @@ parameter_types! {
 	pub const SlashRewardFraction: Perbill = Perbill::from_percent(1);
 }
 
-impl pallet_delegated_staking::Config for Runtime {
+impl polkadot_sdk::pallet_delegated_staking::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type PalletId = DelegatedStakingPalletId;
 	type Currency = Balances;
@@ -1337,7 +1346,7 @@ parameter_types! {
 	pub const MaxPointsToBalance: u8 = 10;
 }
 
-impl pallet_nomination_pools::Config for Runtime {
+impl polkadot_sdk::pallet_nomination_pools::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type RuntimeFreezeReason = RuntimeFreezeReason;
@@ -1354,8 +1363,11 @@ impl pallet_nomination_pools::Config for Runtime {
 	type MaxPointsToBalance = MaxPointsToBalance;
 	type WeightInfo = ();
 	type AdminOrigin = polkadot_sdk::frame_system::EnsureRoot<Self::AccountId>;
-	type StakeAdapter =
-		pallet_nomination_pools::adapter::DelegateStake<Self, Staking, DelegatedStaking>;
+	type StakeAdapter = polkadot_sdk::pallet_nomination_pools::adapter::DelegateStake<
+		Self,
+		Staking,
+		DelegatedStaking,
+	>;
 }
 
 parameter_types! {
@@ -1462,6 +1474,14 @@ parameter_types! {
 
 impl pallet_ddc_payouts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
+	// USD-denominated pricing (ADR-001). Cluster protocol params are quoted in
+	// atto-USD; the rate below converts each emitted amount into CERE.
+	type PriceOracle = CereUsdRate;
+	type GovernanceOrigin = EnsureRoot<AccountId>;
+	type EpochLength = RateEpochLength;
+	type HistoryDepth = RateHistoryDepth;
+	type TimeProvider = Timestamp;
+	type MaxRateAge = MaxRateAge;
 	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
 	type PalletId = PayoutsPalletId;
 	type Currency = Balances;
@@ -1504,8 +1524,8 @@ parameter_types! {
 	pub const TechnicalMaxMembers: u32 = 100;
 }
 
-type TechCommCollective = pallet_collective::Instance3;
-impl pallet_collective::Config<TechCommCollective> for Runtime {
+type TechCommCollective = polkadot_sdk::pallet_collective::Instance3;
+impl polkadot_sdk::pallet_collective::Config<TechCommCollective> for Runtime {
 	type RuntimeOrigin = RuntimeOrigin;
 	type Proposal = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
@@ -1513,8 +1533,8 @@ impl pallet_collective::Config<TechCommCollective> for Runtime {
 	type MaxProposals = TechnicalMaxProposals;
 	type MaxMembers = TechnicalMaxMembers;
 	type SetMembersOrigin = EnsureRoot<AccountId>;
-	type DefaultVote = pallet_collective::PrimeDefaultVote;
-	type WeightInfo = pallet_collective::weights::SubstrateWeight<Runtime>;
+	type DefaultVote = polkadot_sdk::pallet_collective::PrimeDefaultVote;
+	type WeightInfo = polkadot_sdk::pallet_collective::weights::SubstrateWeight<Runtime>;
 	type MaxProposalWeight = MaxCollectivesProposalWeight;
 	type DisapproveOrigin = EnsureRoot<Self::AccountId>;
 	type KillOrigin = EnsureRoot<Self::AccountId>;
@@ -1607,20 +1627,20 @@ parameter_types! {
 	pub MbmServiceWeight: Weight = Perbill::from_percent(80) * RuntimeBlockWeights::get().max_block;
 }
 
-impl pallet_migrations::Config for Runtime {
+impl polkadot_sdk::pallet_migrations::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	#[cfg(not(feature = "runtime-benchmarks"))]
 	type Migrations = ();
 	// Benchmarks need mocked migrations to guarantee that they succeed.
 	#[cfg(feature = "runtime-benchmarks")]
-	type Migrations = pallet_migrations::mock_helpers::MockedMigrations;
+	type Migrations = polkadot_sdk::pallet_migrations::mock_helpers::MockedMigrations;
 	type CursorMaxLen = ConstU32<65_536>;
 	type IdentifierMaxLen = ConstU32<256>;
 	type MigrationStatusHandler = ();
 	type FailedMigrationHandler =
 		polkadot_sdk::frame_support::migrations::FreezeChainOnFailedMigration;
 	type MaxServiceWeight = MbmServiceWeight;
-	type WeightInfo = pallet_migrations::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = polkadot_sdk::pallet_migrations::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
@@ -1644,6 +1664,144 @@ impl pallet_pool_withdrawal_fix::Config for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const PriceOraclePalletId: PalletId = PalletId(*b"cereorcl");
+	pub PriceOracleRootOperator: AccountId = PriceOraclePalletId::get().into_account_truncating();
+}
+
+/// Membership instance holding the price-oracle operator set. Governance adds
+/// and removes feeders here; ADR-001 §2 makes that the path to decentralising
+/// the feed without a runtime upgrade.
+///
+/// Instance markers are scoped to a single pallet, so any of them would be
+/// technically safe. `Instance4` is picked so the markers used in this runtime
+/// stay unique as a set — `Instance1` is `VoterList` (bags-list) and
+/// `Instance3` is `TechComm` (collective) — and a reader does not have to know
+/// the scoping rule to see that nothing is shared.
+pub type PriceOracleMembershipInstance = polkadot_sdk::pallet_membership::Instance4;
+
+impl polkadot_sdk::pallet_membership::Config<PriceOracleMembershipInstance> for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type AddOrigin = EnsureRoot<AccountId>;
+	type RemoveOrigin = EnsureRoot<AccountId>;
+	type SwapOrigin = EnsureRoot<AccountId>;
+	type ResetOrigin = EnsureRoot<AccountId>;
+	type PrimeOrigin = EnsureRoot<AccountId>;
+	// orml-oracle implements ChangeMembers but not InitializeMembers, so only
+	// the change hook is wired. That is the one that matters: it prunes a
+	// removed operator's submitted value. Authorisation itself reads the
+	// membership set live through `Members`, and no members are seeded at
+	// genesis (ADR-001 §2 puts the set under governance).
+	type MembershipInitialized = ();
+	type MembershipChanged = PriceOracle;
+	type MaxMembers = ConstU32<16>;
+	type WeightInfo = polkadot_sdk::pallet_membership::weights::SubstrateWeight<Runtime>;
+}
+
+/// Key space of the price oracle. A typed key rather than a bare integer so a
+/// second pair can be added later without reinterpreting existing storage.
+#[derive(
+	Clone,
+	Copy,
+	PartialEq,
+	Eq,
+	PartialOrd,
+	Ord,
+	Debug,
+	codec::Encode,
+	codec::Decode,
+	codec::DecodeWithMemTracking,
+	codec::MaxEncodedLen,
+	scale_info::TypeInfo,
+)]
+pub enum PriceKey {
+	/// USD per CERE, scaled by 10^18 (atto-USD per CERE).
+	CereUsd,
+}
+
+impl orml_oracle::Config for Runtime {
+	type OnNewData = ();
+	// Median over unexpired operator submissions. Below MinimumCount fresh
+	// values the previous median is kept rather than stalling.
+	//
+	// MinimumCount is 1 while the feeder set is being stood up, against
+	// ADR-001's 2-of-3. At 2 a lone operator submits successfully and still
+	// produces no median at all -- `combine_data` returns the previous value,
+	// `Values` is never written, and the oracle reads empty forever. Setting 1
+	// now means oracle-operator works the day it starts rather than needing a
+	// second runtime upgrade. Raise to 2 once three feeders are live; that is a
+	// runtime change, so it wants doing before the oracle is load-bearing.
+	//
+	// Inert while rates are set by governance through `force_set_rate`, which
+	// does not consult the oracle at all. ExpiresIn stays 3h; it only bites once
+	// a feeder actually runs.
+	type CombineData =
+		orml_oracle::DefaultCombineData<Runtime, ConstU32<1>, ConstU64<10_800_000>, ()>;
+	type Time = Timestamp;
+	type OracleKey = PriceKey;
+	type OracleValue = u128;
+	type RootOperatorAccountId = PriceOracleRootOperator;
+	type Members = PriceOracleMembership;
+	// Provisional, not benchmarked — see the module header. Upstream's default
+	// impl is non-zero but was benchmarked on 2021 Acala hardware.
+	type WeightInfo = weights::orml_oracle::WeightInfo<Runtime>;
+	// Three operators plus the root operator, with headroom.
+	type MaxHasDispatchedSize = ConstU32<8>;
+	// One key, so one pair per submission.
+	type MaxFeedValues = ConstU32<1>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
+}
+
+parameter_types! {
+	/// How often the payouts pallet samples the oracle median into its ring.
+	/// Ten minutes: short enough that an era is priced close to the rate that
+	/// held while it ran, long enough that the ring spans days rather than hours.
+	pub const RateEpochLength: BlockNumber = 10 * MINUTES;
+	/// 4320 entries at ten minutes apart is 30 days of history. ADR-001 requires
+	/// `HistoryDepth x EpochLength` to exceed the worst-case payout lag, so that
+	/// an era retried long after the fact can still find the rate that applied
+	/// when it ran instead of halting.
+	///
+	/// Inert while rates are being forced by governance -- a forced rate is
+	/// appended about once a year, so even a 288-ring would hold centuries. It
+	/// earns its place the moment a feeder starts filling the ring every ten
+	/// minutes: at 288 the ring wraps every 48 hours, so retrying an era from
+	/// last week finds no entry effective at or before it and halts regardless
+	/// of how generous `MaxRateAge` is. 4320 costs roughly 100 KB.
+	pub const RateHistoryDepth: u32 = 4320;
+	/// One year.
+	///
+	/// The bound exists so a stalled feed halts payouts instead of billing
+	/// against a rate nobody is still vouching for. While the rate is set by
+	/// governance through `force_set_rate` there is no staleness to detect -- a
+	/// manual set is a deliberate act -- and a three-hour bound would halt every
+	/// era three hours afterwards.
+	///
+	/// This is the wrong value once a feeder is live: at a year, a feed that
+	/// died in January still prices eras in December. Shorten it to hours in the
+	/// same change that raises MinimumCount to 2.
+	pub const MaxRateAge: u64 = 31_536_000_000;
+}
+
+/// Exposes the oracle's combined CERE/USD median to the payouts pallet.
+///
+/// The pallet deliberately does not depend on orml: it declares its own
+/// `PriceProvider` boundary and this adapter is the only place the two meet.
+/// Read here is the aggregate the oracle already combined -- median of unexpired
+/// operator submissions -- not a raw feed.
+pub struct CereUsdRate;
+impl pallet_ddc_payouts::PriceProvider for CereUsdRate {
+	fn current_rate() -> Option<(u128, u64)> {
+		// The observation time travels with the rate. orml writes its combined
+		// value only on a feed and never expires it, so once the feeders fall
+		// silent this keeps returning the last median -- and the payouts pallet
+		// needs the timestamp to tell a frozen answer from a fresh one.
+		PriceOracle::get(&PriceKey::CereUsd)
+			.map(|timestamped| (timestamped.value, timestamped.timestamp))
+	}
+}
+
 #[polkadot_sdk::frame_support::runtime]
 mod runtime {
 	#[runtime::runtime]
@@ -1664,10 +1822,10 @@ mod runtime {
 	pub type System = polkadot_sdk::frame_system::Pallet<Runtime>;
 
 	#[runtime::pallet_index(1)]
-	pub type Utility = pallet_utility::Pallet<Runtime>;
+	pub type Utility = polkadot_sdk::pallet_utility::Pallet<Runtime>;
 
 	#[runtime::pallet_index(2)]
-	pub type Babe = pallet_babe::Pallet<Runtime>;
+	pub type Babe = polkadot_sdk::pallet_babe::Pallet<Runtime>;
 
 	#[runtime::pallet_index(3)]
 	pub type Timestamp = polkadot_sdk::pallet_timestamp::Pallet<Runtime>;
@@ -1675,10 +1833,10 @@ mod runtime {
 	// Authorship must be before session in order to note author in the correct session and era
 	// for im-online and staking.
 	#[runtime::pallet_index(4)]
-	pub type Authorship = pallet_authorship::Pallet<Runtime>;
+	pub type Authorship = polkadot_sdk::pallet_authorship::Pallet<Runtime>;
 
 	#[runtime::pallet_index(5)]
-	pub type Indices = pallet_indices::Pallet<Runtime>;
+	pub type Indices = polkadot_sdk::pallet_indices::Pallet<Runtime>;
 
 	#[runtime::pallet_index(6)]
 	pub type Balances = polkadot_sdk::pallet_balances::Pallet<Runtime>;
@@ -1687,7 +1845,8 @@ mod runtime {
 	pub type TransactionPayment = polkadot_sdk::pallet_transaction_payment::Pallet<Runtime>;
 
 	#[runtime::pallet_index(8)]
-	pub type ElectionProviderMultiPhase = pallet_election_provider_multi_phase::Pallet<Runtime>;
+	pub type ElectionProviderMultiPhase =
+		polkadot_sdk::pallet_election_provider_multi_phase::Pallet<Runtime>;
 
 	#[runtime::pallet_index(9)]
 	pub type Staking = polkadot_sdk::pallet_staking::Pallet<Runtime>;
@@ -1696,67 +1855,68 @@ mod runtime {
 	pub type Session = polkadot_sdk::pallet_session::Pallet<Runtime>;
 
 	#[runtime::pallet_index(11)]
-	pub type Grandpa = pallet_grandpa::Pallet<Runtime>;
+	pub type Grandpa = polkadot_sdk::pallet_grandpa::Pallet<Runtime>;
 
 	#[runtime::pallet_index(12)]
-	pub type Treasury = pallet_treasury::Pallet<Runtime>;
+	pub type Treasury = polkadot_sdk::pallet_treasury::Pallet<Runtime>;
 
 	#[runtime::pallet_index(13)]
 	pub type Contracts = polkadot_sdk::pallet_contracts::Pallet<Runtime>;
 
 	#[runtime::pallet_index(14)]
-	pub type Sudo = pallet_sudo::Pallet<Runtime>;
+	pub type Sudo = polkadot_sdk::pallet_sudo::Pallet<Runtime>;
 
 	#[runtime::pallet_index(15)]
 	pub type ImOnline = polkadot_sdk::pallet_im_online::Pallet<Runtime>;
 
 	#[runtime::pallet_index(16)]
-	pub type AuthorityDiscovery = pallet_authority_discovery::Pallet<Runtime>;
+	pub type AuthorityDiscovery = polkadot_sdk::pallet_authority_discovery::Pallet<Runtime>;
 
 	#[runtime::pallet_index(17)]
-	pub type Offences = pallet_offences::Pallet<Runtime>;
+	pub type Offences = polkadot_sdk::pallet_offences::Pallet<Runtime>;
 
 	#[runtime::pallet_index(18)]
 	pub type Historical = pallet_session_historical::Pallet<Runtime>;
 
 	#[runtime::pallet_index(19)]
-	pub type RandomnessCollectiveFlip = pallet_insecure_randomness_collective_flip::Pallet<Runtime>;
+	pub type RandomnessCollectiveFlip =
+		polkadot_sdk::pallet_insecure_randomness_collective_flip::Pallet<Runtime>;
 
 	#[runtime::pallet_index(20)]
-	pub type Identity = pallet_identity::Pallet<Runtime>;
+	pub type Identity = polkadot_sdk::pallet_identity::Pallet<Runtime>;
 
 	#[runtime::pallet_index(21)]
-	pub type Recovery = pallet_recovery::Pallet<Runtime>;
+	pub type Recovery = polkadot_sdk::pallet_recovery::Pallet<Runtime>;
 
 	#[runtime::pallet_index(22)]
-	pub type Vesting = pallet_vesting::Pallet<Runtime>;
+	pub type Vesting = polkadot_sdk::pallet_vesting::Pallet<Runtime>;
 
 	#[runtime::pallet_index(23)]
-	pub type Preimage = pallet_preimage::Pallet<Runtime>;
+	pub type Preimage = polkadot_sdk::pallet_preimage::Pallet<Runtime>;
 
 	#[runtime::pallet_index(24)]
-	pub type Scheduler = pallet_scheduler::Pallet<Runtime>;
+	pub type Scheduler = polkadot_sdk::pallet_scheduler::Pallet<Runtime>;
 
 	#[runtime::pallet_index(25)]
-	pub type Proxy = pallet_proxy::Pallet<Runtime>;
+	pub type Proxy = polkadot_sdk::pallet_proxy::Pallet<Runtime>;
 
 	#[runtime::pallet_index(26)]
-	pub type Multisig = pallet_multisig::Pallet<Runtime>;
+	pub type Multisig = polkadot_sdk::pallet_multisig::Pallet<Runtime>;
 
 	#[runtime::pallet_index(27)]
-	pub type Bounties = pallet_bounties::Pallet<Runtime>;
+	pub type Bounties = polkadot_sdk::pallet_bounties::Pallet<Runtime>;
 
 	#[runtime::pallet_index(28)]
-	pub type VoterList = pallet_bags_list::Pallet<Runtime, Instance1>;
+	pub type VoterList = polkadot_sdk::pallet_bags_list::Pallet<Runtime, Instance1>;
 
 	#[runtime::pallet_index(29)]
-	pub type ChildBounties = pallet_child_bounties::Pallet<Runtime>;
+	pub type ChildBounties = polkadot_sdk::pallet_child_bounties::Pallet<Runtime>;
 
 	#[runtime::pallet_index(30)]
-	pub type NominationPools = pallet_nomination_pools::Pallet<Runtime>;
+	pub type NominationPools = polkadot_sdk::pallet_nomination_pools::Pallet<Runtime>;
 
 	#[runtime::pallet_index(31)]
-	pub type FastUnstake = pallet_fast_unstake::Pallet<Runtime>;
+	pub type FastUnstake = polkadot_sdk::pallet_fast_unstake::Pallet<Runtime>;
 
 	#[runtime::pallet_index(32)]
 	pub type ChainBridge = pallet_chainbridge::Pallet<Runtime>;
@@ -1796,11 +1956,11 @@ mod runtime {
 	pub type Origins = pallet_origins::Pallet<Runtime>;
 
 	#[runtime::pallet_index(44)]
-	pub type Whitelist = pallet_whitelist::Pallet<Runtime>;
+	pub type Whitelist = polkadot_sdk::pallet_whitelist::Pallet<Runtime>;
 
 	// End OpenGov.
 	#[runtime::pallet_index(45)]
-	pub type TechComm = pallet_collective::Pallet<Runtime, Instance3>;
+	pub type TechComm = polkadot_sdk::pallet_collective::Pallet<Runtime, Instance3>;
 
 	#[runtime::pallet_index(46)]
 	pub type DdcClustersGov = pallet_ddc_clusters_gov::Pallet<Runtime>;
@@ -1812,9 +1972,6 @@ mod runtime {
 	pub type IsmpGrandpa = ismp_grandpa::Pallet<Runtime>;
 
 	// End OpenGov.
-	// pallet-hyperbridge removed — incompatible with ismp 2512.1+. Pallet
-	// index 49 is left unused to preserve indices for already-deployed
-	// pallets above it.
 
 	#[runtime::pallet_index(50)]
 	pub type TokenGateway = pallet_hyper_fungible_token::Pallet<Runtime>;
@@ -1830,6 +1987,12 @@ mod runtime {
 
 	#[runtime::pallet_index(54)]
 	pub type PoolWithdrawalFix = pallet_pool_withdrawal_fix::Pallet<Runtime>;
+
+	#[runtime::pallet_index(55)]
+	pub type PriceOracle = orml_oracle::Pallet<Runtime>;
+
+	#[runtime::pallet_index(56)]
+	pub type PriceOracleMembership = polkadot_sdk::pallet_membership::Pallet<Runtime, Instance4>;
 }
 
 /// The address format for describing accounts.
@@ -1874,25 +2037,7 @@ parameter_types! {
 	pub const MaxPoolsToMigrate: u32 = 250;
 }
 
-// One-shot cleanup for the dropped `pallet_hyperbridge` (was pallet_index 48)
-// and the `TokenGateway` prefix swap to `pallet_hyper_fungible_token`. Remove
-// from `Migrations` in the next runtime upgrade after this one ships —
-// RemovePallet is not self-gating.
-parameter_types! {
-	pub const HyperbridgePalletName: &'static str = "Hyperbridge";
-	pub const OldTokenGatewayPalletName: &'static str = "TokenGateway";
-}
-
-type Migrations = (
-	polkadot_sdk::frame_support::migrations::RemovePallet<
-		HyperbridgePalletName,
-		<Runtime as polkadot_sdk::frame_system::Config>::DbWeight,
-	>,
-	polkadot_sdk::frame_support::migrations::RemovePallet<
-		OldTokenGatewayPalletName,
-		<Runtime as polkadot_sdk::frame_system::Config>::DbWeight,
-	>,
-);
+type Migrations = ();
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = polkadot_sdk::frame_executive::Executive<
@@ -1913,6 +2058,8 @@ type EventRecord = polkadot_sdk::frame_system::EventRecord<
 mod benches {
 	polkadot_sdk::frame_benchmarking::define_benchmarks!(
 		[frame_benchmarking, BaselineBench::<Runtime>]
+		[orml_oracle, PriceOracle]
+		[pallet_membership, PriceOracleMembership]
 		[pallet_babe, Babe]
 		[pallet_bags_list, VoterList]
 		[pallet_balances, Balances]
@@ -1949,8 +2096,7 @@ mod benches {
 		[pallet_collective, TechComm]
 		[pallet_ddc_clusters_gov, DdcClustersGov]
 		[pallet_ddc_payouts, DdcPayouts]
-		// pallet-hyper-fungible-token 2512.0.0 ships no Benchmarking impl
-		// upstream; re-enable when it does.
+		/* [pallet_hyper_fungible_token, TokenGateway] - 2512.0.0 lacks Benchmarking impl */
 		[pallet_migrations, MultiBlockMigrations]
 		[pallet_fee_handler, FeeHandler]
 	);
@@ -2046,7 +2192,7 @@ impl_runtime_apis! {
 		}
 
 		fn current_set_id() -> fg_primitives::SetId {
-			pallet_grandpa::CurrentSetId::<Runtime>::get()
+			polkadot_sdk::pallet_grandpa::CurrentSetId::<Runtime>::get()
 		}
 
 		fn submit_report_equivocation_unsigned_extrinsic(
@@ -2131,7 +2277,7 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce> for Runtime {
+	impl polkadot_sdk::frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce> for Runtime {
 		fn account_nonce(account: AccountId) -> Nonce {
 			System::account_nonce(account)
 		}
@@ -2233,16 +2379,16 @@ impl_runtime_apis! {
 			pallet_ismp::Pallet::<Runtime>::latest_state_machine_height(id)
 		}
 
-		fn requests(commitments: Vec<H256>) -> Vec<Request> {
+		fn requests(commitments: Vec<polkadot_sdk::sp_core::H256>) -> Vec<Request> {
 			pallet_ismp::Pallet::<Runtime>::requests(commitments)
 		}
 
-		fn responses(commitments: Vec<H256>) -> Vec<GetResponse> {
+		fn responses(commitments: Vec<polkadot_sdk::sp_core::H256>) -> Vec<GetResponse> {
 			pallet_ismp::Pallet::<Runtime>::responses(commitments)
 		}
 	}
 
-	impl pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<
+	impl polkadot_sdk::pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<
 		Block,
 		Balance,
 > for Runtime {
@@ -2260,7 +2406,7 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl pallet_transaction_payment_rpc_runtime_api::TransactionPaymentCallApi<Block, Balance, RuntimeCall>
+	impl polkadot_sdk::pallet_transaction_payment_rpc_runtime_api::TransactionPaymentCallApi<Block, Balance, RuntimeCall>
 		for Runtime
 	{
 		fn query_call_info(call: RuntimeCall, len: u32) -> RuntimeDispatchInfo<Balance> {
@@ -2289,7 +2435,7 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl pallet_nomination_pools_runtime_api::NominationPoolsApi<
+	impl polkadot_sdk::pallet_nomination_pools_runtime_api::NominationPoolsApi<
 		Block,
 		AccountId,
 		Balance,
@@ -2298,14 +2444,14 @@ impl_runtime_apis! {
 			NominationPools::api_pending_rewards(member).unwrap_or_default()
 		}
 
-		fn points_to_balance(pool_id: pallet_nomination_pools::PoolId, points: Balance) -> Balance {
+		fn points_to_balance(pool_id: polkadot_sdk::pallet_nomination_pools::PoolId, points: Balance) -> Balance {
 			NominationPools::api_points_to_balance(pool_id, points)
 		}
 
-		fn balance_to_points(pool_id: pallet_nomination_pools::PoolId, new_funds: Balance) -> Balance {
+		fn balance_to_points(pool_id: polkadot_sdk::pallet_nomination_pools::PoolId, new_funds: Balance) -> Balance {
 			NominationPools::api_balance_to_points(pool_id, new_funds)
 		}
-		fn pool_pending_slash(pool_id: pallet_nomination_pools::PoolId) -> Balance {
+		fn pool_pending_slash(pool_id: polkadot_sdk::pallet_nomination_pools::PoolId) -> Balance {
 			NominationPools::api_pool_pending_slash(pool_id)
 		}
 
@@ -2313,7 +2459,7 @@ impl_runtime_apis! {
 			NominationPools::api_member_pending_slash(member)
 		}
 
-		fn pool_needs_delegate_migration(pool_id: pallet_nomination_pools::PoolId) -> bool {
+		fn pool_needs_delegate_migration(pool_id: polkadot_sdk::pallet_nomination_pools::PoolId) -> bool {
 			NominationPools::api_pool_needs_delegate_migration(pool_id)
 		}
 
@@ -2324,10 +2470,10 @@ impl_runtime_apis! {
 		fn member_total_balance(member: AccountId) -> Balance {
 			NominationPools::api_member_total_balance(member)
 		}
-		fn pool_balance(pool_id: pallet_nomination_pools::PoolId) -> Balance {
+		fn pool_balance(pool_id: polkadot_sdk::pallet_nomination_pools::PoolId) -> Balance {
 			NominationPools::api_pool_balance(pool_id)
 		}
-		fn pool_accounts(pool_id: pallet_nomination_pools::PoolId) -> (AccountId, AccountId) {
+		fn pool_accounts(pool_id: polkadot_sdk::pallet_nomination_pools::PoolId) -> (AccountId, AccountId) {
 			NominationPools::api_pool_accounts(pool_id)
 		}
 	}
@@ -2365,10 +2511,10 @@ impl_runtime_apis! {
 			// Trying to add benchmarks directly to the Session Pallet caused cyclic dependency
 			// issues. To get around that, we separated the Session benchmarks into its own crate,
 			// which is why we need these two lines below.
-			use polkadot_sdk::pallet_session_benchmarking::Pallet as SessionBench;
-			use polkadot_sdk::pallet_offences_benchmarking::Pallet as OffencesBench;
-			use polkadot_sdk::pallet_election_provider_support_benchmarking::Pallet as EPSBench;
-			use pallet_nomination_pools_benchmarking::Pallet as NominationPoolsBench;
+			use pallet_session_benchmarking::Pallet as SessionBench;
+			use pallet_offences_benchmarking::Pallet as OffencesBench;
+			use pallet_election_provider_support_benchmarking::Pallet as EPSBench;
+			use polkadot_sdk::pallet_nomination_pools_benchmarking::Pallet as NominationPoolsBench;
 			use polkadot_sdk::frame_system_benchmarking::Pallet as SystemBench;
 			use baseline::Pallet as BaselineBench;
 
@@ -2390,19 +2536,19 @@ impl_runtime_apis! {
 			// Trying to add benchmarks directly to the Session Pallet caused cyclic dependency
 			// issues. To get around that, we separated the Session benchmarks into its own crate,
 			// which is why we need these two lines below.
-			use polkadot_sdk::pallet_session_benchmarking::Pallet as SessionBench;
-			use polkadot_sdk::pallet_offences_benchmarking::Pallet as OffencesBench;
-			use polkadot_sdk::pallet_election_provider_support_benchmarking::Pallet as EPSBench;
-			use pallet_nomination_pools_benchmarking::Pallet as NominationPoolsBench;
+			use pallet_session_benchmarking::Pallet as SessionBench;
+			use pallet_offences_benchmarking::Pallet as OffencesBench;
+			use pallet_election_provider_support_benchmarking::Pallet as EPSBench;
+			use polkadot_sdk::pallet_nomination_pools_benchmarking::Pallet as NominationPoolsBench;
 			use polkadot_sdk::frame_system_benchmarking::Pallet as SystemBench;
 			use baseline::Pallet as BaselineBench;
 
-			impl polkadot_sdk::pallet_session_benchmarking::Config for Runtime {}
-			impl polkadot_sdk::pallet_offences_benchmarking::Config for Runtime {}
-			impl polkadot_sdk::pallet_election_provider_support_benchmarking::Config for Runtime {}
+			impl pallet_session_benchmarking::Config for Runtime {}
+			impl pallet_offences_benchmarking::Config for Runtime {}
+			impl pallet_election_provider_support_benchmarking::Config for Runtime {}
 			impl polkadot_sdk::frame_system_benchmarking::Config for Runtime {}
 			impl baseline::Config for Runtime {}
-			impl pallet_nomination_pools_benchmarking::Config for Runtime {}
+			impl polkadot_sdk::pallet_nomination_pools_benchmarking::Config for Runtime {}
 
 			let whitelist: Vec<TrackedStorageKey> = vec![
 				// Block Number
@@ -2452,7 +2598,7 @@ mod tests {
 	#[test]
 	fn perbill_as_onchain_accuracy() {
 		type OnChainAccuracy =
-		<<Runtime as pallet_election_provider_multi_phase::MinerConfig>::Solution as NposSolution>::Accuracy;
+		<<Runtime as polkadot_sdk::pallet_election_provider_multi_phase::MinerConfig>::Solution as NposSolution>::Accuracy;
 		let maximum_chain_accuracy: Vec<UpperOf<OnChainAccuracy>> = (0..MaxNominations::get())
 			.map(|_| <UpperOf<OnChainAccuracy>>::from(OnChainAccuracy::one().deconstruct()))
 			.collect();
