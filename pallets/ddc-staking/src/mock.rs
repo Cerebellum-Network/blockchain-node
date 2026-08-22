@@ -44,7 +44,7 @@ construct_runtime!(
 		Timestamp: polkadot_sdk::pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Balances: polkadot_sdk::pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Contracts: polkadot_sdk::pallet_contracts::{Pallet, Call, Storage, Event<T>, HoldReason},
-		Randomness: pallet_insecure_randomness_collective_flip::{Pallet, Storage},
+		Randomness: polkadot_sdk::pallet_insecure_randomness_collective_flip::{Pallet, Storage},
 		DdcStaking: pallet_ddc_staking::{Pallet, Call, Config<T>, Storage, Event<T>},
 		DdcNodes: pallet_ddc_nodes::{Pallet, Call, Storage, Event<T>},
 		DdcClusters: pallet_ddc_clusters::{Pallet, Call, Storage, Config<T>, Event<T>},
@@ -151,7 +151,7 @@ impl polkadot_sdk::pallet_contracts::Config for Test {
 	type Xcm = ();
 }
 
-impl pallet_insecure_randomness_collective_flip::Config for Test {}
+impl polkadot_sdk::pallet_insecure_randomness_collective_flip::Config for Test {}
 
 impl pallet_ddc_nodes::Config for Test {
 	type RuntimeEvent = RuntimeEvent;

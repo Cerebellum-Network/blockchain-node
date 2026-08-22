@@ -38,7 +38,7 @@ construct_runtime!(
 		Balances: pallet_balances,
 		DdcCustomers: pallet_ddc_customers::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Contracts: contracts::{Pallet, Call, Storage, Event<T>, HoldReason},
-		Randomness: pallet_insecure_randomness_collective_flip::{Pallet, Storage},
+		Randomness: polkadot_sdk::pallet_insecure_randomness_collective_flip::{Pallet, Storage},
 	}
 );
 
@@ -141,7 +141,7 @@ impl polkadot_sdk::pallet_contracts::Config for Test {
 	type Xcm = ();
 }
 
-impl pallet_insecure_randomness_collective_flip::Config for Test {}
+impl polkadot_sdk::pallet_insecure_randomness_collective_flip::Config for Test {}
 
 impl crate::pallet::Config for Test {
 	type UnlockingDelay = UnlockingDelay;

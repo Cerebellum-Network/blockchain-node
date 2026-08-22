@@ -14,7 +14,7 @@ log = { workspace = true, default-features = false }
 
 ddc-primitives.workspace = true
 
-# Polkadot SDK
+# Substrate / Polkadot SDK
 polkadot-sdk = { workspace = true, features = ["frame-support", "frame-system", "pallet-contracts", "pallet-referenda", "pallet-session", "sp-api", "sp-arithmetic", "sp-core", "sp-io", "sp-runtime", "sp-staking", "sp-std"] }
 
 [features]

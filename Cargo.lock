@@ -2004,9 +2004,9 @@ dependencies = [
 
 [[package]]
 name = "block-buffer"
-version = "0.12.1"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2f6c7dbe95a6ed67ad9f18e57daf93a2f034c524b99fd2b76d18fdfeb6660aa"
+checksum = "cdd35008169921d80bc60d3d0ab416eecb028c4cd653352907921d95084790be"
 dependencies = [
  "hybrid-array",
 ]
@@ -2530,7 +2530,6 @@ dependencies = [
  "clap",
  "ddc-dac-host",
  "polkadot-sdk",
- "sc-cli",
  "substrate-build-script-utils",
  "url",
 ]
@@ -2561,6 +2560,7 @@ dependencies = [
  "ismp",
  "ismp-grandpa",
  "log",
+ "orml-oracle",
  "pallet-chainbridge",
  "pallet-ddc-clusters",
  "pallet-ddc-clusters-gov",
@@ -2607,6 +2607,7 @@ dependencies = [
  "ismp",
  "ismp-grandpa",
  "log",
+ "orml-oracle",
  "pallet-chainbridge",
  "pallet-ddc-clusters",
  "pallet-ddc-clusters-gov",
@@ -4538,7 +4539,7 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.3"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=staging#8259c98cd673ea0d89e17e4af5267fba1332d748"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=staging#2cda2611419fb747758d49560d409e3822c2b74f"
 dependencies = [
  "blake2 0.10.6",
  "ddc-primitives",
@@ -4558,7 +4559,7 @@ dependencies = [
 [[package]]
 name = "ddc-dac-host"
 version = "0.1.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=staging#fce6cb482697e05dae707671e6feaf92418fddf8"
+source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=staging#338ac496431322de7418173dcc81448d01db6f14"
 dependencies = [
  "ddc-api",
  "log",
@@ -4573,7 +4574,7 @@ dependencies = [
 [[package]]
 name = "ddc-primitives"
 version = "7.3.3"
-source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=staging#9aaac1ae283ad5f1d9e976377515055a4e7e0d2a"
+source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=staging#a57aae4fc535b0ccc7ec3839e0dd468fb73bf46e"
 dependencies = [
  "blake2 0.10.6",
  "hex",
@@ -4774,7 +4775,7 @@ version = "0.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f1dd6dbb5841937940781866fa1281a1ff7bd3bf827091440879f9994983d5c2"
 dependencies = [
- "block-buffer 0.12.1",
+ "block-buffer 0.12.0",
  "crypto-common 0.2.2",
 ]
 
@@ -9387,6 +9388,59 @@ dependencies = [
 ]
 
 [[package]]
+name = "orml-oracle"
+version = "1.5.0"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "orml-traits",
+ "orml-utilities",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-application-crypto",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "orml-traits"
+version = "1.5.0"
+dependencies = [
+ "frame-support",
+ "impl-trait-for-tuples",
+ "num-traits",
+ "orml-utilities",
+ "parity-scale-codec",
+ "paste",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "staging-xcm 21.0.0",
+]
+
+[[package]]
+name = "orml-utilities"
+version = "1.5.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "p256"
 version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10108,11 +10162,16 @@ dependencies = [
  "ddc-primitives",
  "hex-literal",
  "log",
+ "pallet-balances",
  "pallet-ddc-nodes",
+ "pallet-insecure-randomness-collective-flip",
+ "pallet-timestamp",
  "parity-scale-codec",
  "polkadot-sdk",
  "scale-info",
  "serde",
+ "sp-io",
+ "sp-tracing",
  "substrate-test-utils",
 ]
 
@@ -10124,14 +10183,25 @@ dependencies = [
  "hex-literal",
  "lazy_static",
  "log",
+ "pallet-balances",
+ "pallet-contracts",
+ "pallet-conviction-voting",
  "pallet-ddc-clusters",
  "pallet-ddc-nodes",
  "pallet-ddc-staking",
+ "pallet-insecure-randomness-collective-flip",
+ "pallet-preimage",
+ "pallet-scheduler",
+ "pallet-timestamp",
  "parity-scale-codec",
  "parking_lot 0.12.5",
  "polkadot-sdk",
  "scale-info",
  "serde",
+ "sp-arithmetic 28.0.0",
+ "sp-core",
+ "sp-io",
+ "sp-tracing",
  "substrate-test-utils",
 ]
 
@@ -10143,11 +10213,17 @@ dependencies = [
  "hex",
  "hex-literal",
  "log",
+ "pallet-balances",
+ "pallet-insecure-randomness-collective-flip",
+ "pallet-timestamp",
  "parity-scale-codec",
  "polkadot-sdk",
  "rand_chacha 0.3.1",
  "scale-info",
  "serde",
+ "sp-core",
+ "sp-io",
+ "sp-tracing",
  "substrate-test-utils",
 ]
 
@@ -10158,17 +10234,22 @@ dependencies = [
  "ddc-primitives",
  "hex",
  "log",
+ "pallet-balances",
+ "pallet-timestamp",
  "parity-scale-codec",
  "polkadot-sdk",
  "scale-info",
  "serde",
+ "sp-core",
+ "sp-io",
+ "sp-tracing",
  "substrate-test-utils",
 ]
 
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=staging#66ff5f08273177bdc9601718f59d647e1bf60523"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=staging#2087df2ef09b99cec94e51fc72b04b15e92ebf8e"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
@@ -10196,19 +10277,25 @@ dependencies = [
  "hex-literal",
  "lazy_static",
  "log",
+ "pallet-balances",
+ "pallet-contracts",
  "pallet-ddc-clusters",
  "pallet-ddc-nodes",
+ "pallet-insecure-randomness-collective-flip",
+ "pallet-timestamp",
  "parity-scale-codec",
  "parking_lot 0.12.5",
  "polkadot-sdk",
  "scale-info",
+ "sp-core",
+ "sp-tracing",
  "substrate-test-utils",
 ]
 
 [[package]]
 name = "pallet-ddc-verification"
 version = "8.0.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=staging#e247b64d5182b30cf707a2f00640d0f968e58444"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=staging#1e227f70a1b13ad757c206bece392be146eb1618"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
@@ -20404,9 +20491,9 @@ checksum = "537dd038a89878be9b64dd4bd1b260315c1bb94f4d784956b81e27a088d9a09e"
 
 [[package]]
 name = "unicode-normalization"
-version = "0.1.25"
+version = "0.1.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5fd4f6878c9cb28d874b009da9e8d183b5abc80117c40bbd187a1fde336be6e8"
+checksum = "5c5713f0fc4b5db668a2ac63cdb7bb4469d8c9fed047b1d0292cc7b0ce2ba921"
 dependencies = [
  "tinyvec",
 ]

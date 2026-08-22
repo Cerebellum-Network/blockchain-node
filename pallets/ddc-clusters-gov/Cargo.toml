@@ -16,17 +16,26 @@ log.workspace = true
 scale-info.workspace = true
 serde.workspace = true
 
-# Polkadot SDK
+# Substrate / Polkadot SDK
 polkadot-sdk = { workspace = true, features = ["frame-support", "frame-system", "pallet-referenda", "sp-io", "sp-runtime", "sp-std"] }
 
 [dev-dependencies]
-# Substrate dev-deps via the umbrella.
 lazy_static = { workspace = true, default-features = true }
+pallet-balances = { workspace = true, default-features = true }
+pallet-contracts.workspace = true
+pallet-conviction-voting.workspace = true
 pallet-ddc-clusters = { workspace = true, default-features = true }
 pallet-ddc-nodes.workspace = true
 pallet-ddc-staking.workspace = true
+pallet-insecure-randomness-collective-flip = { workspace = true, default-features = true }
+pallet-preimage.workspace = true
+pallet-scheduler.workspace = true
+pallet-timestamp = { workspace = true, default-features = true }
 parking_lot = { workspace = true, default-features = true }
-polkadot-sdk = { workspace = true, default-features = true, features = ["frame-benchmarking", "pallet-balances", "pallet-contracts", "pallet-conviction-voting", "pallet-insecure-randomness-collective-flip", "pallet-preimage", "pallet-scheduler", "pallet-timestamp", "sp-arithmetic", "sp-core", "sp-io", "sp-tracing"] }
+sp-arithmetic.workspace = true
+sp-core = { workspace = true, default-features = true }
+sp-io = { workspace = true, default-features = true }
+sp-tracing = { workspace = true, default-features = true }
 substrate-test-utils = { workspace = true, default-features = true }
 
 [features]

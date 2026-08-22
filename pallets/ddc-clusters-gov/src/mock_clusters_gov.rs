@@ -128,10 +128,10 @@ parameter_types! {
 	pub const PreimageMaxSize: u32 = 4096 * 1024;
 	pub const PreimageBaseDeposit: Balance = 0;
 	pub const PreimageByteDeposit: Balance = 0;
-	pub const PreimageHoldReason: RuntimeHoldReason = RuntimeHoldReason::Preimage(pallet_preimage::HoldReason::Preimage);
+	pub const PreimageHoldReason: RuntimeHoldReason = RuntimeHoldReason::Preimage(polkadot_sdk::pallet_preimage::HoldReason::Preimage);
 }
 
-impl pallet_preimage::Config for Test {
+impl polkadot_sdk::pallet_preimage::Config for Test {
 	type WeightInfo = ();
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
@@ -188,7 +188,7 @@ impl polkadot_sdk::pallet_conviction_voting::Config for Test {
 	type VotingHooks = ();
 }
 
-impl pallet_scheduler::Config for Test {
+impl polkadot_sdk::pallet_scheduler::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type PalletsOrigin = OriginCaller;
@@ -252,7 +252,7 @@ impl polkadot_sdk::pallet_contracts::Config for Test {
 	type Xcm = ();
 }
 
-impl pallet_insecure_randomness_collective_flip::Config for Test {}
+impl polkadot_sdk::pallet_insecure_randomness_collective_flip::Config for Test {}
 
 impl pallet_ddc_nodes::Config for Test {
 	type RuntimeEvent = RuntimeEvent;

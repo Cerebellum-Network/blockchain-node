@@ -1,5 +1,5 @@
 {
   "includes": ["**/*.{toml}"],
-  "excludes": ["**/target"],
+  "excludes": ["**/target", "third_party"],
   "plugins": ["https://plugins.dprint.dev/toml-0.5.3.wasm"]
 }

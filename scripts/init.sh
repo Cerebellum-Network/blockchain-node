@@ -2,6 +2,8 @@
 
 set -e
 
+"$(dirname "$0")/init-submodules.sh"
+
 echo "*** Initializing WASM build environment"
 
 rustup install 1.90.0

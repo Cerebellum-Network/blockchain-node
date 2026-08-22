@@ -1,11 +1,11 @@
 use polkadot_sdk::*;
 
-use frame_system as system;
-use polkadot_sdk::frame_support::{
+use frame_support::{
 	parameter_types,
 	traits::{ConstU32, Everything},
 	PalletId,
 };
+use frame_system as system;
 use polkadot_sdk::sp_core::H256;
 use polkadot_sdk::sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
