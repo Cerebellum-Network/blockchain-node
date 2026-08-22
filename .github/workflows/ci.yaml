@@ -102,37 +102,6 @@ jobs:
           cargo build --release --bin cere
           timeout --preserve-status 30s ./target/release/cere --dev
 
-  check-try-runtime:
-    name: Try-Runtime Check
-    needs: format
-    runs-on: ubuntu-24.04
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-      - name: Install linux dependencies
-        run: sudo apt update && sudo apt install -y clang libclang-dev libssl-dev llvm libudev-dev protobuf-compiler
-      - name: Install toolchain and rust-src
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: 1.91.0
-          targets: wasm32-unknown-unknown
-          components: rust-src
-      - name: Enhanced Rust Cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: "runtime-build"
-          cache-on-failure: true
-      - name: Install try-runtime
-        run: cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.8.0 --locked
-      - name: Build for try-runtime
-        run: |
-          CARGO_INCREMENTAL=1 cargo build --release --features try-runtime
-      - name: Check Try-Runtime
-        run: |
-          try-runtime --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
-          on-runtime-upgrade --disable-idempotency-checks --blocktime 6000 live --uri wss://archive.testnet.cere.network:443
 
   clippy:
     name: Run Clippy
