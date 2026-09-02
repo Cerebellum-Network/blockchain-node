@@ -72,7 +72,10 @@ use polkadot_sdk::frame_system::{
 };
 #[cfg(any(feature = "std", test))]
 pub use polkadot_sdk::pallet_balances::Call as BalancesCall;
-use polkadot_sdk::pallet_contracts::Determinism;
+use polkadot_sdk::pallet_contracts::{
+	chain_extension::{ChainExtension, Environment, Ext, InitState, RetVal},
+	Determinism,
+};
 use polkadot_sdk::pallet_election_provider_multi_phase::SolutionAccuracyOf;
 use polkadot_sdk::pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
@@ -107,8 +110,8 @@ use polkadot_sdk::sp_runtime::{
 		StaticLookup, Verify,
 	},
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill, Perquintill,
-	RuntimeDebug,
+	ApplyExtrinsicResult, DispatchError, FixedPointNumber, FixedU128, Perbill, Percent, Permill,
+	Perquintill, RuntimeDebug,
 };
 use polkadot_sdk::sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
@@ -167,7 +170,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 80017,
+	spec_version: 80018,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 27,
@@ -1035,7 +1038,7 @@ impl polkadot_sdk::pallet_contracts::Config for Runtime {
 	type CallStack = [polkadot_sdk::pallet_contracts::Frame<Self>; 5];
 	type WeightPrice = polkadot_sdk::pallet_transaction_payment::Pallet<Self>;
 	type WeightInfo = polkadot_sdk::pallet_contracts::weights::SubstrateWeight<Self>;
-	type ChainExtension = ();
+	type ChainExtension = CereChainExtension;
 	type Schedule = Schedule;
 	type AddressGenerator = polkadot_sdk::pallet_contracts::DefaultAddressGenerator;
 	type MaxCodeLen = ConstU32<{ 123 * 1024 }>;
@@ -1053,6 +1056,34 @@ impl polkadot_sdk::pallet_contracts::Config for Runtime {
 	type Migrations = ();
 	type ApiVersion = ();
 	type Xcm = ();
+}
+
+#[derive(Default)]
+pub struct CereChainExtension;
+impl ChainExtension<Runtime> for CereChainExtension {
+	fn call<E: Ext>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError> {
+		let func_id = env.func_id();
+		let ext_id = env.ext_id();
+		log::debug!("CereChainExtension called with ext_id: {} func_id: {}", ext_id, func_id);
+		match func_id {
+			1 => {
+				use ddc_primitives::contracts::types::ClusterId as ClusterId20;
+
+				let mut env = env.buf_in_buf_out();
+				let _cluster_id: ClusterId20 = env.read_as_unbounded(env.in_len())?;
+				let payouts_pallet_id = DdcPayouts::pallet_account_id();
+
+				env.write(&payouts_pallet_id.encode(), false, None).map_err(|_| {
+					DispatchError::Other(
+						"ChainExtension failed to call `get_payouts_origin_id` function",
+					)
+				})?;
+
+				Ok(RetVal::Converging(0))
+			},
+			_ => Err(DispatchError::Other("Unsupported function in CereChainExtension")),
+		}
+	}
 }
 
 impl polkadot_sdk::pallet_sudo::Config for Runtime {
