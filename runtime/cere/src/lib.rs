@@ -72,7 +72,10 @@ use polkadot_sdk::frame_system::{
 };
 #[cfg(any(feature = "std", test))]
 pub use polkadot_sdk::pallet_balances::Call as BalancesCall;
-use polkadot_sdk::pallet_contracts::Determinism;
+use polkadot_sdk::pallet_contracts::{
+	chain_extension::{ChainExtension, Environment, Ext, InitState, RetVal},
+	Determinism,
+};
 use polkadot_sdk::pallet_election_provider_multi_phase::SolutionAccuracyOf;
 use polkadot_sdk::pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
@@ -167,7 +170,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 80017,
+	spec_version: 80018,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 27,
@@ -1035,7 +1038,15 @@ impl polkadot_sdk::pallet_contracts::Config for Runtime {
 	type CallStack = [polkadot_sdk::pallet_contracts::Frame<Self>; 5];
 	type WeightPrice = polkadot_sdk::pallet_transaction_payment::Pallet<Self>;
 	type WeightInfo = polkadot_sdk::pallet_contracts::weights::SubstrateWeight<Self>;
-	type ChainExtension = ();
+	// Must be a real extension, not `()`: pallet-contracts' `scan_imports`
+	// rejects any module importing `call_chain_extension` when
+	// `ChainExtension::enabled()` is `false` (which is what `()` reports via
+	// the empty-tuple expansion of `impl_for_tuples`). Under that check the
+	// deployed customer-deposit contract — compiled against
+	// `DdcPayoutsExtension`, like every contract sharing `CereEnvironment` —
+	// fails to load at all (CodeRejected) on call and instantiate, even for
+	// messages that never touch the extension.
+	type ChainExtension = CereChainExtension;
 	type Schedule = Schedule;
 	type AddressGenerator = polkadot_sdk::pallet_contracts::DefaultAddressGenerator;
 	type MaxCodeLen = ConstU32<{ 123 * 1024 }>;
@@ -1053,6 +1064,43 @@ impl polkadot_sdk::pallet_contracts::Config for Runtime {
 	type Migrations = ();
 	type ApiVersion = ();
 	type Xcm = ();
+}
+
+/// The chain extension exposed to ink! contracts, matching
+/// `runtime/cere-dev`. The customer-deposit contract
+/// (`contracts/customer-deposit`) is compiled against `DdcPayoutsExtension`
+/// (extension id 1) and uses it in `charge()` to learn the only account
+/// allowed to charge customer deposits — the DdcPayouts pallet account.
+/// Registering it here (instead of `()`) both implements that lookup and
+/// keeps pallet-contracts from rejecting already-deployed code that imports
+/// `call_chain_extension` (see the comment on `ChainExtension` in the Config
+/// above).
+#[derive(Default)]
+pub struct CereChainExtension;
+impl ChainExtension<Runtime> for CereChainExtension {
+	fn call<E: Ext>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError> {
+		let func_id = env.func_id();
+		let ext_id = env.ext_id();
+		log::debug!("CereChainExtension called with ext_id: {} func_id: {}", ext_id, func_id);
+		match func_id {
+			1 => {
+				use ddc_primitives::contracts::types::ClusterId as ClusterId20;
+
+				let mut env = env.buf_in_buf_out();
+				let _cluster_id: ClusterId20 = env.read_as_unbounded(env.in_len())?;
+				let payouts_pallet_id = DdcPayouts::pallet_account_id();
+
+				env.write(&payouts_pallet_id.encode(), false, None).map_err(|_| {
+					DispatchError::Other(
+						"ChainExtension failed to call `get_payouts_origin_id` function",
+					)
+				})?;
+
+				Ok(RetVal::Converging(0))
+			},
+			_ => Err(DispatchError::Other("Unsupported function in CereChainExtension")),
+		}
+	}
 }
 
 impl polkadot_sdk::pallet_sudo::Config for Runtime {
@@ -2655,6 +2703,28 @@ mod tests {
 			size of RuntimeCall.
 			If the limit is too strong, maybe consider increase the limit to 300.",
 			size,
+		);
+	}
+
+	/// Regression test for the testnet spec 80017 incident (2026-09-02):
+	/// the deployed customer-deposit contract (and any other contract compiled
+	/// against the `DdcPayoutsExtension` ink! extension) imports
+	/// `seal0.call_chain_extension`, and pallet-contracts' `scan_imports`
+	/// refuses to *load* such a module when
+	/// `<T as pallet_contracts::Config>::ChainExtension::enabled()` returns
+	/// `false` — every `ContractsApi_call` then fails with `CodeRejected`
+	/// (Contracts error 28), even for messages that never call the extension.
+	/// `()` is given `enabled() == false` by the empty-tuple expansion of
+	/// `impl_for_tuples`, so `type ChainExtension = ()` silently broke all
+	/// reads of the deployed contract under the upgraded pallet.
+	#[test]
+	fn contracts_chain_extension_must_be_enabled() {
+		type ContractsExtension =
+			<Runtime as polkadot_sdk::pallet_contracts::Config>::ChainExtension;
+		assert!(
+			<ContractsExtension as ChainExtension<Runtime>>::enabled(),
+			"Contracts::ChainExtension reports enabled() == false: pallet-contracts will reject \
+			 every contract importing call_chain_extension with CodeRejected at load time",
 		);
 	}
 }
