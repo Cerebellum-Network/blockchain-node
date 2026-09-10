@@ -4,6 +4,8 @@ name: Try-Runtime Check
 # from the PR's base branch rather than hardcoded, so dev and staging can share
 # one identical ci.yaml: a PR into staging is checked against testnet with the
 # cere runtime, anything else against devnet with the cere-dev runtime.
+# A manual run picks the network explicitly -- workflow_dispatch has no base_ref,
+# so without the input every manual run silently targeted devnet.
 #
 # State comes from the snapshot cached by "Refresh Try-Runtime Snapshots".
 # Missing snapshot is not fatal — the check falls back to streaming `live`,
@@ -20,6 +22,15 @@ on:
       - 'Cargo.toml'
       - '.github/workflows/check-try-runtime.yaml'
   workflow_dispatch:
+    inputs:
+      network:
+        description: Chain to dry-run the upgrade against
+        required: true
+        default: devnet
+        type: choice
+        options:
+          - devnet
+          - testnet
 
 env:
   # Feed the GH_READ_TOKEN rewrite to git through its environment form rather
@@ -48,7 +59,16 @@ jobs:
       - name: Pick network and runtime
         id: target
         run: |
-          if [ "${{ github.base_ref }}" = "staging" ]; then
+          # Manual runs choose; PRs derive it from the base branch.
+          NETWORK="${{ inputs.network }}"
+          if [ -z "$NETWORK" ]; then
+            if [ "${{ github.base_ref }}" = "staging" ]; then
+              NETWORK=testnet
+            else
+              NETWORK=devnet
+            fi
+          fi
+          if [ "$NETWORK" = "testnet" ]; then
             {
               echo "uri=wss://archive.testnet.cere.network:443"
               echo "wasm=./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm"
