@@ -4559,7 +4559,7 @@ dependencies = [
 [[package]]
 name = "ddc-dac-host"
 version = "0.1.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=dev#e84b555e594a53492b40930a98a660db1d53c8c8"
+source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=dev#22ad71e43be9aac39787869dc39c050377b5c7aa"
 dependencies = [
  "ddc-api",
  "log",
