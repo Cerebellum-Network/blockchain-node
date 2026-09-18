@@ -174,7 +174,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 80020,
+	spec_version: 80022,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 27,
@@ -1515,7 +1515,9 @@ impl pallet_ddc_payouts::Config for Runtime {
 
 	const MAX_PAYOUT_BATCH_SIZE: u16 = 100;
 	const MAX_PAYOUT_BATCH_COUNT: u16 = 1000;
-	const OCW_INTERVAL: u16 = 1; // every 5th block
+	const OCW_INTERVAL: u16 = 1; // every block
+	const OCW_LOCK_TTL_MILLIS: u64 = 2 * 60 * 60 * 1_000; // 2h
+	const OCW_CLUSTER_QUARANTINE_MILLIS: u64 = 60 * 60 * 1_000; // 1h
 }
 
 parameter_types! {
@@ -1616,7 +1618,9 @@ impl pallet_ddc_verification::Config for Runtime {
 	type InspBackupsFactor = TenPercentOfValidators;
 	type DacExecConfig = DacExecConfigConst;
 
-	const OCW_INTERVAL: u16 = 1; // every 10th block
+	const OCW_INTERVAL: u16 = 1; // every block
+	const OCW_LOCK_TTL_MILLIS: u64 = 2 * 60 * 60 * 1_000; // 2h
+	const OCW_CLUSTER_QUARANTINE_MILLIS: u64 = 60 * 60 * 1_000; // 1h
 	const TCA_INSPECTION_STEP: u64 = 0;
 	const MIN_INSP_REDUNDANCY_FACTOR: u8 = 3;
 	const MIN_INSP_BACKUPS_FACTOR: u8 = 1;
