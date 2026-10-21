@@ -13,7 +13,8 @@ env:
   # Feed the GH_READ_TOKEN rewrite to git through its environment form rather
   # than `git config --global`. The self-hosted pool does not set HOME, so the
   # config-file form exits 128 there and the token never gets installed.
-  GIT_CONFIG_COUNT: 1
+  # GIT_CONFIG_COUNT is set to 2 by the "Configure git authentication header" step in each
+  # job, which adds an http extraheader as entry 1 alongside this insteadOf rewrite.
   GIT_CONFIG_KEY_0: url.https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/.insteadOf
   GIT_CONFIG_VALUE_0: https://github.com/
 
@@ -32,6 +33,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: true
+      - name: Configure git authentication header
+        run: |
+          header_b64="$(printf 'x-access-token:%s' '${{ secrets.GH_READ_TOKEN }}' | base64 | tr -d '\n')"
+          echo "::add-mask::${header_b64}"
+          {
+            echo "GIT_CONFIG_COUNT=2"
+            echo "GIT_CONFIG_KEY_1=http.https://github.com/.extraheader"
+            echo "GIT_CONFIG_VALUE_1=AUTHORIZATION: basic ${header_b64}"
+          } >> "$GITHUB_ENV"
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -52,6 +62,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: true
+      - name: Configure git authentication header
+        run: |
+          header_b64="$(printf 'x-access-token:%s' '${{ secrets.GH_READ_TOKEN }}' | base64 | tr -d '\n')"
+          echo "::add-mask::${header_b64}"
+          {
+            echo "GIT_CONFIG_COUNT=2"
+            echo "GIT_CONFIG_KEY_1=http.https://github.com/.extraheader"
+            echo "GIT_CONFIG_VALUE_1=AUTHORIZATION: basic ${header_b64}"
+          } >> "$GITHUB_ENV"
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -80,6 +99,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: true
+      - name: Configure git authentication header
+        run: |
+          header_b64="$(printf 'x-access-token:%s' '${{ secrets.GH_READ_TOKEN }}' | base64 | tr -d '\n')"
+          echo "::add-mask::${header_b64}"
+          {
+            echo "GIT_CONFIG_COUNT=2"
+            echo "GIT_CONFIG_KEY_1=http.https://github.com/.extraheader"
+            echo "GIT_CONFIG_VALUE_1=AUTHORIZATION: basic ${header_b64}"
+          } >> "$GITHUB_ENV"
       - name: Install linux dependencies
         run: sudo apt update && sudo apt install -y clang libclang-dev libssl-dev llvm libudev-dev protobuf-compiler
       - name: Install toolchain and rust-src
@@ -112,6 +140,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: true
+      - name: Configure git authentication header
+        run: |
+          header_b64="$(printf 'x-access-token:%s' '${{ secrets.GH_READ_TOKEN }}' | base64 | tr -d '\n')"
+          echo "::add-mask::${header_b64}"
+          {
+            echo "GIT_CONFIG_COUNT=2"
+            echo "GIT_CONFIG_KEY_1=http.https://github.com/.extraheader"
+            echo "GIT_CONFIG_VALUE_1=AUTHORIZATION: basic ${header_b64}"
+          } >> "$GITHUB_ENV"
       - name: Install linux dependencies
         run: sudo apt update && sudo apt install -y clang libclang-dev libssl-dev llvm libudev-dev protobuf-compiler
       - name: Install toolchain
@@ -145,6 +182,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: true
+      - name: Configure git authentication header
+        run: |
+          header_b64="$(printf 'x-access-token:%s' '${{ secrets.GH_READ_TOKEN }}' | base64 | tr -d '\n')"
+          echo "::add-mask::${header_b64}"
+          {
+            echo "GIT_CONFIG_COUNT=2"
+            echo "GIT_CONFIG_KEY_1=http.https://github.com/.extraheader"
+            echo "GIT_CONFIG_VALUE_1=AUTHORIZATION: basic ${header_b64}"
+          } >> "$GITHUB_ENV"
       # This runner does not set HOME, so `git config --global` fails with
       # "fatal: $HOME not set". CARGO_HOME is already pinned on the runner for
       # the same reason. Export a writable HOME to every later step rather than
