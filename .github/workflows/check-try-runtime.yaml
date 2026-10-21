@@ -125,7 +125,7 @@ jobs:
 
       - name: Install try-runtime
         if: steps.trycli-cache.outputs.cache-hit != 'true'
-        run: cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.8.0 --locked
+        run: cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.8.0 --locked --force
 
       - name: Restore latest ${{ steps.target.outputs.network }} snapshot
         id: snap
