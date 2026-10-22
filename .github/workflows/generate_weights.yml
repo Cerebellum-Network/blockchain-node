@@ -35,6 +35,8 @@ jobs:
       - name: Configure GitHub token for private deps
         run: |
           git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+          git config --global http.https://github.com/.extraheader \
+            "AUTHORIZATION: basic $(printf 'x-access-token:%s' '${{ secrets.GH_READ_TOKEN }}' | base64 | tr -d '\n')"
 
       - name: Generate ephemeral SSH key
         id: sshkey
