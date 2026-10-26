@@ -4559,7 +4559,7 @@ dependencies = [
 [[package]]
 name = "ddc-dac-host"
 version = "0.1.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=dev#71ea6cd3a2610323c6600370495287857f7121e1"
+source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=fix%2Fbill-piece-once#8c72202fdbcf7da1719b7ddbddc84eb757aec539"
 dependencies = [
  "ddc-api",
  "log",
@@ -10249,7 +10249,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#8f8471343f8502d2ee293d4834a56b984c76c1b0"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=fix%2Fbill-piece-once#6ab965d5fc9170e7f257460459ffa933a8da7c27"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
@@ -10295,7 +10295,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#58fdfacfff67722a097b549f36e793abae6593f6"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=fix%2Fbill-piece-once#2ca4db994009863751b1de82a68f916c6ad57c3e"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
