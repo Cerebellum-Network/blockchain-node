@@ -4539,7 +4539,7 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.3"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev#b37d10de99250970272277ba296173ecf90d57f1"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev#ded9d186c45b56e2c445c65f7d5f53b0c50cf9b5"
 dependencies = [
  "blake2 0.10.6",
  "ddc-primitives",
@@ -10295,7 +10295,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#58fdfacfff67722a097b549f36e793abae6593f6"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=chore%2Fremove-bad-actor-simulation#fb29bf15463160e306c784a11021101a2042f724"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
