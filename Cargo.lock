@@ -4559,7 +4559,7 @@ dependencies = [
 [[package]]
 name = "ddc-dac-host"
 version = "0.1.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=feat%2Finsp-era-nudge#aca4a1db9c376704e37d51d5e8b0dc38f2370c22"
+source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=dev#8d7e728318afd6243b2896bd08dbe7d0f3c28530"
 dependencies = [
  "ddc-api",
  "log",
@@ -10249,7 +10249,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Finsp-era-nudge#9172ab5f1862185693913579411a7a7638b88a4e"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Finsp-era-nudge#97777a4626e412ee6cc713a84b8b2ed0479ad956"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
@@ -10295,7 +10295,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=feat%2Finsp-era-nudge#3e7b97876a5bc3eaa324a4cc98c27475460098da"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=feat%2Finsp-era-nudge#8e2ef612dd6ba761dca69167955d6cac12d2a831"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
