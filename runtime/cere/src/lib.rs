@@ -1642,7 +1642,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	const MIN_INSP_REDUNDANCY_FACTOR: u8 = 3;
 	const MIN_INSP_BACKUPS_FACTOR: u8 = 3;
 	const INSP_BACKUP_BLOCK_DELAY: u32 = 25;
-	const INSP_GIVE_UP_ERA_DISTANCE: u32 = 24; // 24h at 1h eras
+	const INSP_GIVE_UP_ERA_DISTANCE: u32 = 6; // 6h at 1h eras
 }
 
 parameter_types! {
