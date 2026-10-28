@@ -4539,7 +4539,7 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.3"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev#b37d10de99250970272277ba296173ecf90d57f1"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=feat%2Finsp-give-up-distance#22ecf325c90f4f50b611ddbbf71778ca0144de4d"
 dependencies = [
  "blake2 0.10.6",
  "ddc-primitives",
@@ -4559,7 +4559,7 @@ dependencies = [
 [[package]]
 name = "ddc-dac-host"
 version = "0.1.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=dev#71ea6cd3a2610323c6600370495287857f7121e1"
+source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=feat%2Finsp-give-up-distance#d742eacd30429c043a608d24547acbe2ad1c9af0"
 dependencies = [
  "ddc-api",
  "log",
@@ -10249,7 +10249,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#8f8471343f8502d2ee293d4834a56b984c76c1b0"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Finsp-give-up-distance#7223fa133570bce018e6a55f0987b38b0deac7ef"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
@@ -10295,7 +10295,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#58fdfacfff67722a097b549f36e793abae6593f6"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=feat%2Finsp-give-up-distance#45e249502bbc727a3dac15f9e26f68675b71b1eb"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
