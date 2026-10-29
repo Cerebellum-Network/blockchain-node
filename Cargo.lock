@@ -4539,7 +4539,7 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.3"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev#53c5c068f0dc3c8ec43e1fc31cbb25248d6b34a5"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=feat%2Finsp-cursor-era-list#4454b0d1dfa70a48db6378a771034f8fce2eebc6"
 dependencies = [
  "blake2 0.10.6",
  "ddc-primitives",
@@ -4559,7 +4559,7 @@ dependencies = [
 [[package]]
 name = "ddc-dac-host"
 version = "0.1.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=dev#ef06b2073f75cb3c42d1b88e031c2ee0163e64f6"
+source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=feat%2Finsp-cursor-era-list#42552854eb97dad0dcd44ba71a0d5ce390cbb6e4"
 dependencies = [
  "ddc-api",
  "log",
@@ -10249,7 +10249,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#81ce17ed4f56849122b0baf25bd1e03f7468808a"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Finsp-cursor-era-list#e18fd8184e48eab9ed0a0b619edac9085c9040ae"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
@@ -10295,7 +10295,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#c34d43c06a85dfaba99022905a048a5c0c5e65fc"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=feat%2Finsp-cursor-era-list#68699526daca98420c9d0d10c59a0be4ddc016ff"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
