@@ -174,7 +174,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 80024,
+	spec_version: 80025,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 27,
@@ -1611,8 +1611,6 @@ impl pallet_ddc_verification::Config for Runtime {
 	type Currency = Balances;
 	type CustomerVisitor = DdcCustomers;
 	type BucketManager = DdcCustomers;
-	type InspReceiptsInterceptor =
-		pallet_ddc_verification::simulations::v1::SimulationReceiptsInterceptor;
 
 	type InspRedundancyFactor = TenPercentOfValidators;
 	type InspBackupsFactor = TenPercentOfValidators;
@@ -1625,6 +1623,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	const MIN_INSP_REDUNDANCY_FACTOR: u8 = 3;
 	const MIN_INSP_BACKUPS_FACTOR: u8 = 1;
 	const INSP_BACKUP_BLOCK_DELAY: u32 = 25;
+	const INSP_GIVE_UP_ERA_DISTANCE: u32 = 12; // 4h at 20m eras
 }
 
 parameter_types! {
