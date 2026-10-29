@@ -1629,7 +1629,6 @@ impl pallet_ddc_verification::Config for Runtime {
 	type Currency = Balances;
 	type CustomerVisitor = DdcCustomers;
 	type BucketManager = DdcCustomers;
-	type InspReceiptsInterceptor = pallet_ddc_verification::NoReceiptsInterceptor;
 
 	type InspRedundancyFactor = TenPercentOfValidators;
 	type InspBackupsFactor = TenPercentOfValidators;
