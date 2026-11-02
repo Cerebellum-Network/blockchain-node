@@ -10249,7 +10249,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Finsp-receipt-cid#47a74d68b93c9b35f9ae86a2ac9eac28cc6d9a46"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Finsp-receipt-cid#95621d87ad6f2c726d2b04961a1aa91020ca2c9b"
 dependencies = [
  "array-bytes 6.2.3",
  "blake3",
