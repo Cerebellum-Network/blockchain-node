@@ -4539,7 +4539,7 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.3"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=feat%2Finsp-receipt-cid-proto#a3cb1551e5524aa030443e8308551fed667fe8a9"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=feat%2Finsp-receipt-cid#9a635a9f44d778b9b13cec16d00f30df32bee69f"
 dependencies = [
  "blake2 0.10.6",
  "ddc-primitives",
@@ -4559,7 +4559,7 @@ dependencies = [
 [[package]]
 name = "ddc-dac-host"
 version = "0.1.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=feat%2Finsp-receipt-cid-proto#1d5f05533909b1f117519242816c30870a0a7817"
+source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=feat%2Finsp-receipt-cid#dbe550c9280b34170f2d3b419b32839d8e3260cd"
 dependencies = [
  "ddc-api",
  "log",
@@ -4574,7 +4574,7 @@ dependencies = [
 [[package]]
 name = "ddc-primitives"
 version = "7.3.4"
-source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev#2c5e752ceff681f0ce8e8e7d5b0598ce3b0b5cf0"
+source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=feat%2Finsp-receipt-cid#e8d7875b104960ad0a15bcd9ec39bf4277945ba9"
 dependencies = [
  "blake2 0.10.6",
  "hex",
@@ -10249,9 +10249,10 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Finsp-receipt-cid-proto#79902775e685231298f83f10e1aa774f682e6a4d"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Finsp-receipt-cid#95621d87ad6f2c726d2b04961a1aa91020ca2c9b"
 dependencies = [
  "array-bytes 6.2.3",
+ "blake3",
  "byte-unit",
  "ddc-api",
  "ddc-dac-host",
@@ -10295,7 +10296,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=feat%2Finsp-receipt-cid-proto#2e3c14df8d83dff38d256e694cfcee5c7a9298b7"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=feat%2Finsp-receipt-cid#739b8397fbee75d8f55852f34afd1ae40d767f42"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",

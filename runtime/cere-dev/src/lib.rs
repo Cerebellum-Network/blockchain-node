@@ -2040,7 +2040,7 @@ parameter_types! {
 	pub const MaxPoolsToMigrate: u32 = 250;
 }
 
-type Migrations = ();
+type Migrations = (pallet_ddc_payouts::migrations::v6::MigrateToV6<Runtime>,);
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = polkadot_sdk::frame_executive::Executive<

@@ -2062,7 +2062,7 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Tx
 // 	>,
 // );
 
-type Migrations = ();
+type Migrations = (pallet_ddc_payouts::migrations::v6::MigrateToV6<Runtime>,);
 
 parameter_types! {
 	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
@@ -2098,6 +2098,7 @@ pub mod migrations {
 		// `ddc-verification` pallet was never deployed on MAINNET
 		pallet_ddc_payouts::migrations::v4::MigrateToV4<Runtime>,
 		pallet_ddc_payouts::migrations::v5::MigrateToV5<Runtime>,
+		pallet_ddc_payouts::migrations::v6::MigrateToV6<Runtime>,
 		// pallet_ddc_customers::migrations::v3_mbm::LazyMigrationV2ToV3<Runtime>, // ingore the
 		// removal of `total_customers_usage` field as it was never deployed on MAINNET
 		// pallet_ddc_nodes::migrations::v2_mbm::LazyMigrationV1ToV2<Runtime>, // ignore the
