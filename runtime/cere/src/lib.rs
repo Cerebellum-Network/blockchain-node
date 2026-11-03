@@ -1651,7 +1651,7 @@ parameter_types! {
 impl polkadot_sdk::pallet_migrations::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	#[cfg(not(feature = "runtime-benchmarks"))]
-	type Migrations = ();
+	type Migrations = (pallet_ddc_payouts::migrations::v6::MigrateToV6<Runtime>,);
 	// type Migrations = pallet_ddc_customers::migrations::v5_mbm::LazyMigrationV4ToV5<Runtime>; // enable after migrating Cluster Gov Params
 	// Benchmarks need mocked migrations to guarantee that they succeed.
 	#[cfg(feature = "runtime-benchmarks")]
@@ -2062,7 +2062,7 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Tx
 // 	>,
 // );
 
-type Migrations = (pallet_ddc_payouts::migrations::v6::MigrateToV6<Runtime>,);
+type Migrations = ();
 
 parameter_types! {
 	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
@@ -2098,7 +2098,6 @@ pub mod migrations {
 		// `ddc-verification` pallet was never deployed on MAINNET
 		pallet_ddc_payouts::migrations::v4::MigrateToV4<Runtime>,
 		pallet_ddc_payouts::migrations::v5::MigrateToV5<Runtime>,
-		pallet_ddc_payouts::migrations::v6::MigrateToV6<Runtime>,
 		// pallet_ddc_customers::migrations::v3_mbm::LazyMigrationV2ToV3<Runtime>, // ingore the
 		// removal of `total_customers_usage` field as it was never deployed on MAINNET
 		// pallet_ddc_nodes::migrations::v2_mbm::LazyMigrationV1ToV2<Runtime>, // ignore the
@@ -2111,8 +2110,10 @@ pub mod migrations {
 		pallet_ddc_clusters::migrations::v6::MigrateToV6<Runtime>,
 	);
 
-	pub type UnreleasedMultiblock =
-		(pallet_ddc_customers::migrations::v4_mbm::LazyMigrationV3ToV4<Runtime>,);
+	pub type UnreleasedMultiblock = (
+		pallet_ddc_customers::migrations::v4_mbm::LazyMigrationV3ToV4<Runtime>,
+		pallet_ddc_payouts::migrations::v6::MigrateToV6<Runtime>,
+	);
 }
 
 /// Executive: handles dispatch to the various modules.
