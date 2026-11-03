@@ -1,0 +1,3 @@
+# Every pull request to dev, staging and master needs an approving review
+# from an owner listed here, on top of the branch's approval count.
+* @yahortsaryk
