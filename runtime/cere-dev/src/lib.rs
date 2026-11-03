@@ -174,7 +174,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 80026,
+	spec_version: 80027,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 27,
@@ -1623,7 +1623,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	const MIN_INSP_REDUNDANCY_FACTOR: u8 = 3;
 	const MIN_INSP_BACKUPS_FACTOR: u8 = 1;
 	const INSP_BACKUP_BLOCK_DELAY: u32 = 25;
-	const INSP_GIVE_UP_ERA_DISTANCE: u32 = 12; // 4h at 20m eras
+	const INSP_ERA_GIVE_UP_DISTANCE: u32 = 12; // 4h at 20m eras
 }
 
 parameter_types! {
@@ -1633,7 +1633,7 @@ parameter_types! {
 impl polkadot_sdk::pallet_migrations::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	#[cfg(not(feature = "runtime-benchmarks"))]
-	type Migrations = ();
+	type Migrations = (pallet_ddc_payouts::migrations::v6::MigrateToV6<Runtime>,);
 	// Benchmarks need mocked migrations to guarantee that they succeed.
 	#[cfg(feature = "runtime-benchmarks")]
 	type Migrations = polkadot_sdk::pallet_migrations::mock_helpers::MockedMigrations;
