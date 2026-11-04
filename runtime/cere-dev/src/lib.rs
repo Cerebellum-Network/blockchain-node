@@ -1633,7 +1633,7 @@ parameter_types! {
 impl polkadot_sdk::pallet_migrations::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	#[cfg(not(feature = "runtime-benchmarks"))]
-	type Migrations = (pallet_ddc_payouts::migrations::v6::MigrateToV6<Runtime>,);
+	type Migrations = ();
 	// Benchmarks need mocked migrations to guarantee that they succeed.
 	#[cfg(feature = "runtime-benchmarks")]
 	type Migrations = polkadot_sdk::pallet_migrations::mock_helpers::MockedMigrations;
