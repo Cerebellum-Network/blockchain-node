@@ -4539,7 +4539,7 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.3"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=fix%2Fdrop-remaining-inspectors#ba7a0b62f087c03ab2aa2ef5e2b80aa50b02cea8"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=fix%2Fdrop-remaining-inspectors#a9638f48aec9c3e71e7db0168b94804b3791e442"
 dependencies = [
  "blake2 0.10.6",
  "ddc-primitives",
@@ -4559,7 +4559,7 @@ dependencies = [
 [[package]]
 name = "ddc-dac-host"
 version = "0.1.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=fix%2Fdrop-remaining-inspectors#0ddf971d52d9f1f3c1a5adbf09a19a47d2499cd3"
+source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=fix%2Fdrop-remaining-inspectors#1fae5cbe22d6a823483489c3e27f219b7fbc19f4"
 dependencies = [
  "ddc-api",
  "log",
@@ -10249,7 +10249,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=fix%2Fdrop-remaining-inspectors#f3e3482ad16913c78cc47a81e57619cd7c960ce2"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=fix%2Fdrop-remaining-inspectors#e652157b7adf708f0f74a5c1a93d55ad07a83cef"
 dependencies = [
  "array-bytes 6.2.3",
  "blake3",
@@ -10296,7 +10296,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=fix%2Fdrop-remaining-inspectors#68f9938d451a494777415e8c977b205184c3caa4"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=fix%2Fdrop-remaining-inspectors#788016e7f3972680d8ab660a0da08f8c3d759e1d"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
