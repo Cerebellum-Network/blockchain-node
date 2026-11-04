@@ -10249,7 +10249,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=fix%2Fdrop-remaining-inspectors#b032bbf695c106ca6d4f69006bdb0bc4a4e46042"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#62907d85af4b9964545f0d40a18de3f5087a6c18"
 dependencies = [
  "array-bytes 6.2.3",
  "blake3",
