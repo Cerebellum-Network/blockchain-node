@@ -10249,7 +10249,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Fcollective-inspection-seed#51832bbed9864581c2e83165778fbef5d9bd2b96"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Fcollective-inspection-seed#504df89aff340a149f55080b59ed572def6780f6"
 dependencies = [
  "array-bytes 6.2.3",
  "blake3",
@@ -10296,7 +10296,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=feat%2Fcollective-inspection-seed#2619bb9ef8631dcc7ec1f63c42013aa6268abc92"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#aa26e63d7141daab0e8c58eb4a42dc20b2bd981a"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
