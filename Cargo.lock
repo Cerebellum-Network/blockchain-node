@@ -4539,7 +4539,7 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.3"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=feat%2Fcollective-inspection-seed#c7c5849b335ab98df2975b36f4645635cd1201bf"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=feat%2Fcollective-inspection-seed#05114ea28c300295eaa73c6e2cd7bdb03b9d952e"
 dependencies = [
  "blake2 0.10.6",
  "ddc-primitives",
@@ -4559,7 +4559,7 @@ dependencies = [
 [[package]]
 name = "ddc-dac-host"
 version = "0.1.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=feat%2Fcollective-inspection-seed#4cae9c36223cf0a856bfe64efb0e96fea5b144a4"
+source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=feat%2Fcollective-inspection-seed#51a7a6bbd0685cbb8d53a68d3b434ded605b856c"
 dependencies = [
  "ddc-api",
  "log",
@@ -10249,7 +10249,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Fcollective-inspection-seed#003e9aaf9a0f2082809f3615efb6e41ece1b3bff"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Fcollective-inspection-seed#b48906fc21fe2dda66da75390d3460480999a1a3"
 dependencies = [
  "array-bytes 6.2.3",
  "blake3",
@@ -10296,7 +10296,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=feat%2Fcollective-inspection-seed#e7de7281a83aa7be4920374497c70537970eefd3"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=feat%2Fcollective-inspection-seed#d670de92d8f93218c76a8c29b155a24b34b3f574"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
