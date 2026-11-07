@@ -4560,7 +4560,7 @@ dependencies = [
 [[package]]
 name = "ddc-dac-host"
 version = "0.1.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=feat%2Fehd-phd-sealed-documents#6f0b3dc381dfc6e49d6458d4e48dca71223ea1dd"
+source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=feat%2Fehd-phd-sealed-documents#6810ba6568b2230c7f5984edb3b89714d24e55a1"
 dependencies = [
  "ddc-api",
  "log",
@@ -10250,7 +10250,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Fehd-phd-sealed-documents#9771e50fefc373066353ab2d7d073b6ad328c46b"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Fehd-phd-sealed-documents#aef1ea738eda24ff8ca126e0c1359e50d816cd4a"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
@@ -10296,7 +10296,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=feat%2Fehd-phd-sealed-documents#ff0f4bcec20399c73d62f51e2f65cf331ed445ee"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=feat%2Fehd-phd-sealed-documents#f4abbb49b46c054545cf05087cc650e31d128ba7"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
