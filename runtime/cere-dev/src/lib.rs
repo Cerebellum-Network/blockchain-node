@@ -174,7 +174,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 80030,
+	spec_version: 80031,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 27,
@@ -1472,6 +1472,16 @@ parameter_types! {
 	};
 }
 
+/// The keys settlement accepts an inspection receipt or an assignment table
+/// from: the current validator set and those ddc-verification retains.
+pub struct DdcPermittedInspectors;
+
+impl pallet_ddc_payouts::PermittedInspectors for DdcPermittedInspectors {
+	fn permitted_inspector_keys() -> Vec<Vec<u8>> {
+		DdcVerification::permitted_inspector_keys()
+	}
+}
+
 impl pallet_ddc_payouts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	// USD-denominated pricing (ADR-001). Cluster protocol params are quoted in
@@ -1510,6 +1520,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type WSignature = Signature;
 	type UnsignedPriority = ConstU64<500_000_000>;
 	type DacExecConfig = DacExecConfigConst;
+	type PermittedInspectors = DdcPermittedInspectors;
 	type FeeHandler = FeeHandler;
 	type ForcePayoutOrigin = pallet_ddc_payouts::EnsureRootOrClusterManagerForForcePayout<Runtime>;
 
@@ -1594,6 +1605,9 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: polkadot_sdk::frame_system::Config> Ge
 parameter_types! {
 	pub const VerificationPalletId: PalletId = PalletId(*b"verifypa");
 	pub const TenPercentOfValidators: Percent = Percent::from_percent(10);
+	// The validator sets retained for checking inspection receipts and
+	// assignment tables: the bonding window, 18 sessions of 4 hours, 72 hours.
+	pub ValidatorSetWindow: u32 = BondingDuration::get() * SessionsPerEra::get();
 }
 
 impl pallet_ddc_verification::Config for Runtime {
@@ -1614,6 +1628,7 @@ impl pallet_ddc_verification::Config for Runtime {
 
 	type InspRedundancyFactor = TenPercentOfValidators;
 	type InspBackupsFactor = TenPercentOfValidators;
+	type ValidatorSetWindow = ValidatorSetWindow;
 	type DacExecConfig = DacExecConfigConst;
 
 	const OCW_INTERVAL: u16 = 1; // every block
