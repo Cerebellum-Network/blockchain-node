@@ -4539,9 +4539,10 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.3"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev#fc089edac460f1071b05b8eb4838bad256aa07af"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=feat%2Fehd-phd-sealed-documents#3bb86af0678396a3b47ba7b07a9fe3280215c0b4"
 dependencies = [
  "blake2 0.10.6",
+ "blake3",
  "ddc-primitives",
  "hex",
  "log",
@@ -4559,7 +4560,7 @@ dependencies = [
 [[package]]
 name = "ddc-dac-host"
 version = "0.1.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=dev#0d1558d0de5347262ffd79f4520237c748ba015c"
+source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=feat%2Fehd-phd-sealed-documents#6810ba6568b2230c7f5984edb3b89714d24e55a1"
 dependencies = [
  "ddc-api",
  "log",
@@ -4574,7 +4575,7 @@ dependencies = [
 [[package]]
 name = "ddc-primitives"
 version = "7.3.4"
-source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev#2b2538b7879437dcadfe89ac61cf76cb1018c2e5"
+source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev#8ea223dbd7e9fc608c9498bc57cf9f9f623bec75"
 dependencies = [
  "blake2 0.10.6",
  "hex",
@@ -10249,10 +10250,9 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#f912ecdca487f7831740c82516cd426c4b0555b3"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Fehd-phd-sealed-documents#aef1ea738eda24ff8ca126e0c1359e50d816cd4a"
 dependencies = [
  "array-bytes 6.2.3",
- "blake3",
  "byte-unit",
  "ddc-api",
  "ddc-dac-host",
@@ -10296,7 +10296,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#aa26e63d7141daab0e8c58eb4a42dc20b2bd981a"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=feat%2Fehd-phd-sealed-documents#f4abbb49b46c054545cf05087cc650e31d128ba7"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
