@@ -4539,7 +4539,7 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.3"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=feat%2Finspection-quorum-end-to-end#06f35ee5e2a7d808727cbc91bfdf250d31ebfa84"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev#22b607eb506955622961f40041f29bc02ae1c7e7"
 dependencies = [
  "blake2 0.10.6",
  "blake3",
@@ -4560,7 +4560,7 @@ dependencies = [
 [[package]]
 name = "ddc-dac-host"
 version = "0.1.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=feat%2Finspection-quorum-end-to-end#9a12a834a8eb53ae5c27f27514dc9f11f78cee41"
+source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=feat%2Finspection-quorum-end-to-end#642503fa9b7eb59b52768c89c369be8200a99315"
 dependencies = [
  "ddc-api",
  "log",
@@ -10250,7 +10250,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Finspection-quorum-end-to-end#ee1ce33e3e57e46309d434092b897bad4bcc6323"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Finspection-quorum-end-to-end#a8ffd1a8bfc821ec4a9c56d42195b651fd6d8288"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
@@ -10296,7 +10296,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=feat%2Finspection-quorum-end-to-end#22a4c2b1d55eb5a7e2e881b22186566eb47870d9"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=feat%2Finspection-quorum-end-to-end#0fda571d5c7f0a700daf1bb52bb35235243f79eb"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
