@@ -618,7 +618,7 @@ pub mod v3 {
 
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, polkadot_sdk::sp_runtime::DispatchError> {
-			let prev_count = v2::StorageNodes::<T>::iter().count();
+			let prev_count = crate::StorageNodes::<T>::iter_keys().count();
 			Ok((prev_count as u64).encode())
 		}
 
@@ -629,7 +629,7 @@ pub mod v3 {
 			let prev_count: u64 = Decode::decode(&mut &prev_state[..])
 				.expect("pre_upgrade provides a valid state; qed");
 
-			let post_count = crate::StorageNodes::<T>::iter().count() as u64;
+			let post_count = crate::StorageNodes::<T>::iter_keys().count() as u64;
 			ensure!(
 				prev_count == post_count,
 				"the storage node count before and after the v3 migration should be the same"
@@ -652,6 +652,23 @@ pub mod v3 {
 	mod test {
 		use super::*;
 		use crate::mock::{ExtBuilder, Test};
+
+		#[cfg(feature = "try-runtime")]
+		#[test]
+		fn the_migration_checks_pass_when_the_migration_runs_twice() {
+			let bytes = hex::decode(DEVNET_STORAGE_NODE).unwrap();
+			let stored = v2::StorageNode::<Test>::decode(&mut &bytes[..]).unwrap();
+			ExtBuilder.build_and_execute(|| {
+				StorageVersion::new(2).put::<Pallet<Test>>();
+				v2::StorageNodes::<Test>::insert(stored.pub_key.clone(), stored);
+
+				for _ in 0..2 {
+					let state = MigrateToV3::<Test>::pre_upgrade().unwrap();
+					MigrateToV3::<Test>::on_runtime_upgrade();
+					MigrateToV3::<Test>::post_upgrade(state).unwrap();
+				}
+			});
+		}
 
 		// A devnet node as stored at spec 80031: ssl=true, domain storage-7.devnet.ddc-dragon.com.
 		const DEVNET_STORAGE_NODE: &str = "1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d721e6cbb4d6962292e5210b8c986ce0d86fe00db6620c58a23b91bc428438b7125017f82864e4f097e63d04cc279e4d8d2eb45a42ffa3c3137382e3235312e3232382e3136357c73746f726167652d372e6465766e65742e6464632d647261676f6e2e636f6d01901f82236e2302";

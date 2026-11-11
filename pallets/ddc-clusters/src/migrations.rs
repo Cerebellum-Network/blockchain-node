@@ -1081,7 +1081,7 @@ pub mod v7 {
 
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, polkadot_sdk::sp_runtime::DispatchError> {
-			let prev_count = v5::Clusters::<T>::iter().count();
+			let prev_count = Clusters::<T>::iter_keys().count();
 
 			Ok((prev_count as u64).encode())
 		}
@@ -1093,7 +1093,7 @@ pub mod v7 {
 			let prev_count: u64 = Decode::decode(&mut &prev_state[..])
 				.expect("pre_upgrade provides a valid state; qed");
 
-			let post_count = Clusters::<T>::iter().count() as u64;
+			let post_count = Clusters::<T>::iter_keys().count() as u64;
 			ensure!(
 				prev_count == post_count,
 				"the cluster count before and after the migration should be the same"
@@ -1189,6 +1189,22 @@ pub mod v7 {
 							last_paid_era: 9_968_463,
 						})
 					);
+				}
+			});
+		}
+
+		#[cfg(feature = "try-runtime")]
+		#[test]
+		fn the_migration_checks_pass_when_the_migration_runs_twice() {
+			ExtBuilder.build_and_execute(|| {
+				StorageVersion::new(6).put::<Pallet<Test>>();
+				let cluster_id = ClusterId::from([10; 20]);
+				v5::Clusters::<Test>::insert(cluster_id, stored_cluster(cluster_id, None));
+
+				for _ in 0..2 {
+					let state = MigrateToV7::<Test>::pre_upgrade().unwrap();
+					MigrateToV7::<Test>::on_runtime_upgrade();
+					MigrateToV7::<Test>::post_upgrade(state).unwrap();
 				}
 			});
 		}
