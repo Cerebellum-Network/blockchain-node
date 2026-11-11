@@ -174,7 +174,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 80033,
+	spec_version: 80034,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 28,
@@ -2065,6 +2065,7 @@ parameter_types! {
 type Migrations = (
 	pallet_ddc_clusters::migrations::v7::MigrateToV7<Runtime>,
 	pallet_ddc_nodes::migrations::v3::MigrateToV3<Runtime>,
+	pallet_ddc_clusters_gov::migrations::v1::MigrateToV1<Runtime>,
 );
 
 /// Executive: handles dispatch to the various modules.

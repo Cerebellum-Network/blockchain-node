@@ -233,7 +233,7 @@ benchmarks! {
 	}: vote_proposal(RawOrigin::Signed(node_provider_1.clone()), cluster_id, true, ClusterMember::NodeProvider(node_pub_key_1.clone()))
 	verify {
 		let votes = ClusterProposalVoting::<T>::get(cluster_id).unwrap();
-		assert_eq!(votes.ayes, vec![node_provider_1.clone()]);
+		assert_eq!(votes.ayes, vec![(node_provider_1.clone(), ClusterMember::NodeProvider(node_pub_key_1.clone()))]);
 	}
 
 	close_early_approved {
