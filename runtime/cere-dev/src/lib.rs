@@ -58,9 +58,9 @@ use polkadot_sdk::frame_support::{
 			imbalance::ResolveTo, Fortitude, PayFromAccount, Preservation,
 			UnityAssetBalanceConversion,
 		},
-		ConstBool, ConstU128, ConstU16, ConstU32, ConstU64, Currency, EitherOf, EitherOfDiverse,
-		EqualPrivilegeOnly, Imbalance, InstanceFilter, KeyOwnerProofSystem, LinearStoragePrice,
-		Nothing, OnUnbalanced, VariantCountOf, WithdrawReasons,
+		ConstBool, ConstU128, ConstU16, ConstU32, ConstU64, ConstU8, Currency, EitherOf,
+		EitherOfDiverse, EqualPrivilegeOnly, Imbalance, InstanceFilter, KeyOwnerProofSystem,
+		LinearStoragePrice, Nothing, OnUnbalanced, VariantCountOf, WithdrawReasons,
 	},
 	weights::{
 		constants::{
@@ -1483,7 +1483,7 @@ impl pallet_ddc_payouts::PermittedInspectors for DdcPermittedInspectors {
 	// settlement refuses a table below it, so a second constant that drifted
 	// from it would refuse every honest era.
 	fn min_inspection_redundancy_factor() -> u8 {
-		<Runtime as pallet_ddc_verification::Config>::MIN_INSP_REDUNDANCY_FACTOR
+		<Runtime as pallet_ddc_verification::Config>::MinInspRedundancyFactor::get()
 	}
 }
 
@@ -1631,6 +1631,7 @@ impl pallet_ddc_verification::Config for Runtime {
 
 	type InspRedundancyFactor = TenPercentOfValidators;
 	type InspBackupsFactor = TenPercentOfValidators;
+	type MinInspRedundancyFactor = ConstU8<3>;
 	type ValidatorSetWindow = ValidatorSetWindow;
 	type DacExecConfig = DacExecConfigConst;
 
@@ -1638,7 +1639,6 @@ impl pallet_ddc_verification::Config for Runtime {
 	const OCW_LOCK_TTL_MILLIS: u64 = 2 * 60 * 60 * 1_000; // 2h
 	const OCW_CLUSTER_QUARANTINE_MILLIS: u64 = 60 * 60 * 1_000; // 1h
 	const TCA_INSPECTION_STEP: u64 = 0;
-	const MIN_INSP_REDUNDANCY_FACTOR: u8 = 3;
 	const MIN_INSP_BACKUPS_FACTOR: u8 = 1;
 	const INSP_BACKUP_BLOCK_DELAY: u32 = 25;
 	const INSP_ERA_GIVE_UP_DISTANCE: u32 = 12; // 4h at 20m eras
@@ -2642,6 +2642,16 @@ mod tests {
 			TypeId::of::<<Runtime as pallet_ddc_payouts::Config>::CustomerBalanceSource>(),
 			TypeId::of::<pallet_ddc_payouts::CustomerBalanceContract<Runtime>>()
 		);
+	}
+
+	#[test]
+	fn the_minimum_irf_is_in_metadata_for_the_storage_nodes() {
+		let constant = pallet_ddc_verification::Pallet::<Runtime>::pallet_constants_metadata()
+			.into_iter()
+			.find(|c| c.name == "MinInspRedundancyFactor")
+			.expect("DdcVerification exposes MinInspRedundancyFactor");
+
+		assert_eq!(constant.value, codec::Encode::encode(&3u8));
 	}
 
 	#[test]
