@@ -170,10 +170,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 80031,
+	spec_version: 80033,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 27,
+	transaction_version: 28,
 	system_version: 0,
 };
 
@@ -2080,7 +2080,7 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Tx
 // 	>,
 // );
 
-type Migrations = ();
+type Migrations = (pallet_ddc_clusters::migrations::v7::MigrateToV7<Runtime>,);
 
 parameter_types! {
 	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();

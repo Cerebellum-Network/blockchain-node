@@ -37,7 +37,6 @@ benchmarks! {
 								erasure_coding_required: 4,
 								erasure_coding_total: 6,
 								replication_total: 3,
-								inspection_dry_run_params: None,
 							};
 		let customer_deposit_contract = account::<T::AccountId>("customer-deposit-contract", 0, 0);
 		let cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>, T::AccountId> = ClusterProtocolParams {
@@ -120,7 +119,6 @@ benchmarks! {
 									erasure_coding_required: 4,
 									erasure_coding_total: 6,
 									replication_total: 3,
-									inspection_dry_run_params: None,
 								};
 	}: _(RawOrigin::Signed(user.clone()), cluster_id, new_cluster_params)
 	verify {
@@ -131,7 +129,6 @@ benchmarks! {
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
 				replication_total: 3,
-				inspection_dry_run_params: None,
 			}
 		);
 	}

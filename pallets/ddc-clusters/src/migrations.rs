@@ -1,4 +1,3 @@
-use ddc_primitives::InspectionDryRunParams;
 use log::info;
 use polkadot_sdk::frame_support::{storage_alias, traits::OnRuntimeUpgrade};
 use polkadot_sdk::sp_runtime::{Perquintill, Saturating};
@@ -689,9 +688,17 @@ pub mod v4 {
 }
 
 pub mod v5 {
+	use ddc_primitives::StorageNodeParams;
 	use polkadot_sdk::frame_support::pallet_prelude::*;
 
 	use super::*;
+
+	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
+	pub struct InspectionDryRunParams {
+		pub enabled: bool,
+		pub sync_node_key: NodePubKey,
+		pub sync_node_params: StorageNodeParams,
+	}
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
 	pub struct Cluster<AccountId> {
@@ -971,6 +978,191 @@ pub mod v6 {
 				"after migration, the current_version and on_chain_version should be the same"
 			);
 			Ok(())
+		}
+	}
+}
+
+pub mod v7 {
+	use super::*;
+	use crate::cluster::{Cluster, ClusterProps};
+	use polkadot_sdk::frame_support::{pallet_prelude::*, traits::Get, weights::Weight};
+	use polkadot_sdk::sp_std::marker::PhantomData;
+	#[cfg(feature = "try-runtime")]
+	use polkadot_sdk::sp_std::vec::Vec;
+
+	pub fn migrate_to_v7<T: Config>() -> Weight {
+		let on_chain_version = Pallet::<T>::on_chain_storage_version();
+		let current_version = Pallet::<T>::in_code_storage_version();
+
+		info!(
+			target: LOG_TARGET,
+			"Running migration with current storage version {:?} / onchain {:?}",
+			current_version,
+			on_chain_version
+		);
+
+		if on_chain_version == 6 && current_version == 7 {
+			let mut translated = 0u64;
+			let count = v5::Clusters::<T>::iter().count();
+			info!(
+				target: LOG_TARGET,
+				" >>> Updating DDC Cluster storage. Migrating {} clusters...", count
+			);
+
+			Clusters::<T>::translate::<v5::Cluster<T::AccountId>, _>(
+				|cluster_id: ClusterId, cluster: v5::Cluster<T::AccountId>| {
+					info!(target: LOG_TARGET, "     Migrating cluster for cluster ID {:?}...", cluster_id);
+					translated.saturating_inc();
+
+					Some(Cluster {
+						cluster_id: cluster.cluster_id,
+						manager_id: cluster.manager_id,
+						reserve_id: cluster.reserve_id,
+						props: ClusterProps {
+							node_provider_auth_contract: cluster.props.node_provider_auth_contract,
+							erasure_coding_required: cluster.props.erasure_coding_required,
+							erasure_coding_total: cluster.props.erasure_coding_total,
+							replication_total: cluster.props.replication_total,
+						},
+						status: cluster.status,
+						last_paid_era: cluster.last_paid_era,
+					})
+				},
+			);
+
+			// Update storage version.
+			StorageVersion::new(7).put::<Pallet<T>>();
+			info!(
+				target: LOG_TARGET,
+				"Upgraded {} records, storage to version {:?}",
+				translated,
+				current_version
+			);
+
+			T::DbWeight::get().reads_writes(translated + 1, translated + 1)
+		} else {
+			info!(target: LOG_TARGET, " >>> Unused migration!");
+			T::DbWeight::get().reads(1)
+		}
+	}
+
+	pub struct MigrateToV7<T>(PhantomData<T>);
+
+	impl<T: Config> OnRuntimeUpgrade for MigrateToV7<T> {
+		fn on_runtime_upgrade() -> Weight {
+			migrate_to_v7::<T>()
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<Vec<u8>, polkadot_sdk::sp_runtime::DispatchError> {
+			let prev_count = v5::Clusters::<T>::iter().count();
+
+			Ok((prev_count as u64).encode())
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(
+			prev_state: Vec<u8>,
+		) -> Result<(), polkadot_sdk::sp_runtime::DispatchError> {
+			let prev_count: u64 = Decode::decode(&mut &prev_state[..])
+				.expect("pre_upgrade provides a valid state; qed");
+
+			let post_count = Clusters::<T>::iter().count() as u64;
+			ensure!(
+				prev_count == post_count,
+				"the cluster count before and after the migration should be the same"
+			);
+
+			let current_version = Pallet::<T>::in_code_storage_version();
+			let on_chain_version = Pallet::<T>::on_chain_storage_version();
+
+			ensure!(current_version == 7, "must_upgrade");
+			ensure!(
+				current_version == on_chain_version,
+				"after migration, the current_version and on_chain_version should be the same"
+			);
+			Ok(())
+		}
+	}
+
+	#[cfg(test)]
+	mod test {
+		use super::*;
+		use crate::mock::{AccountId, ExtBuilder, Test};
+		use ddc_primitives::{StorageNodeMode, StorageNodeParams, StorageNodePubKey};
+
+		fn stored_cluster(
+			cluster_id: ClusterId,
+			dry_run: Option<v5::InspectionDryRunParams>,
+		) -> v5::Cluster<AccountId> {
+			v5::Cluster {
+				cluster_id,
+				manager_id: AccountId::from([1; 32]),
+				reserve_id: AccountId::from([2; 32]),
+				props: v5::ClusterProps {
+					node_provider_auth_contract: Some(AccountId::from([3; 32])),
+					erasure_coding_required: 4,
+					erasure_coding_total: 6,
+					replication_total: 3,
+					inspection_dry_run_params: dry_run,
+				},
+				status: ClusterStatus::Activated,
+				last_paid_era: 9_968_463,
+			}
+		}
+
+		#[test]
+		fn every_cluster_keeps_its_fields_without_the_dry_run_params() {
+			ExtBuilder.build_and_execute(|| {
+				StorageVersion::new(6).put::<Pallet<Test>>();
+				let with_dry_run = ClusterId::from([10; 20]);
+				let without_dry_run = ClusterId::from([11; 20]);
+				v5::Clusters::<Test>::insert(
+					with_dry_run,
+					stored_cluster(
+						with_dry_run,
+						Some(v5::InspectionDryRunParams {
+							enabled: true,
+							sync_node_key: NodePubKey::StoragePubKey(StorageNodePubKey::from(
+								[12; 32],
+							)),
+							sync_node_params: StorageNodeParams {
+								mode: StorageNodeMode::Storage,
+								host: vec![1u8; 255],
+								domain: vec![2u8; 255],
+								ssl: true,
+								http_port: 8080,
+								grpc_port: 9090,
+								p2p_port: 9070,
+							},
+						}),
+					),
+				);
+				v5::Clusters::<Test>::insert(without_dry_run, stored_cluster(without_dry_run, None));
+
+				let weight = MigrateToV7::<Test>::on_runtime_upgrade();
+
+				assert_eq!(StorageVersion::get::<Pallet<Test>>(), 7);
+				assert_eq!(weight, <Test as polkadot_sdk::frame_system::Config>::DbWeight::get().reads_writes(3, 3));
+				for cluster_id in [with_dry_run, without_dry_run] {
+					assert_eq!(
+						Clusters::<Test>::get(cluster_id),
+						Some(Cluster {
+							cluster_id,
+							manager_id: AccountId::from([1; 32]),
+							reserve_id: AccountId::from([2; 32]),
+							props: ClusterProps {
+								node_provider_auth_contract: Some(AccountId::from([3; 32])),
+								erasure_coding_required: 4,
+								erasure_coding_total: 6,
+								replication_total: 3,
+							},
+							status: ClusterStatus::Activated,
+							last_paid_era: 9_968_463,
+						})
+					);
+				}
+			});
 		}
 	}
 }

@@ -35,7 +35,7 @@ use ddc_primitives::{
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterNodeKind, ClusterNodeState,
 	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
-	ClusterProtocolParams, ClusterStatus, EhdEra, InspectionDryRunParams, NodePubKey, NodeType,
+	ClusterProtocolParams, ClusterStatus, EhdEra, NodePubKey, NodeType,
 };
 pub use pallet::*;
 use pallet_ddc_nodes::{NodeRepository, NodeTrait};
@@ -70,7 +70,7 @@ pub mod pallet {
 
 	/// The current storage version.
 	const STORAGE_VERSION: polkadot_sdk::frame_support::traits::StorageVersion =
-		polkadot_sdk::frame_support::traits::StorageVersion::new(6);
+		polkadot_sdk::frame_support::traits::StorageVersion::new(7);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -210,7 +210,6 @@ pub mod pallet {
 						erasure_coding_required: cluster.props.erasure_coding_required,
 						erasure_coding_total: cluster.props.erasure_coding_total,
 						replication_total: cluster.props.replication_total,
-						inspection_dry_run_params: cluster.props.inspection_dry_run_params.clone(),
 					},
 					self.clusters_protocol_params
 						.iter()
@@ -1020,14 +1019,6 @@ pub mod pallet {
 				}
 			}
 			Ok(clusters_ids)
-		}
-
-		fn get_inspection_dry_run_params(
-			cluster_id: &ClusterId,
-		) -> Result<Option<InspectionDryRunParams>, DispatchError> {
-			let cluster =
-				Clusters::<T>::try_get(*cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
-			Ok(cluster.props.inspection_dry_run_params.clone())
 		}
 	}
 
