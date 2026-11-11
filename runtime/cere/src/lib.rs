@@ -1389,11 +1389,9 @@ impl polkadot_sdk::pallet_nomination_pools::Config for Runtime {
 
 parameter_types! {
 	pub const DdcCustomersPalletId: PalletId = PalletId(*b"accounts"); // DDC maintainer's stake
-	pub const UnlockingDelay: BlockNumber = 100800_u32; // 1 hour * 24 * 7 = 7 days; (1 hour is 600 blocks)
 }
 
 impl pallet_ddc_customers::Config for Runtime {
-	type UnlockingDelay = UnlockingDelay;
 	type Currency = Balances;
 	type PalletId = DdcCustomersPalletId;
 	type RuntimeEvent = RuntimeEvent;
@@ -1502,7 +1500,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
 	type PalletId = PayoutsPalletId;
 	type Currency = Balances;
-	type CustomerBalanceSource = pallet_ddc_payouts::CustomerBalancePallet<Runtime, DdcCustomers>;
+	type CustomerBalanceSource = pallet_ddc_payouts::CustomerBalanceContract<Runtime>;
 	type BucketManager = DdcCustomers;
 	type ClusterProtocol = DdcClusters;
 	type TreasuryVisitor = TreasuryWrapper;
@@ -1523,8 +1521,6 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type FeeHandler = FeeHandler;
 	type ForcePayoutOrigin = pallet_ddc_payouts::EnsureRootForForcePayout<AccountId>;
 
-	#[cfg(feature = "runtime-benchmarks")]
-	type CustomerDepositor = DdcCustomers;
 	#[cfg(feature = "runtime-benchmarks")]
 	type ClusterCreator = DdcClusters;
 	#[cfg(feature = "runtime-benchmarks")]
@@ -2710,6 +2706,16 @@ mod tests {
 			.collect();
 		let _: UpperOf<OnChainAccuracy> =
 			maximum_chain_accuracy.iter().fold(0, |acc, x| acc.checked_add(*x).unwrap());
+	}
+
+	#[test]
+	fn customers_are_charged_through_the_deposit_contract() {
+		use core::any::TypeId;
+
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_ddc_payouts::Config>::CustomerBalanceSource>(),
+			TypeId::of::<pallet_ddc_payouts::CustomerBalanceContract<Runtime>>()
+		);
 	}
 
 	#[test]

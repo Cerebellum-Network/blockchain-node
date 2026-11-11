@@ -10,6 +10,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C] Changes is `Cere` Runtime
 - [D] Changes is `Cere Dev` Runtime
 
+## [Unreleased]
+
+**MAINNET RELEASE GATE.** This release must not be enacted on mainnet until a standalone
+migration has moved mainnet's customer deposits out of `pallet-ddc-customers`' cluster vaults
+into the customer deposit contract. From this release `Cere` charges customers through the
+contract only, and the pallet code that could charge or withdraw the vault balances is gone:
+enacted first, mainnet settlement charges an empty contract and nothing in the runtime can
+reach those funds. Devnet and testnet already charge the contract and are unaffected.
+`LazyMigrationV4ToV5` is not that migration: it starts from storage version 4 and mainnet is at
+1, so it does nothing there.
+
+- [C,D] `pallet-ddc-customers`: the deposit calls (`deposit`, `deposit_extra`, `deposit_for`,
+  `unlock_deposit`, `withdraw_unlocked_deposit`) and their events are removed; buckets are the
+  pallet's only calls. The deposit storage (`ClusterLedger`) stays for the mainnet migration to read.
+- [C,D] `pallet-ddc-customers`: genesis creates buckets only (`buckets: Vec<Bucket>`);
+  `feederAccount` and the per-bucket deposit are removed from the genesis config.
+- [C] `pallet-ddc-payouts`: customers are charged through the customer deposit contract
+  (`CustomerBalanceContract`) instead of the pallet (`CustomerBalancePallet`, removed).
+
 ## [7.3.3]
 
 - [C,D] Update to Polkadot-Stable2503 crate version

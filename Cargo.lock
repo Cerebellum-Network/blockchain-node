@@ -4539,7 +4539,7 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.3"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=chore%2Fremove-dry-run#f17d5c0f1d40bb3ef912ecf96bfdcbb8553e49f7"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=chore%2Fremove-dry-run#34028f4a640abe9a5976b07b876baeae9e993282"
 dependencies = [
  "blake2 0.10.6",
  "blake3",
@@ -4560,7 +4560,7 @@ dependencies = [
 [[package]]
 name = "ddc-dac-host"
 version = "0.1.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=chore%2Fremove-dry-run#25716f47c13a5749ee3b07d6be1398ddf398f85d"
+source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=chore%2Fremove-dry-run#07c5898e0952827e2b3ff18c36e38ccdc0f5ef81"
 dependencies = [
  "ddc-api",
  "log",
@@ -4575,7 +4575,7 @@ dependencies = [
 [[package]]
 name = "ddc-primitives"
 version = "7.3.4"
-source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=chore%2Fremove-dry-run#19b507e0a145afbccc1255f5633adff50bd62bef"
+source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=chore%2Fremove-dry-run#07e0a475476d64f6cc1931422d0cd06973a84e70"
 dependencies = [
  "blake2 0.10.6",
  "hex",
@@ -10250,7 +10250,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=chore%2Fpre-testnet-cleanup#870335b230813a54c89b99c429f31d440f73f86e"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=chore%2Fpre-testnet-cleanup#d012d5b99fc3cd58a2e83f32e7e8ea2bfac23591"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
@@ -10296,7 +10296,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=chore%2Fremove-dry-run#e5d7ae0b739d114a7540f34457433c8eed7e1fbb"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=chore%2Fremove-dry-run#56e5356dc3c1242b28dc387c6c1134d6f8874d19"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",

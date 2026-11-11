@@ -220,7 +220,6 @@ pub fn cere_dev_genesis(
 			  clusters: vec![]
 		},
 		 "ddcCustomers": {
-		  "feederAccount": null,
 		  "buckets": []
 		},
 		"ddcNodes": {
@@ -550,7 +549,6 @@ pub fn cere_thirdparty_genesis(
 			  clusters: vec![]
 		},
 		 "ddcCustomers": {
-		  "feederAccount": null,
 		  "buckets": []
 		},
 		"ddcNodes": {
