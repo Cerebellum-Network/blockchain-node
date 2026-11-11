@@ -1480,6 +1480,13 @@ impl pallet_ddc_payouts::PermittedInspectors for DdcPermittedInspectors {
 	fn permitted_inspector_keys() -> Vec<Vec<u8>> {
 		DdcVerification::permitted_inspector_keys()
 	}
+
+	// The very value ddc-verification builds every assignment table with:
+	// settlement refuses a table below it, so a second constant that drifted
+	// from it would refuse every honest era.
+	fn min_inspection_redundancy_factor() -> u8 {
+		<Runtime as pallet_ddc_verification::Config>::MIN_INSP_REDUNDANCY_FACTOR
+	}
 }
 
 impl pallet_ddc_payouts::Config for Runtime {
