@@ -10250,7 +10250,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=chore%2Fremove-dry-run#28b3dd761f796b5daf6d3b6ccfdaa96e543ee06a"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=chore%2Fpre-testnet-cleanup#9dbea254ba6d558ef45cf69a794010cb17da72bd"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
