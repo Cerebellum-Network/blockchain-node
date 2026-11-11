@@ -40,7 +40,7 @@ pub struct StorageNodeProps {
 	pub mode: StorageNodeMode,
 }
 
-const LOG_TARGET: &str = "ddc-customers";
+const LOG_TARGET: &str = "ddc-nodes";
 pub const PALLET_MIGRATIONS_ID: &[u8; 16] = b"pallet-ddc-nodes";
 
 pub mod v0 {
