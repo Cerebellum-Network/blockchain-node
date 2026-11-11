@@ -2528,7 +2528,7 @@ dependencies = [
  "cere-client",
  "cere-service",
  "clap",
- "ddc-dac-host 0.1.1 (git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=chore%2Fremove-dry-run)",
+ "ddc-dac-host",
  "polkadot-sdk",
  "substrate-build-script-utils",
  "url",
@@ -2540,8 +2540,8 @@ version = "8.0.1"
 dependencies = [
  "cere-dev-runtime",
  "cere-runtime",
- "ddc-dac-host 0.1.1 (git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=chore%2Fremove-dry-run)",
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=chore%2Fremove-dry-run)",
+ "ddc-dac-host",
+ "ddc-primitives",
  "futures 0.3.31",
  "pallet-ismp",
  "pallet-ismp-runtime-api",
@@ -2554,8 +2554,8 @@ version = "8.0.1"
 dependencies = [
  "anyhow",
  "cere-runtime-common",
- "ddc-dac-host 0.1.1 (git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=chore%2Fremove-dry-run)",
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=chore%2Fremove-dry-run)",
+ "ddc-dac-host",
+ "ddc-primitives",
  "hex-literal",
  "ismp",
  "ismp-grandpa",
@@ -2588,7 +2588,7 @@ dependencies = [
 name = "cere-rpc"
 version = "8.0.1"
 dependencies = [
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=chore%2Fremove-dry-run)",
+ "ddc-primitives",
  "jsonrpsee",
  "pallet-ismp-rpc",
  "pallet-ismp-runtime-api",
@@ -2601,8 +2601,8 @@ version = "8.0.1"
 dependencies = [
  "anyhow",
  "cere-runtime-common",
- "ddc-dac-host 0.1.1 (git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=chore%2Fremove-dry-run)",
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=chore%2Fremove-dry-run)",
+ "ddc-dac-host",
+ "ddc-primitives",
  "hex-literal",
  "ismp",
  "ismp-grandpa",
@@ -2635,7 +2635,7 @@ dependencies = [
 name = "cere-runtime-common"
 version = "8.0.1"
 dependencies = [
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=chore%2Fremove-dry-run)",
+ "ddc-primitives",
  "log",
  "parity-scale-codec",
  "polkadot-sdk",
@@ -2651,7 +2651,7 @@ dependencies = [
  "cere-rpc",
  "cere-runtime",
  "cere-runtime-common",
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=chore%2Fremove-dry-run)",
+ "ddc-primitives",
  "futures 0.3.31",
  "jsonrpsee",
  "polkadot-sdk",
@@ -4276,7 +4276,7 @@ name = "customer-deposit"
 version = "5.1.0"
 dependencies = [
  "base64ct",
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=chore%2Fremove-dry-run)",
+ "ddc-primitives",
  "ink",
  "polkadot-sdk",
 ]
@@ -4543,28 +4543,7 @@ source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=chore%2Fr
 dependencies = [
  "blake2 0.10.6",
  "blake3",
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=chore%2Fremove-dry-run)",
- "hex",
- "log",
- "parity-scale-codec",
- "polkadot-ckb-merkle-mountain-range",
- "polkadot-sdk",
- "prost 0.12.6",
- "prost-build 0.13.5",
- "scale-info",
- "serde",
- "serde_json",
- "serde_with",
-]
-
-[[package]]
-name = "ddc-api"
-version = "7.3.3"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev#22b607eb506955622961f40041f29bc02ae1c7e7"
-dependencies = [
- "blake2 0.10.6",
- "blake3",
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev)",
+ "ddc-primitives",
  "hex",
  "log",
  "parity-scale-codec",
@@ -4583,22 +4562,7 @@ name = "ddc-dac-host"
 version = "0.1.1"
 source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=chore%2Fremove-dry-run#ebe7bb31a0fae80f9e576dd66738cb40e83122ad"
 dependencies = [
- "ddc-api 7.3.3 (git+https://github.com/Cerebellum-Network/ddc-api.git?branch=chore%2Fremove-dry-run)",
- "log",
- "parity-scale-codec",
- "polkadot-sdk",
- "prost 0.12.6",
- "scale-info",
- "sp-runtime-interface",
- "wasmtime",
-]
-
-[[package]]
-name = "ddc-dac-host"
-version = "0.1.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=dev#308ea56601c1d872e9b760fa60257264d71b4327"
-dependencies = [
- "ddc-api 7.3.3 (git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev)",
+ "ddc-api",
  "log",
  "parity-scale-codec",
  "polkadot-sdk",
@@ -4612,26 +4576,6 @@ dependencies = [
 name = "ddc-primitives"
 version = "7.3.4"
 source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=chore%2Fremove-dry-run#9707cc4ec0ba6f8141c1994b11d1b5d3ac8a5124"
-dependencies = [
- "blake2 0.10.6",
- "hex",
- "ink",
- "log",
- "parity-scale-codec",
- "polkadot-ckb-merkle-mountain-range",
- "polkadot-sdk",
- "prost 0.12.6",
- "prost-build 0.13.5",
- "scale-info",
- "serde",
- "serde_json",
- "serde_with",
-]
-
-[[package]]
-name = "ddc-primitives"
-version = "7.3.4"
-source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev#8ea223dbd7e9fc608c9498bc57cf9f9f623bec75"
 dependencies = [
  "blake2 0.10.6",
  "hex",
@@ -10216,7 +10160,7 @@ dependencies = [
 name = "pallet-ddc-clusters"
 version = "8.0.1"
 dependencies = [
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=chore%2Fremove-dry-run)",
+ "ddc-primitives",
  "hex-literal",
  "log",
  "pallet-balances",
@@ -10236,7 +10180,7 @@ dependencies = [
 name = "pallet-ddc-clusters-gov"
 version = "8.0.1"
 dependencies = [
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=chore%2Fremove-dry-run)",
+ "ddc-primitives",
  "hex-literal",
  "lazy_static",
  "log",
@@ -10266,7 +10210,7 @@ dependencies = [
 name = "pallet-ddc-customers"
 version = "8.0.1"
 dependencies = [
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=chore%2Fremove-dry-run)",
+ "ddc-primitives",
  "hex",
  "hex-literal",
  "log",
@@ -10288,7 +10232,7 @@ dependencies = [
 name = "pallet-ddc-nodes"
 version = "8.0.1"
 dependencies = [
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=chore%2Fremove-dry-run)",
+ "ddc-primitives",
  "hex",
  "log",
  "pallet-balances",
@@ -10306,13 +10250,13 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#47370dd953e4b92b8463dcca309ddac37cfdb90f"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=chore%2Fremove-dry-run#85d690bea5619d024e95a528f93fac445f0d6601"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
- "ddc-api 7.3.3 (git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev)",
- "ddc-dac-host 0.1.1 (git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=dev)",
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev)",
+ "ddc-api",
+ "ddc-dac-host",
+ "ddc-primitives",
  "hex",
  "ink",
  "itertools 0.13.0",
@@ -10330,7 +10274,7 @@ dependencies = [
 name = "pallet-ddc-staking"
 version = "8.0.1"
 dependencies = [
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=chore%2Fremove-dry-run)",
+ "ddc-primitives",
  "hex-literal",
  "lazy_static",
  "log",
@@ -10357,9 +10301,9 @@ dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
  "byte-unit",
- "ddc-api 7.3.3 (git+https://github.com/Cerebellum-Network/ddc-api.git?branch=chore%2Fremove-dry-run)",
- "ddc-dac-host 0.1.1 (git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=chore%2Fremove-dry-run)",
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=chore%2Fremove-dry-run)",
+ "ddc-api",
+ "ddc-dac-host",
+ "ddc-primitives",
  "hex",
  "itertools 0.13.0",
  "log",
@@ -10587,7 +10531,7 @@ dependencies = [
 name = "pallet-fee-handler"
 version = "8.0.1"
 dependencies = [
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=chore%2Fremove-dry-run)",
+ "ddc-primitives",
  "parity-scale-codec",
  "polkadot-sdk",
  "scale-info",

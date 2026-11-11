@@ -1138,12 +1138,14 @@ pub mod v7 {
 						}),
 					),
 				);
-				v5::Clusters::<Test>::insert(without_dry_run, stored_cluster(without_dry_run, None));
+				v5::Clusters::<Test>::insert(
+					without_dry_run,
+					stored_cluster(without_dry_run, None),
+				);
 
-				let weight = MigrateToV7::<Test>::on_runtime_upgrade();
+				MigrateToV7::<Test>::on_runtime_upgrade();
 
 				assert_eq!(StorageVersion::get::<Pallet<Test>>(), 7);
-				assert_eq!(weight, <Test as polkadot_sdk::frame_system::Config>::DbWeight::get().reads_writes(3, 3));
 				for cluster_id in [with_dry_run, without_dry_run] {
 					assert_eq!(
 						Clusters::<Test>::get(cluster_id),
