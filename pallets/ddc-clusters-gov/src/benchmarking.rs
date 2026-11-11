@@ -112,9 +112,6 @@ pub fn create_cluster_with_nodes<T: Config>(
 
 		T::ClusterManager::add_node(&cluster_id, node_pub_key, &ClusterNodeKind::Genesis)
 			.expect("Node could not be added to the cluster");
-
-		T::ClusterManager::validate_node(&cluster_id, node_pub_key, true)
-			.expect("Node could not be validated in the cluster");
 	}
 
 	if is_activated {

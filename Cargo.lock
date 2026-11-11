@@ -4539,7 +4539,7 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.3"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=chore%2Fremove-dry-run#34028f4a640abe9a5976b07b876baeae9e993282"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=chore%2Fremove-dry-run#2f9ad36a12bbd0efa471a5df6fa00e6b9f8d4ecc"
 dependencies = [
  "blake2 0.10.6",
  "blake3",
@@ -4560,7 +4560,7 @@ dependencies = [
 [[package]]
 name = "ddc-dac-host"
 version = "0.1.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=chore%2Fremove-dry-run#07c5898e0952827e2b3ff18c36e38ccdc0f5ef81"
+source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=chore%2Fremove-dry-run#243fcc630e2f4687769619d32555478de7c6547a"
 dependencies = [
  "ddc-api",
  "log",
@@ -4575,7 +4575,7 @@ dependencies = [
 [[package]]
 name = "ddc-primitives"
 version = "7.3.4"
-source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=chore%2Fremove-dry-run#07e0a475476d64f6cc1931422d0cd06973a84e70"
+source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=chore%2Fremove-dry-run#ab2b669f31f5c5bddb27cbdd1ff0a49700e408f1"
 dependencies = [
  "blake2 0.10.6",
  "hex",
@@ -10296,7 +10296,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=chore%2Fremove-dry-run#56e5356dc3c1242b28dc387c6c1134d6f8874d19"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=chore%2Fremove-dry-run#6c798703c80cec47605bc80d8dea7ad9fd13c206"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",

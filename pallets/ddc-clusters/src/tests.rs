@@ -310,6 +310,19 @@ fn add_join_and_delete_node_works() {
 			&NodePubKey::StoragePubKey(node_pub_key.clone()),
 			None
 		));
+		assert_eq!(
+			ClustersNodes::<Test>::get(cluster_id, NodePubKey::StoragePubKey(node_pub_key.clone()))
+				.map(|state| state.status),
+			Some(ClusterNodeStatus::ValidationSucceeded)
+		);
+		assert_eq!(
+			ClustersNodesStats::<Test>::get(cluster_id).map(|stats| (
+				stats.await_validation,
+				stats.validation_succeeded,
+				stats.validation_failed
+			)),
+			Some((0, 1, 0))
+		);
 
 		// Node already assigned
 		assert_noop!(
@@ -377,6 +390,19 @@ fn add_join_and_delete_node_works() {
 			&NodePubKey::StoragePubKey(node_pub_key.clone()),
 			None
 		));
+		assert_eq!(
+			ClustersNodes::<Test>::get(cluster_id, NodePubKey::StoragePubKey(node_pub_key.clone()))
+				.map(|state| state.status),
+			Some(ClusterNodeStatus::ValidationSucceeded)
+		);
+		assert_eq!(
+			ClustersNodesStats::<Test>::get(cluster_id).map(|stats| (
+				stats.await_validation,
+				stats.validation_succeeded,
+				stats.validation_failed
+			)),
+			Some((0, 1, 0))
+		);
 
 		// Checking that event was emitted
 		System::assert_last_event(
@@ -838,4 +864,29 @@ fn cluster_creator_works() {
 		assert!(Clusters::<Test>::contains_key(cluster_id));
 		assert!(ClustersGovParams::<Test>::contains_key(cluster_id));
 	})
+}
+
+#[test]
+fn every_node_status_keeps_its_encoded_index() {
+	assert_eq!(ClusterNodeStatus::AwaitsValidation.encode(), vec![0]);
+	assert_eq!(ClusterNodeStatus::ValidationSucceeded.encode(), vec![1]);
+	assert_eq!(ClusterNodeStatus::ValidationFailed.encode(), vec![2]);
+	for index in 0u8..=2 {
+		assert!(ClusterNodeStatus::decode(&mut &[index][..]).is_ok());
+	}
+}
+
+#[test]
+fn nodes_are_no_longer_validated_by_a_call() {
+	use polkadot_sdk::frame_support::traits::{GetCallIndex, GetCallName};
+
+	assert!(!Call::<Test>::get_call_names().contains(&"validate_node"));
+	assert!(!Call::<Test>::get_call_indices().contains(&4));
+}
+
+#[test]
+fn cluster_era_paid_keeps_its_encoded_index() {
+	let event = Event::<Test>::ClusterEraPaid { cluster_id: ClusterId::from([1; 20]), era_id: 1 };
+
+	assert_eq!(event.encode()[0], 10);
 }

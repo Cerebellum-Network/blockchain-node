@@ -326,14 +326,6 @@ impl ClusterManager<AccountId, BlockNumber> for TestClusterManager {
 		unimplemented!()
 	}
 
-	fn validate_node(
-		_cluster_id: &ClusterId,
-		_node_pub_key: &NodePubKey,
-		_succeeded: bool,
-	) -> Result<(), DispatchError> {
-		unimplemented!()
-	}
-
 	fn get_clusters(_status: ClusterStatus) -> Result<Vec<ClusterId>, DispatchError> {
 		unimplemented!()
 	}
