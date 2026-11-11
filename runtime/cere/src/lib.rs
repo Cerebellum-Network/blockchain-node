@@ -1672,6 +1672,7 @@ impl polkadot_sdk::pallet_migrations::Config for Runtime {
 	type Migrations = (
 		pallet_ddc_payouts::migrations::v6::MigrateToV6<Runtime>,
 		pallet_ddc_payouts::migrations::v7::MigrateToV7<Runtime>,
+		pallet_ddc_payouts::migrations::v8::MigrateToV8<Runtime>,
 	);
 	// type Migrations = pallet_ddc_customers::migrations::v5_mbm::LazyMigrationV4ToV5<Runtime>; // enable after migrating Cluster Gov Params
 	// Benchmarks need mocked migrations to guarantee that they succeed.

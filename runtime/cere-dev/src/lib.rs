@@ -1654,6 +1654,7 @@ impl polkadot_sdk::pallet_migrations::Config for Runtime {
 	type Migrations = (
 		pallet_ddc_payouts::migrations::v6::MigrateToV6<Runtime>,
 		pallet_ddc_payouts::migrations::v7::MigrateToV7<Runtime>,
+		pallet_ddc_payouts::migrations::v8::MigrateToV8<Runtime>,
 	);
 	// Benchmarks need mocked migrations to guarantee that they succeed.
 	#[cfg(feature = "runtime-benchmarks")]
