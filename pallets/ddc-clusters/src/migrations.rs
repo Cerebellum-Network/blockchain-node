@@ -688,10 +688,36 @@ pub mod v4 {
 }
 
 pub mod v5 {
-	use ddc_primitives::StorageNodeParams;
+	use ddc_primitives::StorageNodePubKey;
 	use polkadot_sdk::frame_support::pallet_prelude::*;
 
 	use super::*;
+
+	// The layout the v5 bytes were written in, frozen here so a later change to
+	// ddc-primitives cannot change how they decode.
+	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
+	pub enum NodePubKey {
+		StoragePubKey(StorageNodePubKey),
+	}
+
+	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
+	pub enum StorageNodeMode {
+		Full = 1,
+		Storage = 2,
+		Cache = 3,
+		Compute = 4,
+	}
+
+	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
+	pub struct StorageNodeParams {
+		pub mode: StorageNodeMode,
+		pub host: Vec<u8>,
+		pub domain: Vec<u8>,
+		pub ssl: bool,
+		pub http_port: u16,
+		pub grpc_port: u16,
+		pub p2p_port: u16,
+	}
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
 	pub struct InspectionDryRunParams {
@@ -1089,7 +1115,7 @@ pub mod v7 {
 	mod test {
 		use super::*;
 		use crate::mock::{AccountId, ExtBuilder, Test};
-		use ddc_primitives::{StorageNodeMode, StorageNodeParams, StorageNodePubKey};
+		use ddc_primitives::StorageNodePubKey;
 
 		fn stored_cluster(
 			cluster_id: ClusterId,
@@ -1123,11 +1149,11 @@ pub mod v7 {
 						with_dry_run,
 						Some(v5::InspectionDryRunParams {
 							enabled: true,
-							sync_node_key: NodePubKey::StoragePubKey(StorageNodePubKey::from(
+							sync_node_key: v5::NodePubKey::StoragePubKey(StorageNodePubKey::from(
 								[12; 32],
 							)),
-							sync_node_params: StorageNodeParams {
-								mode: StorageNodeMode::Storage,
+							sync_node_params: v5::StorageNodeParams {
+								mode: v5::StorageNodeMode::Storage,
 								host: vec![1u8; 255],
 								domain: vec![2u8; 255],
 								ssl: true,
@@ -1164,6 +1190,33 @@ pub mod v7 {
 						})
 					);
 				}
+			});
+		}
+
+		// Devnet's 0xb1242a78…93b8 as stored at spec 80031, with Some(enabled) params.
+		const DEVNET_DRY_RUN_CLUSTER: [u8; 193] = hex_literal::hex!("b1242a78440e20f50841ffa399fd9d607a2e93b852b00f4073ad4851011a2755d702cb3f4df25a55465a07607e28c0f89cfaff3252b00f4073ad4851011a2755d702cb3f4df25a55465a07607e28c0f89cfaff32001000000030000000140000000101009ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a013c3137382e3235312e3232382e3233367c73746f726167652d312e6465766e65742e6464632d647261676f6e2e636f6d01901f82236e2302b4770700");
+
+		#[test]
+		fn a_stored_cluster_with_dry_run_params_decodes_in_the_v5_layout_and_migrates() {
+			let bytes = DEVNET_DRY_RUN_CLUSTER.to_vec();
+			let stored = v5::Cluster::<AccountId>::decode(&mut &bytes[..]).unwrap();
+			let params = stored.props.inspection_dry_run_params.clone().unwrap();
+			assert!(params.enabled);
+			assert_eq!(params.sync_node_params.mode, v5::StorageNodeMode::Full);
+			assert_eq!(params.sync_node_params.host, b"178.251.228.236".to_vec());
+			assert_eq!(stored.status, ClusterStatus::Activated);
+			assert_eq!(stored.encode(), bytes);
+
+			ExtBuilder.build_and_execute(|| {
+				StorageVersion::new(6).put::<Pallet<Test>>();
+				v5::Clusters::<Test>::insert(stored.cluster_id, stored.clone());
+
+				MigrateToV7::<Test>::on_runtime_upgrade();
+
+				let migrated = Clusters::<Test>::get(stored.cluster_id).unwrap();
+				assert_eq!(migrated.status, ClusterStatus::Activated);
+				assert_eq!(migrated.last_paid_era, stored.last_paid_era);
+				assert_eq!(migrated.props.replication_total, stored.props.replication_total);
 			});
 		}
 	}
