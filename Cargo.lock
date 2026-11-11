@@ -4560,7 +4560,7 @@ dependencies = [
 [[package]]
 name = "ddc-dac-host"
 version = "0.1.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=chore%2Fremove-dry-run#b9cda6220d28c7c59670b02a94f71cac9fae2ba2"
+source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=chore%2Fremove-dry-run#d854c65d35d4877f099177d69aa2d536de229a36"
 dependencies = [
  "ddc-api",
  "log",
@@ -10250,7 +10250,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=chore%2Fpre-testnet-cleanup#59f68911c42a95394dab7e0559fd15c2ac46f37f"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=chore%2Fpre-testnet-cleanup#c68cf4fde0388e19aec54b13c44af8c8413060c8"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
@@ -10296,7 +10296,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=chore%2Fremove-dry-run#9e759a588110a9e56ea680858941c82aad04e807"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=chore%2Fremove-dry-run#b70fc25a6659d46a54705bfcc4d45b77193456c1"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
