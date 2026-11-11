@@ -2087,7 +2087,10 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Tx
 // 	>,
 // );
 
-type Migrations = (pallet_ddc_clusters::migrations::v7::MigrateToV7<Runtime>,);
+type Migrations = (
+	pallet_ddc_clusters::migrations::v7::MigrateToV7<Runtime>,
+	pallet_ddc_nodes::migrations::v3::MigrateToV3<Runtime>,
+);
 
 parameter_types! {
 	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();

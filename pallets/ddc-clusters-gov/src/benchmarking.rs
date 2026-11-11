@@ -93,8 +93,6 @@ pub fn create_cluster_with_nodes<T: Config>(
 		let node_params = NodeParams::StorageParams(StorageNodeParams {
 			mode: StorageNodeMode::Storage,
 			host: vec![1u8; 255],
-			domain: vec![2u8; 255],
-			ssl: true,
 			http_port: 8080_u16,
 			grpc_port: 9090_u16,
 			p2p_port: 9070_u16,
