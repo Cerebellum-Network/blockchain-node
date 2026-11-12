@@ -2528,7 +2528,7 @@ dependencies = [
  "cere-client",
  "cere-service",
  "clap",
- "ddc-dac-host 0.1.1 (git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=dev)",
+ "ddc-dac-host",
  "polkadot-sdk",
  "substrate-build-script-utils",
  "url",
@@ -2540,8 +2540,8 @@ version = "8.0.1"
 dependencies = [
  "cere-dev-runtime",
  "cere-runtime",
- "ddc-dac-host 0.1.1 (git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=dev)",
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev)",
+ "ddc-dac-host",
+ "ddc-primitives",
  "futures 0.3.31",
  "pallet-ismp",
  "pallet-ismp-runtime-api",
@@ -2554,8 +2554,8 @@ version = "8.0.1"
 dependencies = [
  "anyhow",
  "cere-runtime-common",
- "ddc-dac-host 0.1.1 (git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=dev)",
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev)",
+ "ddc-dac-host",
+ "ddc-primitives",
  "hex-literal",
  "ismp",
  "ismp-grandpa",
@@ -2588,7 +2588,7 @@ dependencies = [
 name = "cere-rpc"
 version = "8.0.1"
 dependencies = [
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev)",
+ "ddc-primitives",
  "jsonrpsee",
  "pallet-ismp-rpc",
  "pallet-ismp-runtime-api",
@@ -2601,8 +2601,8 @@ version = "8.0.1"
 dependencies = [
  "anyhow",
  "cere-runtime-common",
- "ddc-dac-host 0.1.1 (git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=dev)",
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev)",
+ "ddc-dac-host",
+ "ddc-primitives",
  "hex-literal",
  "ismp",
  "ismp-grandpa",
@@ -2635,7 +2635,7 @@ dependencies = [
 name = "cere-runtime-common"
 version = "8.0.1"
 dependencies = [
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev)",
+ "ddc-primitives",
  "log",
  "parity-scale-codec",
  "polkadot-sdk",
@@ -2651,7 +2651,7 @@ dependencies = [
  "cere-rpc",
  "cere-runtime",
  "cere-runtime-common",
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev)",
+ "ddc-primitives",
  "futures 0.3.31",
  "jsonrpsee",
  "polkadot-sdk",
@@ -4276,7 +4276,7 @@ name = "customer-deposit"
 version = "5.1.0"
 dependencies = [
  "base64ct",
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev)",
+ "ddc-primitives",
  "ink",
  "polkadot-sdk",
 ]
@@ -4539,32 +4539,11 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.3"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=chore%2Fremove-dry-run#3ed9dfb51ff61c219d021794999e97b4b59fe630"
-dependencies = [
- "blake2 0.10.6",
- "blake3",
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev)",
- "hex",
- "log",
- "parity-scale-codec",
- "polkadot-ckb-merkle-mountain-range",
- "polkadot-sdk",
- "prost 0.12.6",
- "prost-build 0.13.5",
- "scale-info",
- "serde",
- "serde_json",
- "serde_with",
-]
-
-[[package]]
-name = "ddc-api"
-version = "7.3.3"
 source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev#ffc23230097912fb3a78285fded19926383fd3e3"
 dependencies = [
  "blake2 0.10.6",
  "blake3",
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev)",
+ "ddc-primitives",
  "hex",
  "log",
  "parity-scale-codec",
@@ -4576,21 +4555,6 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with",
-]
-
-[[package]]
-name = "ddc-dac-host"
-version = "0.1.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=chore%2Fremove-dry-run#57180f6768a0d17474d5311bbfc4fd28c234bac4"
-dependencies = [
- "ddc-api 7.3.3 (git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev)",
- "log",
- "parity-scale-codec",
- "polkadot-sdk",
- "prost 0.12.6",
- "scale-info",
- "sp-runtime-interface",
- "wasmtime",
 ]
 
 [[package]]
@@ -4598,7 +4562,7 @@ name = "ddc-dac-host"
 version = "0.1.1"
 source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=dev#3320669543132a628e537cf23022f9354d8960f4"
 dependencies = [
- "ddc-api 7.3.3 (git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev)",
+ "ddc-api",
  "log",
  "parity-scale-codec",
  "polkadot-sdk",
@@ -4606,26 +4570,6 @@ dependencies = [
  "scale-info",
  "sp-runtime-interface",
  "wasmtime",
-]
-
-[[package]]
-name = "ddc-primitives"
-version = "7.3.4"
-source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=chore%2Fremove-dry-run#f66dd862bc1404b4de79c281f78a2e12b884d44a"
-dependencies = [
- "blake2 0.10.6",
- "hex",
- "ink",
- "log",
- "parity-scale-codec",
- "polkadot-ckb-merkle-mountain-range",
- "polkadot-sdk",
- "prost 0.12.6",
- "prost-build 0.13.5",
- "scale-info",
- "serde",
- "serde_json",
- "serde_with",
 ]
 
 [[package]]
@@ -10216,7 +10160,7 @@ dependencies = [
 name = "pallet-ddc-clusters"
 version = "8.0.1"
 dependencies = [
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev)",
+ "ddc-primitives",
  "hex-literal",
  "log",
  "pallet-balances",
@@ -10236,7 +10180,7 @@ dependencies = [
 name = "pallet-ddc-clusters-gov"
 version = "8.0.1"
 dependencies = [
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev)",
+ "ddc-primitives",
  "hex-literal",
  "lazy_static",
  "log",
@@ -10266,7 +10210,7 @@ dependencies = [
 name = "pallet-ddc-customers"
 version = "8.0.1"
 dependencies = [
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev)",
+ "ddc-primitives",
  "hex",
  "hex-literal",
  "log",
@@ -10288,7 +10232,7 @@ dependencies = [
 name = "pallet-ddc-nodes"
 version = "8.0.1"
 dependencies = [
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev)",
+ "ddc-primitives",
  "hex",
  "log",
  "pallet-balances",
@@ -10306,13 +10250,13 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=chore%2Fpre-testnet-cleanup#de8796376877363713a574874f57c7e3fb447261"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=chore%2Fpre-testnet-cleanup#5fe19ade878de25bf96826c64f024f6dbc99a505"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
- "ddc-api 7.3.3 (git+https://github.com/Cerebellum-Network/ddc-api.git?branch=chore%2Fremove-dry-run)",
- "ddc-dac-host 0.1.1 (git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=chore%2Fremove-dry-run)",
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=chore%2Fremove-dry-run)",
+ "ddc-api",
+ "ddc-dac-host",
+ "ddc-primitives",
  "hex",
  "ink",
  "itertools 0.13.0",
@@ -10330,7 +10274,7 @@ dependencies = [
 name = "pallet-ddc-staking"
 version = "8.0.1"
 dependencies = [
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev)",
+ "ddc-primitives",
  "hex-literal",
  "lazy_static",
  "log",
@@ -10352,14 +10296,14 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=chore%2Fremove-dry-run#cb3735ab960865e7bb8ba3bcf5d234232baa4889"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#c1e9d6caffa0c19ed25d8fb647112c13072aaaa6"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
  "byte-unit",
- "ddc-api 7.3.3 (git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev)",
- "ddc-dac-host 0.1.1 (git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=dev)",
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev)",
+ "ddc-api",
+ "ddc-dac-host",
+ "ddc-primitives",
  "hex",
  "itertools 0.13.0",
  "log",
@@ -10587,7 +10531,7 @@ dependencies = [
 name = "pallet-fee-handler"
 version = "8.0.1"
 dependencies = [
- "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev)",
+ "ddc-primitives",
  "parity-scale-codec",
  "polkadot-sdk",
  "scale-info",
