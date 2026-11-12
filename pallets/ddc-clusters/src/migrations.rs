@@ -1117,6 +1117,33 @@ pub mod v7 {
 		use crate::mock::{AccountId, ExtBuilder, Test};
 		use ddc_primitives::StorageNodePubKey;
 
+		fn a_v6_chain() -> Cluster<AccountId> {
+			StorageVersion::new(6).put::<Pallet<Test>>();
+			let genesis_id = ClusterId::from([0; 20]);
+			let genesis = Clusters::<Test>::get(genesis_id).unwrap();
+			v5::Clusters::<Test>::insert(
+				genesis_id,
+				v5::Cluster {
+					cluster_id: genesis.cluster_id,
+					manager_id: genesis.manager_id.clone(),
+					reserve_id: genesis.reserve_id.clone(),
+					props: v5::ClusterProps {
+						node_provider_auth_contract: genesis
+							.props
+							.node_provider_auth_contract
+							.clone(),
+						erasure_coding_required: genesis.props.erasure_coding_required,
+						erasure_coding_total: genesis.props.erasure_coding_total,
+						replication_total: genesis.props.replication_total,
+						inspection_dry_run_params: None,
+					},
+					status: genesis.status.clone(),
+					last_paid_era: genesis.last_paid_era,
+				},
+			);
+			genesis
+		}
+
 		fn stored_cluster(
 			cluster_id: ClusterId,
 			dry_run: Option<v5::InspectionDryRunParams>,
@@ -1140,7 +1167,7 @@ pub mod v7 {
 		#[test]
 		fn every_cluster_keeps_its_fields_without_the_dry_run_params() {
 			ExtBuilder.build_and_execute(|| {
-				StorageVersion::new(6).put::<Pallet<Test>>();
+				let genesis = a_v6_chain();
 				let with_dry_run = ClusterId::from([10; 20]);
 				let without_dry_run = ClusterId::from([11; 20]);
 				v5::Clusters::<Test>::insert(
@@ -1190,6 +1217,7 @@ pub mod v7 {
 						})
 					);
 				}
+				assert_eq!(Clusters::<Test>::get(genesis.cluster_id), Some(genesis));
 			});
 		}
 
@@ -1197,7 +1225,7 @@ pub mod v7 {
 		#[test]
 		fn the_migration_checks_pass_when_the_migration_runs_twice() {
 			ExtBuilder.build_and_execute(|| {
-				StorageVersion::new(6).put::<Pallet<Test>>();
+				a_v6_chain();
 				let cluster_id = ClusterId::from([10; 20]);
 				v5::Clusters::<Test>::insert(cluster_id, stored_cluster(cluster_id, None));
 
@@ -1224,7 +1252,7 @@ pub mod v7 {
 			assert_eq!(stored.encode(), bytes);
 
 			ExtBuilder.build_and_execute(|| {
-				StorageVersion::new(6).put::<Pallet<Test>>();
+				a_v6_chain();
 				v5::Clusters::<Test>::insert(stored.cluster_id, stored.clone());
 
 				MigrateToV7::<Test>::on_runtime_upgrade();
