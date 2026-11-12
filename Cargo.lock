@@ -2528,7 +2528,7 @@ dependencies = [
  "cere-client",
  "cere-service",
  "clap",
- "ddc-dac-host",
+ "ddc-dac-host 0.1.1 (git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=dev)",
  "polkadot-sdk",
  "substrate-build-script-utils",
  "url",
@@ -2540,7 +2540,7 @@ version = "8.0.1"
 dependencies = [
  "cere-dev-runtime",
  "cere-runtime",
- "ddc-dac-host",
+ "ddc-dac-host 0.1.1 (git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=dev)",
  "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev)",
  "futures 0.3.31",
  "pallet-ismp",
@@ -2554,7 +2554,7 @@ version = "8.0.1"
 dependencies = [
  "anyhow",
  "cere-runtime-common",
- "ddc-dac-host",
+ "ddc-dac-host 0.1.1 (git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=dev)",
  "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev)",
  "hex-literal",
  "ismp",
@@ -2601,7 +2601,7 @@ version = "8.0.1"
 dependencies = [
  "anyhow",
  "cere-runtime-common",
- "ddc-dac-host",
+ "ddc-dac-host 0.1.1 (git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=dev)",
  "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev)",
  "hex-literal",
  "ismp",
@@ -4558,11 +4558,47 @@ dependencies = [
 ]
 
 [[package]]
+name = "ddc-api"
+version = "7.3.3"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev#ffc23230097912fb3a78285fded19926383fd3e3"
+dependencies = [
+ "blake2 0.10.6",
+ "blake3",
+ "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev)",
+ "hex",
+ "log",
+ "parity-scale-codec",
+ "polkadot-ckb-merkle-mountain-range",
+ "polkadot-sdk",
+ "prost 0.12.6",
+ "prost-build 0.13.5",
+ "scale-info",
+ "serde",
+ "serde_json",
+ "serde_with",
+]
+
+[[package]]
 name = "ddc-dac-host"
 version = "0.1.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=chore%2Fremove-dry-run#e1a73b018f54aeb10caa7fd109fa234d08313036"
+source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=chore%2Fremove-dry-run#57180f6768a0d17474d5311bbfc4fd28c234bac4"
 dependencies = [
- "ddc-api",
+ "ddc-api 7.3.3 (git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev)",
+ "log",
+ "parity-scale-codec",
+ "polkadot-sdk",
+ "prost 0.12.6",
+ "scale-info",
+ "sp-runtime-interface",
+ "wasmtime",
+]
+
+[[package]]
+name = "ddc-dac-host"
+version = "0.1.1"
+source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=dev#3320669543132a628e537cf23022f9354d8960f4"
+dependencies = [
+ "ddc-api 7.3.3 (git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev)",
  "log",
  "parity-scale-codec",
  "polkadot-sdk",
@@ -10274,8 +10310,8 @@ source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=chore
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
- "ddc-api",
- "ddc-dac-host",
+ "ddc-api 7.3.3 (git+https://github.com/Cerebellum-Network/ddc-api.git?branch=chore%2Fremove-dry-run)",
+ "ddc-dac-host 0.1.1 (git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=chore%2Fremove-dry-run)",
  "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=chore%2Fremove-dry-run)",
  "hex",
  "ink",
@@ -10316,13 +10352,13 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=chore%2Fremove-dry-run#095184f5602d831737e9861380359148d6eb6870"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=chore%2Fremove-dry-run#cb3735ab960865e7bb8ba3bcf5d234232baa4889"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
  "byte-unit",
- "ddc-api",
- "ddc-dac-host",
+ "ddc-api 7.3.3 (git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev)",
+ "ddc-dac-host 0.1.1 (git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=dev)",
  "ddc-primitives 7.3.4 (git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev)",
  "hex",
  "itertools 0.13.0",
