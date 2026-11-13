@@ -1654,11 +1654,7 @@ parameter_types! {
 impl polkadot_sdk::pallet_migrations::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	#[cfg(not(feature = "runtime-benchmarks"))]
-	type Migrations = (
-		pallet_ddc_payouts::migrations::v6::MigrateToV6<Runtime>,
-		pallet_ddc_payouts::migrations::v7::MigrateToV7<Runtime>,
-		pallet_ddc_payouts::migrations::v8::MigrateToV8<Runtime>,
-	);
+	type Migrations = ();
 	// Benchmarks need mocked migrations to guarantee that they succeed.
 	#[cfg(feature = "runtime-benchmarks")]
 	type Migrations = polkadot_sdk::pallet_migrations::mock_helpers::MockedMigrations;
@@ -2065,11 +2061,7 @@ parameter_types! {
 	pub const MaxPoolsToMigrate: u32 = 250;
 }
 
-type Migrations = (
-	pallet_ddc_clusters::migrations::v7::MigrateToV7<Runtime>,
-	pallet_ddc_nodes::migrations::v3::MigrateToV3<Runtime>,
-	pallet_ddc_clusters_gov::migrations::v1::MigrateToV1<Runtime>,
-);
+type Migrations = ();
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = polkadot_sdk::frame_executive::Executive<
