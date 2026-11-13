@@ -1533,8 +1533,8 @@ impl pallet_ddc_payouts::Config for Runtime {
 	const OCW_INTERVAL: u16 = 5; // every 5th block
 	const OCW_LOCK_TTL_MILLIS: u64 = 2 * 60 * 60 * 1_000; // 2h
 	const OCW_CLUSTER_QUARANTINE_MILLIS: u64 = 60 * 60 * 1_000; // 1h
+	const OCW_CLUSTER_PAYOUT_BUDGET_MILLIS: u64 = 30_000; // 30s
 	const EHD_COLLECTOR_DISCOVERY_TIMEOUT_MILLIS: u64 = 5_000; // 5s
-	const CLUSTER_PAYOUT_BUDGET_MILLIS: u64 = 30_000; // 30s
 }
 
 parameter_types! {
