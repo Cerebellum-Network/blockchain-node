@@ -11,7 +11,6 @@ use crate::node::{NodeError, NodeProps, NodeTrait};
 
 parameter_types! {
 	pub MaxHostLen: u8 = 255;
-	pub MaxDomainLen: u8 = 255;
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
@@ -26,8 +25,6 @@ pub struct StorageNode<T: polkadot_sdk::frame_system::Config> {
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
 pub struct StorageNodeProps {
 	pub host: BoundedVec<u8, MaxHostLen>,
-	pub domain: BoundedVec<u8, MaxDomainLen>,
-	pub ssl: bool,
 	pub http_port: u16,
 	pub grpc_port: u16,
 	pub p2p_port: u16,
@@ -52,11 +49,6 @@ impl<T: polkadot_sdk::frame_system::Config> StorageNode<T> {
 							Ok(vec) => vec,
 							Err(_) => return Err(NodeError::StorageHostLenExceedsLimit),
 						},
-						domain: match node_params.domain.try_into() {
-							Ok(vec) => vec,
-							Err(_) => return Err(NodeError::StorageDomainLenExceedsLimit),
-						},
-						ssl: node_params.ssl,
 						http_port: node_params.http_port,
 						grpc_port: node_params.grpc_port,
 						p2p_port: node_params.p2p_port,
@@ -91,11 +83,6 @@ impl<T: polkadot_sdk::frame_system::Config> NodeTrait<T> for StorageNode<T> {
 					Ok(vec) => vec,
 					Err(_) => return Err(NodeError::StorageHostLenExceedsLimit),
 				};
-				self.props.domain = match storage_params.domain.try_into() {
-					Ok(vec) => vec,
-					Err(_) => return Err(NodeError::StorageDomainLenExceedsLimit),
-				};
-				self.props.ssl = storage_params.ssl;
 				self.props.http_port = storage_params.http_port;
 				self.props.grpc_port = storage_params.grpc_port;
 				self.props.p2p_port = storage_params.p2p_port;

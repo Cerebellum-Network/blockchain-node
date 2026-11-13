@@ -3,6 +3,7 @@ use ddc_primitives::StorageNodePubKey;
 use log::info;
 #[cfg(feature = "try-runtime")]
 use polkadot_sdk::frame_support::ensure;
+use polkadot_sdk::frame_support::{parameter_types, BoundedVec};
 use polkadot_sdk::frame_support::{
 	storage_alias,
 	traits::{Get, GetStorageVersion, OnRuntimeUpgrade, StorageVersion},
@@ -12,9 +13,34 @@ use polkadot_sdk::sp_runtime::Saturating;
 use serde::{Deserialize, Serialize};
 
 use super::*;
-use crate::{storage_node::StorageNodeProps, ClusterId};
+use crate::{storage_node::MaxHostLen, ClusterId};
 
-const LOG_TARGET: &str = "ddc-customers";
+parameter_types! {
+	pub MaxDomainLen: u8 = 255;
+}
+
+// The layout v0 to v2 stored nodes in, frozen here so a later change to the
+// pallet's StorageNodeProps or to ddc-primitives cannot change how they decode.
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
+pub enum StorageNodeMode {
+	Full = 1,
+	Storage = 2,
+	Cache = 3,
+	Compute = 4,
+}
+
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
+pub struct StorageNodeProps {
+	pub host: BoundedVec<u8, MaxHostLen>,
+	pub domain: BoundedVec<u8, MaxDomainLen>,
+	pub ssl: bool,
+	pub http_port: u16,
+	pub grpc_port: u16,
+	pub p2p_port: u16,
+	pub mode: StorageNodeMode,
+}
+
+const LOG_TARGET: &str = "ddc-nodes";
 pub const PALLET_MIGRATIONS_ID: &[u8; 16] = b"pallet-ddc-nodes";
 
 pub mod v0 {
@@ -451,8 +477,6 @@ pub mod v2_mbm {
 	#[cfg(feature = "runtime-benchmarks")]
 	impl<T: Config> LazyMigrationV1ToV2<T> {
 		pub(crate) fn setup_benchmark_env_for_migration() -> BenchmarkingSetupV1ToV2 {
-			use ddc_primitives::StorageNodeMode;
-
 			let node_key = StorageNodePubKey::from([0; 32]);
 
 			let provider_id: T::AccountId =
@@ -521,10 +545,172 @@ pub mod v0_v2 {
 	}
 }
 
+pub mod v3 {
+	use super::*;
+	use crate::storage_node::{StorageNode, StorageNodeProps as LiveStorageNodeProps};
+
+	fn live_mode(mode: StorageNodeMode) -> ddc_primitives::StorageNodeMode {
+		match mode {
+			StorageNodeMode::Full => ddc_primitives::StorageNodeMode::Full,
+			StorageNodeMode::Storage => ddc_primitives::StorageNodeMode::Storage,
+			StorageNodeMode::Cache => ddc_primitives::StorageNodeMode::Cache,
+			StorageNodeMode::Compute => ddc_primitives::StorageNodeMode::Compute,
+		}
+	}
+
+	pub fn migrate_to_v3<T: Config>() -> Weight {
+		let on_chain_version = Pallet::<T>::on_chain_storage_version();
+		let current_version = Pallet::<T>::in_code_storage_version();
+
+		info!(
+			target: LOG_TARGET,
+			"Running v3 migration with current storage version {:?} / onchain {:?}",
+			current_version,
+			on_chain_version
+		);
+
+		if on_chain_version == 2 && current_version == 3 {
+			let mut translated = 0u64;
+			let count = v2::StorageNodes::<T>::iter().count();
+			info!(
+				target: LOG_TARGET,
+				">>> Updating DDC Storage Nodes. Migrating {} nodes in v3 migration ...", count
+			);
+			crate::StorageNodes::<T>::translate::<v2::StorageNode<T>, _>(
+				|_, old: v2::StorageNode<T>| {
+					translated.saturating_inc();
+					Some(StorageNode {
+						pub_key: old.pub_key,
+						provider_id: old.provider_id,
+						cluster_id: old.cluster_id,
+						props: LiveStorageNodeProps {
+							host: old.props.host,
+							http_port: old.props.http_port,
+							grpc_port: old.props.grpc_port,
+							p2p_port: old.props.p2p_port,
+							mode: live_mode(old.props.mode),
+						},
+					})
+				},
+			);
+
+			// Update storage version.
+			StorageVersion::new(3).put::<Pallet<T>>();
+			info!(
+				target: LOG_TARGET,
+				"Upgraded {} records, storage to version {:?} in v3 migration ...",
+				translated,
+				current_version
+			);
+
+			T::DbWeight::get().reads_writes(translated + 1, translated + 1)
+		} else {
+			info!(target: LOG_TARGET, " >>> Unused v3 migration!");
+			T::DbWeight::get().reads(1)
+		}
+	}
+
+	pub struct MigrateToV3<T>(PhantomData<T>);
+	impl<T: Config> OnRuntimeUpgrade for MigrateToV3<T> {
+		fn on_runtime_upgrade() -> Weight {
+			migrate_to_v3::<T>()
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<Vec<u8>, polkadot_sdk::sp_runtime::DispatchError> {
+			let prev_count = crate::StorageNodes::<T>::iter_keys().count();
+			Ok((prev_count as u64).encode())
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(
+			prev_state: Vec<u8>,
+		) -> Result<(), polkadot_sdk::sp_runtime::DispatchError> {
+			let prev_count: u64 = Decode::decode(&mut &prev_state[..])
+				.expect("pre_upgrade provides a valid state; qed");
+
+			let post_count = crate::StorageNodes::<T>::iter_keys().count() as u64;
+			ensure!(
+				prev_count == post_count,
+				"the storage node count before and after the v3 migration should be the same"
+			);
+
+			let current_version = Pallet::<T>::in_code_storage_version();
+			let on_chain_version = Pallet::<T>::on_chain_storage_version();
+
+			ensure!(current_version == 3, "must_upgrade");
+			ensure!(
+				current_version == on_chain_version,
+				"after migration, the current_version and on_chain_version should be the same in v3 migration"
+			);
+
+			Ok(())
+		}
+	}
+
+	#[cfg(test)]
+	mod test {
+		use super::*;
+		use crate::mock::{ExtBuilder, Test};
+
+		#[cfg(feature = "try-runtime")]
+		#[test]
+		fn the_migration_checks_pass_when_the_migration_runs_twice() {
+			let bytes = hex::decode(DEVNET_STORAGE_NODE).unwrap();
+			let stored = v2::StorageNode::<Test>::decode(&mut &bytes[..]).unwrap();
+			ExtBuilder.build_and_execute(|| {
+				StorageVersion::new(2).put::<Pallet<Test>>();
+				v2::StorageNodes::<Test>::insert(stored.pub_key.clone(), stored);
+
+				for _ in 0..2 {
+					let state = MigrateToV3::<Test>::pre_upgrade().unwrap();
+					MigrateToV3::<Test>::on_runtime_upgrade();
+					MigrateToV3::<Test>::post_upgrade(state).unwrap();
+				}
+			});
+		}
+
+		// A devnet node as stored at spec 80031: ssl=true, domain storage-7.devnet.ddc-dragon.com.
+		const DEVNET_STORAGE_NODE: &str = "1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d721e6cbb4d6962292e5210b8c986ce0d86fe00db6620c58a23b91bc428438b7125017f82864e4f097e63d04cc279e4d8d2eb45a42ffa3c3137382e3235312e3232382e3136357c73746f726167652d372e6465766e65742e6464632d647261676f6e2e636f6d01901f82236e2302";
+
+		#[test]
+		fn a_stored_node_with_domain_and_ssl_decodes_in_the_v2_layout_and_migrates() {
+			let bytes = hex::decode(DEVNET_STORAGE_NODE).unwrap();
+			let stored = v2::StorageNode::<Test>::decode(&mut &bytes[..]).unwrap();
+			assert_eq!(stored.props.host.to_vec(), b"178.251.228.165".to_vec());
+			assert_eq!(stored.props.domain.to_vec(), b"storage-7.devnet.ddc-dragon.com".to_vec());
+			assert!(stored.props.ssl);
+			assert_eq!(stored.props.mode, StorageNodeMode::Storage);
+			assert_eq!(stored.encode(), bytes);
+
+			ExtBuilder.build_and_execute(|| {
+				StorageVersion::new(2).put::<Pallet<Test>>();
+				v2::StorageNodes::<Test>::insert(stored.pub_key.clone(), stored.clone());
+
+				MigrateToV3::<Test>::on_runtime_upgrade();
+
+				assert_eq!(StorageVersion::get::<Pallet<Test>>(), 3);
+				let migrated = crate::StorageNodes::<Test>::get(stored.pub_key.clone()).unwrap();
+				assert_eq!(migrated.provider_id, stored.provider_id);
+				assert_eq!(migrated.cluster_id, stored.cluster_id);
+				assert_eq!(
+					migrated.props,
+					LiveStorageNodeProps {
+						host: stored.props.host.clone(),
+						http_port: 8080,
+						grpc_port: 9090,
+						p2p_port: 9070,
+						mode: ddc_primitives::StorageNodeMode::Storage,
+					}
+				);
+			});
+		}
+	}
+}
+
 #[cfg(test)]
 #[cfg(feature = "try-runtime")]
 mod test {
-	use ddc_primitives::StorageNodeMode;
 	use polkadot_sdk::frame_support::pallet_prelude::StorageVersion;
 
 	use super::*;
@@ -584,9 +770,9 @@ mod test {
 
 			assert_eq!(StorageVersion::get::<Pallet<T>>(), 1);
 			assert_eq!(node_count_after_upgrade, 2);
-			assert_eq!(StorageNodes::<T>::get(node_pub_key0), None);
-			assert!(StorageNodes::<T>::get(node_pub_key1.clone()).is_some());
-			assert!(StorageNodes::<T>::get(node_pub_key2.clone()).is_some());
+			assert_eq!(v1::StorageNodes::<T>::get(node_pub_key0), None);
+			assert!(v1::StorageNodes::<T>::get(node_pub_key1.clone()).is_some());
+			assert!(v1::StorageNodes::<T>::get(node_pub_key2.clone()).is_some());
 		});
 	}
 }

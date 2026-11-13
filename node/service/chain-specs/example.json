@@ -124,18 +124,14 @@
         "clusters": []
       },
       "ddcCustomers": {
-        "feederAccount": null,
         "buckets": [
-          [
-            {
-              "bucket_id": 1,
-              "owner_id": "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
-              "cluster_id": "0x0000000000000000000000000000000000000001",
-              "is_public": true,
-              "is_removed": false
-            },
-            10000000000
-          ]
+          {
+            "bucket_id": 1,
+            "owner_id": "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+            "cluster_id": "0x0000000000000000000000000000000000000001",
+            "is_public": true,
+            "is_removed": false
+          }
         ]
       },
       "ddcNodes": {
@@ -156,8 +152,6 @@
                 46,
                 49
               ],
-              "domain": [],
-              "ssl": false,
               "http_port": 8080,
               "grpc_port": 8081,
               "p2p_port": 8082,

@@ -8,13 +8,12 @@ use polkadot_sdk::sp_runtime::Perquintill;
 use polkadot_sdk::sp_std::prelude::*;
 
 use super::*;
-use crate::Pallet as DdcCustomers;
 
 pub type BalanceOf<T> = <<T as pallet::Config>::Currency as Currency<
 	<T as polkadot_sdk::frame_system::Config>::AccountId,
 >>::Balance;
 
-use polkadot_sdk::frame_system::{Pallet as System, RawOrigin};
+use polkadot_sdk::frame_system::RawOrigin;
 
 const USER_SEED: u32 = 999666;
 
@@ -59,7 +58,6 @@ mod benchmarks {
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
 				replication_total: 3,
-				inspection_dry_run_params: None,
 			},
 			cluster_protocol_params,
 		);
@@ -79,157 +77,6 @@ mod benchmarks {
 		create_bucket(RawOrigin::Signed(user), cluster_id, bucket_params);
 
 		assert_eq!(BucketsCount::<T>::get(), 1);
-	}
-
-	#[benchmark]
-	fn deposit() {
-		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
-		let cluster_id = create_dafault_cluster::<T>(user.clone());
-
-		let balance = <T as pallet::Config>::Currency::minimum_balance() * 100u32.into();
-		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
-		let amount = <T as pallet::Config>::Currency::minimum_balance() * 50u32.into();
-
-		whitelist_account!(user);
-
-		#[extrinsic_call]
-		deposit::<T>(RawOrigin::Signed(user.clone()), cluster_id, amount);
-
-		assert!(ClusterLedger::<T>::contains_key(cluster_id, &user));
-	}
-
-	#[benchmark]
-	fn deposit_extra() {
-		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
-		let cluster_id = create_dafault_cluster::<T>(user.clone());
-
-		let balance = <T as pallet::Config>::Currency::minimum_balance() * 200u32.into();
-		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
-		let amount = <T as pallet::Config>::Currency::minimum_balance() * 50u32.into();
-
-		let _ =
-			DdcCustomers::<T>::deposit(RawOrigin::Signed(user.clone()).into(), cluster_id, amount);
-
-		whitelist_account!(user);
-
-		#[extrinsic_call]
-		deposit_extra::<T>(RawOrigin::Signed(user.clone()), cluster_id, amount);
-
-		assert!(ClusterLedger::<T>::contains_key(cluster_id, &user));
-	}
-
-	#[benchmark]
-	fn deposit_for() {
-		let funder = account::<T::AccountId>("funder", USER_SEED, 0u32);
-		let user = account::<T::AccountId>("user", USER_SEED, 1u32);
-
-		let cluster_id = create_dafault_cluster::<T>(user.clone());
-
-		let balance_1 = <T as pallet::Config>::Currency::minimum_balance() * 200u32.into();
-		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&funder, balance_1);
-
-		let balance_2 = <T as pallet::Config>::Currency::minimum_balance() * 100u32.into();
-		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance_2);
-
-		let fund_amount = <T as pallet::Config>::Currency::minimum_balance() * 50u32.into();
-
-		whitelist_account!(funder);
-
-		#[extrinsic_call]
-		deposit_for::<T>(RawOrigin::Signed(funder.clone()), user.clone(), cluster_id, fund_amount);
-
-		assert!(ClusterLedger::<T>::contains_key(cluster_id, &user));
-	}
-
-	#[benchmark]
-	fn unlock_deposit() {
-		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
-		let cluster_id = create_dafault_cluster::<T>(user.clone());
-
-		let balance = <T as pallet::Config>::Currency::minimum_balance() * 200u32.into();
-		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
-		let amount = <T as pallet::Config>::Currency::minimum_balance() * 50u32.into();
-
-		let _ =
-			DdcCustomers::<T>::deposit(RawOrigin::Signed(user.clone()).into(), cluster_id, amount);
-
-		whitelist_account!(user);
-
-		#[extrinsic_call]
-		unlock_deposit::<T>(RawOrigin::Signed(user.clone()), cluster_id, amount);
-
-		assert!(ClusterLedger::<T>::contains_key(cluster_id, user));
-	}
-
-	#[benchmark]
-	fn withdraw_unlocked_deposit_update() {
-		System::<T>::set_block_number(1u32.into());
-
-		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
-		let cluster_id = create_dafault_cluster::<T>(user.clone());
-
-		let balance = <T as pallet::Config>::Currency::minimum_balance() * 2000u32.into();
-		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
-		let amount = <T as pallet::Config>::Currency::minimum_balance() * 32u32.into();
-
-		let _ =
-			DdcCustomers::<T>::deposit(RawOrigin::Signed(user.clone()).into(), cluster_id, amount);
-
-		for _k in 1..32 {
-			let _ = DdcCustomers::<T>::unlock_deposit(
-				RawOrigin::Signed(user.clone()).into(),
-				cluster_id,
-				<T as pallet::Config>::Currency::minimum_balance() * 1u32.into(),
-			);
-		}
-
-		System::<T>::set_block_number(5256001u32.into());
-
-		whitelist_account!(user);
-
-		#[extrinsic_call]
-		withdraw_unlocked_deposit::<T>(RawOrigin::Signed(user.clone()), cluster_id);
-
-		let _ledger = ClusterLedger::<T>::try_get(cluster_id, &user).unwrap();
-		assert_eq!(
-			ClusterLedger::<T>::try_get(cluster_id, &user).unwrap().active,
-			amount / 32u32.into()
-		);
-	}
-
-	#[benchmark]
-	fn withdraw_unlocked_deposit_kill() {
-		System::<T>::set_block_number(1u32.into());
-		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
-		let cluster_id = create_dafault_cluster::<T>(user.clone());
-
-		let user2 = account::<T::AccountId>("user", USER_SEED, 1u32);
-		let balance = <T as pallet::Config>::Currency::minimum_balance() * 2000u32.into();
-		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
-		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user2, balance);
-		let amount = <T as pallet::Config>::Currency::minimum_balance() * 32u32.into();
-
-		let _ =
-			DdcCustomers::<T>::deposit(RawOrigin::Signed(user.clone()).into(), cluster_id, amount);
-		// To keep the balance of pallet positive
-		let _ = DdcCustomers::<T>::deposit(RawOrigin::Signed(user2).into(), cluster_id, amount);
-
-		for _k in 1..33 {
-			let _ = DdcCustomers::<T>::unlock_deposit(
-				RawOrigin::Signed(user.clone()).into(),
-				cluster_id,
-				<T as pallet::Config>::Currency::minimum_balance() * 1u32.into(),
-			);
-		}
-
-		System::<T>::set_block_number(5256001u32.into());
-
-		whitelist_account!(user);
-
-		#[extrinsic_call]
-		withdraw_unlocked_deposit::<T>(RawOrigin::Signed(user.clone()), cluster_id);
-
-		assert!(!ClusterLedger::<T>::contains_key(cluster_id, user));
 	}
 
 	#[benchmark]

@@ -35,7 +35,7 @@ use ddc_primitives::{
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterNodeKind, ClusterNodeState,
 	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
-	ClusterProtocolParams, ClusterStatus, EhdEra, InspectionDryRunParams, NodePubKey, NodeType,
+	ClusterProtocolParams, ClusterStatus, EhdEra, NodePubKey, NodeType,
 };
 pub use pallet::*;
 use pallet_ddc_nodes::{NodeRepository, NodeTrait};
@@ -70,7 +70,7 @@ pub mod pallet {
 
 	/// The current storage version.
 	const STORAGE_VERSION: polkadot_sdk::frame_support::traits::StorageVersion =
-		polkadot_sdk::frame_support::traits::StorageVersion::new(6);
+		polkadot_sdk::frame_support::traits::StorageVersion::new(7);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -100,17 +100,40 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		ClusterCreated { cluster_id: ClusterId },
-		ClusterNodeAdded { cluster_id: ClusterId, node_pub_key: NodePubKey },
-		ClusterNodeRemoved { cluster_id: ClusterId, node_pub_key: NodePubKey },
-		ClusterParamsSet { cluster_id: ClusterId },
-		ClusterProtocolParamsSet { cluster_id: ClusterId },
-		ClusterActivated { cluster_id: ClusterId },
-		ClusterBonded { cluster_id: ClusterId },
-		ClusterUnbonding { cluster_id: ClusterId },
-		ClusterUnbonded { cluster_id: ClusterId },
-		ClusterNodeValidated { cluster_id: ClusterId, node_pub_key: NodePubKey, succeeded: bool },
-		ClusterEraPaid { cluster_id: ClusterId, era_id: EhdEra },
+		ClusterCreated {
+			cluster_id: ClusterId,
+		},
+		ClusterNodeAdded {
+			cluster_id: ClusterId,
+			node_pub_key: NodePubKey,
+		},
+		ClusterNodeRemoved {
+			cluster_id: ClusterId,
+			node_pub_key: NodePubKey,
+		},
+		ClusterParamsSet {
+			cluster_id: ClusterId,
+		},
+		ClusterProtocolParamsSet {
+			cluster_id: ClusterId,
+		},
+		ClusterActivated {
+			cluster_id: ClusterId,
+		},
+		ClusterBonded {
+			cluster_id: ClusterId,
+		},
+		ClusterUnbonding {
+			cluster_id: ClusterId,
+		},
+		ClusterUnbonded {
+			cluster_id: ClusterId,
+		},
+		#[codec(index = 10)]
+		ClusterEraPaid {
+			cluster_id: ClusterId,
+			era_id: EhdEra,
+		},
 	}
 
 	#[pallet::error]
@@ -210,7 +233,6 @@ pub mod pallet {
 						erasure_coding_required: cluster.props.erasure_coding_required,
 						erasure_coding_total: cluster.props.erasure_coding_total,
 						replication_total: cluster.props.replication_total,
-						inspection_dry_run_params: cluster.props.inspection_dry_run_params.clone(),
 					},
 					self.clusters_protocol_params
 						.iter()
@@ -368,23 +390,6 @@ pub mod pallet {
 			Self::deposit_event(Event::<T>::ClusterParamsSet { cluster_id });
 
 			Ok(())
-		}
-
-		#[pallet::call_index(4)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::validate_node())]
-		pub fn validate_node(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-			node_pub_key: NodePubKey,
-			succeeded: bool,
-		) -> DispatchResult {
-			let caller_id = ensure_signed(origin)?;
-			let cluster =
-				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
-			// todo: allow to execute this extrinsic to Validator's manager only
-			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
-
-			Self::do_validate_node(cluster_id, node_pub_key, succeeded)
 		}
 
 		#[pallet::call_index(5)]
@@ -566,7 +571,7 @@ pub mod pallet {
 				node_pub_key.clone(),
 				ClusterNodeState {
 					kind: node_kind.clone(),
-					status: ClusterNodeStatus::AwaitsValidation,
+					status: ClusterNodeStatus::ValidationSucceeded,
 					added_at: polkadot_sdk::frame_system::Pallet::<T>::block_number(),
 				},
 			);
@@ -577,8 +582,8 @@ pub mod pallet {
 
 			let mut current_stats = ClustersNodesStats::<T>::try_get(cluster.cluster_id)
 				.map_err(|_| Error::<T>::ClusterDoesNotExist)?;
-			current_stats.await_validation = current_stats
-				.await_validation
+			current_stats.validation_succeeded = current_stats
+				.validation_succeeded
 				.checked_add(1)
 				.ok_or(Error::<T>::ArithmeticOverflow)?;
 
@@ -679,82 +684,6 @@ pub mod pallet {
 			};
 
 			ClustersNodesStats::<T>::insert(cluster.cluster_id, updated_stats);
-
-			Ok(())
-		}
-
-		fn do_validate_node(
-			cluster_id: ClusterId,
-			node_pub_key: NodePubKey,
-			succeeded: bool,
-		) -> DispatchResult {
-			let mut current_stats = ClustersNodesStats::<T>::try_get(cluster_id)
-				.map_err(|_| Error::<T>::ClusterDoesNotExist)?;
-			let mut current_node_state =
-				ClustersNodes::<T>::try_get(cluster_id, node_pub_key.clone())
-					.map_err(|_| Error::<T>::AttemptToValidateNotAssignedNode)?;
-
-			let updated_stats = match current_node_state.status {
-				ClusterNodeStatus::AwaitsValidation if succeeded => {
-					current_stats.await_validation = current_stats
-						.await_validation
-						.checked_sub(1)
-						.ok_or(Error::<T>::ArithmeticOverflow)?;
-					current_stats.validation_succeeded = current_stats
-						.validation_succeeded
-						.checked_add(1)
-						.ok_or(Error::<T>::ArithmeticOverflow)?;
-					current_stats
-				},
-				ClusterNodeStatus::AwaitsValidation if !succeeded => {
-					current_stats.await_validation = current_stats
-						.await_validation
-						.checked_sub(1)
-						.ok_or(Error::<T>::ArithmeticOverflow)?;
-					current_stats.validation_failed = current_stats
-						.validation_failed
-						.checked_add(1)
-						.ok_or(Error::<T>::ArithmeticOverflow)?;
-					current_stats
-				},
-				ClusterNodeStatus::ValidationSucceeded if !succeeded => {
-					current_stats.validation_succeeded = current_stats
-						.validation_succeeded
-						.checked_sub(1)
-						.ok_or(Error::<T>::ArithmeticOverflow)?;
-					current_stats.validation_failed = current_stats
-						.validation_failed
-						.checked_add(1)
-						.ok_or(Error::<T>::ArithmeticOverflow)?;
-					current_stats
-				},
-				ClusterNodeStatus::ValidationFailed if succeeded => {
-					current_stats.validation_failed = current_stats
-						.validation_failed
-						.checked_sub(1)
-						.ok_or(Error::<T>::ArithmeticOverflow)?;
-					current_stats.validation_succeeded = current_stats
-						.validation_succeeded
-						.checked_add(1)
-						.ok_or(Error::<T>::ArithmeticOverflow)?;
-					current_stats
-				},
-				_ => current_stats,
-			};
-
-			current_node_state.status = if succeeded {
-				ClusterNodeStatus::ValidationSucceeded
-			} else {
-				ClusterNodeStatus::ValidationFailed
-			};
-
-			ClustersNodes::<T>::insert(cluster_id, node_pub_key.clone(), current_node_state);
-			Self::deposit_event(Event::<T>::ClusterNodeValidated {
-				cluster_id,
-				node_pub_key,
-				succeeded,
-			});
-			ClustersNodesStats::<T>::insert(cluster_id, updated_stats);
 
 			Ok(())
 		}
@@ -1004,14 +933,6 @@ pub mod pallet {
 			Ok(current_stats)
 		}
 
-		fn validate_node(
-			cluster_id: &ClusterId,
-			node_pub_key: &NodePubKey,
-			succeeded: bool,
-		) -> Result<(), DispatchError> {
-			Self::do_validate_node(*cluster_id, node_pub_key.clone(), succeeded)
-		}
-
 		fn get_clusters(status: ClusterStatus) -> Result<Vec<ClusterId>, DispatchError> {
 			let mut clusters_ids = Vec::new();
 			for (cluster_id, cluster) in <Clusters<T>>::iter() {
@@ -1020,14 +941,6 @@ pub mod pallet {
 				}
 			}
 			Ok(clusters_ids)
-		}
-
-		fn get_inspection_dry_run_params(
-			cluster_id: &ClusterId,
-		) -> Result<Option<InspectionDryRunParams>, DispatchError> {
-			let cluster =
-				Clusters::<T>::try_get(*cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
-			Ok(cluster.props.inspection_dry_run_params.clone())
 		}
 	}
 

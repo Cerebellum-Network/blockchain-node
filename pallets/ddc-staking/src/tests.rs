@@ -786,7 +786,6 @@ fn bond_cluster_works() {
 					erasure_coding_required: 0,
 					erasure_coding_total: 0,
 					replication_total: 0,
-					inspection_dry_run_params: None,
 				},
 				status: ClusterStatus::Bonded,
 				last_paid_era: EhdEra::default()
@@ -937,7 +936,6 @@ fn unbond_bonded_cluster_works() {
 					erasure_coding_required: 0,
 					erasure_coding_total: 0,
 					replication_total: 0,
-					inspection_dry_run_params: None,
 				},
 				status: ClusterStatus::Unbonding,
 				last_paid_era: EhdEra::default()
@@ -1018,7 +1016,6 @@ fn unbond_activated_cluster_works() {
 					erasure_coding_required: 0,
 					erasure_coding_total: 0,
 					replication_total: 0,
-					inspection_dry_run_params: None,
 				},
 				status: ClusterStatus::Unbonding,
 				last_paid_era: EhdEra::default()
@@ -1114,7 +1111,6 @@ fn withdraw_unbonded_cluster_works() {
 					erasure_coding_required: 0,
 					erasure_coding_total: 0,
 					replication_total: 0,
-					inspection_dry_run_params: None,
 				},
 				status: ClusterStatus::Unbonded,
 				last_paid_era: EhdEra::default()
@@ -1202,7 +1198,6 @@ fn withdraw_activated_cluster_works() {
 					erasure_coding_required: 0,
 					erasure_coding_total: 0,
 					replication_total: 0,
-					inspection_dry_run_params: None,
 				},
 				status: ClusterStatus::Unbonded,
 				last_paid_era: EhdEra::default()

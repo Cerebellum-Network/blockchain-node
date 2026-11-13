@@ -51,7 +51,7 @@ pub mod pallet {
 
 	/// The current storage version.
 	const STORAGE_VERSION: polkadot_sdk::frame_support::traits::StorageVersion =
-		polkadot_sdk::frame_support::traits::StorageVersion::new(2);
+		polkadot_sdk::frame_support::traits::StorageVersion::new(3);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -82,7 +82,6 @@ pub mod pallet {
 		OnlyNodeProvider,
 		NodeIsAssignedToCluster,
 		HostLenExceedsLimit,
-		DomainLenExceedsLimit,
 		NodeHasDanglingStake,
 	}
 
@@ -260,8 +259,6 @@ pub mod pallet {
 						Ok(ddc_primitives::NodeParams::StorageParams(StorageNodeParams {
 							mode: node_props.mode,
 							host: node_props.host.into(),
-							domain: node_props.domain.into(),
-							ssl: node_props.ssl,
 							http_port: node_props.http_port,
 							grpc_port: node_props.grpc_port,
 							p2p_port: node_props.p2p_port,
