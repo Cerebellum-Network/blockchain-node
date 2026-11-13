@@ -174,7 +174,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 80037,
+	spec_version: 80038,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 28,
@@ -1532,6 +1532,8 @@ impl pallet_ddc_payouts::Config for Runtime {
 	const OCW_INTERVAL: u16 = 1; // every block
 	const OCW_LOCK_TTL_MILLIS: u64 = 2 * 60 * 60 * 1_000; // 2h
 	const OCW_CLUSTER_QUARANTINE_MILLIS: u64 = 60 * 60 * 1_000; // 1h
+	const EHD_COLLECTOR_DISCOVERY_TIMEOUT_MILLIS: u64 = 5_000; // 5s
+	const CLUSTER_PAYOUT_BUDGET_MILLIS: u64 = 20_000; // 20s
 }
 
 parameter_types! {
@@ -1638,6 +1640,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	const OCW_INTERVAL: u16 = 1; // every block
 	const OCW_LOCK_TTL_MILLIS: u64 = 2 * 60 * 60 * 1_000; // 2h
 	const OCW_CLUSTER_QUARANTINE_MILLIS: u64 = 60 * 60 * 1_000; // 1h
+	const EHD_COLLECTOR_DISCOVERY_TIMEOUT_MILLIS: u64 = 5_000; // 5s
 	const TCA_INSPECTION_STEP: u64 = 0;
 	const MIN_INSP_BACKUPS_FACTOR: u8 = 1;
 	const INSP_BACKUP_BLOCK_DELAY: u32 = 25;
