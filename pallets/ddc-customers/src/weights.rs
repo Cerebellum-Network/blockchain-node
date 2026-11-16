@@ -27,12 +27,6 @@ use polkadot_sdk::sp_std::marker::PhantomData;
 /// Weight functions needed for pallet_ddc_customers.
 pub trait WeightInfo {
 	fn create_bucket() -> Weight;
-	fn deposit() -> Weight;
-	fn deposit_extra() -> Weight;
-	fn deposit_for() -> Weight;
-	fn unlock_deposit() -> Weight;
-	fn withdraw_unlocked_deposit_update() -> Weight;
-	fn withdraw_unlocked_deposit_kill() -> Weight;
 	fn set_bucket_params() -> Weight;
 	fn remove_bucket() -> Weight;
 	fn migration_v3_buckets_step() -> Weight;
@@ -51,64 +45,6 @@ impl<T: polkadot_sdk::frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Proof: `DdcCustomers::Buckets` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn create_bucket() -> Weight {
 		Weight::from_parts(20_570_000_u64, 0)
-			.saturating_add(T::DbWeight::get().reads(2_u64))
-			.saturating_add(T::DbWeight::get().writes(2_u64))
-	}
-	// Storage: `DdcClusters::Clusters` (r:1 w:0)
-	// Proof: `DdcClusters::Clusters` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	// Storage: `DdcCustomers::ClusterLedger` (r:1 w:1)
-	// Proof: `DdcCustomers::ClusterLedger` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	// Storage: `System::Account` (r:1 w:1)
-	// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
-	fn deposit() -> Weight {
-		Weight::from_parts(74_030_000_u64, 0)
-			.saturating_add(T::DbWeight::get().reads(3_u64))
-			.saturating_add(T::DbWeight::get().writes(2_u64))
-	}
-	// Storage: `DdcClusters::Clusters` (r:1 w:0)
-	// Proof: `DdcClusters::Clusters` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	// Storage: `DdcCustomers::ClusterLedger` (r:1 w:1)
-	// Proof: `DdcCustomers::ClusterLedger` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	// Storage: `System::Account` (r:1 w:1)
-	// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
-	fn deposit_extra() -> Weight {
-		Weight::from_parts(74_150_000_u64, 0)
-			.saturating_add(T::DbWeight::get().reads(3_u64))
-			.saturating_add(T::DbWeight::get().writes(2_u64))
-	}
-	// Storage: `DdcClusters::Clusters` (r:1 w:0)
-	// Proof: `DdcClusters::Clusters` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	// Storage: `DdcCustomers::ClusterLedger` (r:1 w:1)
-	// Proof: `DdcCustomers::ClusterLedger` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	// Storage: `System::Account` (r:2 w:2)
-	// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
-	fn deposit_for() -> Weight {
-		Weight::from_parts(84_219_000_u64, 0)
-			.saturating_add(T::DbWeight::get().reads(4_u64))
-			.saturating_add(T::DbWeight::get().writes(3_u64))
-	}
-	// Storage: `DdcCustomers::ClusterLedger` (r:1 w:1)
-	// Proof: `DdcCustomers::ClusterLedger` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	fn unlock_deposit() -> Weight {
-		Weight::from_parts(19_360_000_u64, 0)
-			.saturating_add(T::DbWeight::get().reads(1_u64))
-			.saturating_add(T::DbWeight::get().writes(1_u64))
-	}
-	// Storage: `DdcCustomers::ClusterLedger` (r:1 w:1)
-	// Proof: `DdcCustomers::ClusterLedger` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	// Storage: `System::Account` (r:1 w:1)
-	// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
-	fn withdraw_unlocked_deposit_update() -> Weight {
-		Weight::from_parts(74_550_000_u64, 0)
-			.saturating_add(T::DbWeight::get().reads(2_u64))
-			.saturating_add(T::DbWeight::get().writes(2_u64))
-	}
-	// Storage: `DdcCustomers::ClusterLedger` (r:1 w:1)
-	// Proof: `DdcCustomers::ClusterLedger` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	// Storage: `System::Account` (r:1 w:1)
-	// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
-	fn withdraw_unlocked_deposit_kill() -> Weight {
-		Weight::from_parts(86_410_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
@@ -189,64 +125,6 @@ impl WeightInfo for () {
 	// Proof: `DdcCustomers::Buckets` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn create_bucket() -> Weight {
 		Weight::from_parts(20_570_000_u64, 0)
-			.saturating_add(RocksDbWeight::get().reads(2_u64))
-			.saturating_add(RocksDbWeight::get().writes(2_u64))
-	}
-	// Storage: `DdcClusters::Clusters` (r:1 w:0)
-	// Proof: `DdcClusters::Clusters` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	// Storage: `DdcCustomers::ClusterLedger` (r:1 w:1)
-	// Proof: `DdcCustomers::ClusterLedger` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	// Storage: `System::Account` (r:1 w:1)
-	// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
-	fn deposit() -> Weight {
-		Weight::from_parts(74_030_000_u64, 0)
-			.saturating_add(RocksDbWeight::get().reads(3_u64))
-			.saturating_add(RocksDbWeight::get().writes(2_u64))
-	}
-	// Storage: `DdcClusters::Clusters` (r:1 w:0)
-	// Proof: `DdcClusters::Clusters` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	// Storage: `DdcCustomers::ClusterLedger` (r:1 w:1)
-	// Proof: `DdcCustomers::ClusterLedger` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	// Storage: `System::Account` (r:1 w:1)
-	// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
-	fn deposit_extra() -> Weight {
-		Weight::from_parts(74_150_000_u64, 0)
-			.saturating_add(RocksDbWeight::get().reads(3_u64))
-			.saturating_add(RocksDbWeight::get().writes(2_u64))
-	}
-	// Storage: `DdcClusters::Clusters` (r:1 w:0)
-	// Proof: `DdcClusters::Clusters` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	// Storage: `DdcCustomers::ClusterLedger` (r:1 w:1)
-	// Proof: `DdcCustomers::ClusterLedger` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	// Storage: `System::Account` (r:2 w:2)
-	// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
-	fn deposit_for() -> Weight {
-		Weight::from_parts(84_219_000_u64, 0)
-			.saturating_add(RocksDbWeight::get().reads(4_u64))
-			.saturating_add(RocksDbWeight::get().writes(3_u64))
-	}
-	// Storage: `DdcCustomers::ClusterLedger` (r:1 w:1)
-	// Proof: `DdcCustomers::ClusterLedger` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	fn unlock_deposit() -> Weight {
-		Weight::from_parts(19_360_000_u64, 0)
-			.saturating_add(RocksDbWeight::get().reads(1_u64))
-			.saturating_add(RocksDbWeight::get().writes(1_u64))
-	}
-	// Storage: `DdcCustomers::ClusterLedger` (r:1 w:1)
-	// Proof: `DdcCustomers::ClusterLedger` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	// Storage: `System::Account` (r:1 w:1)
-	// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
-	fn withdraw_unlocked_deposit_update() -> Weight {
-		Weight::from_parts(74_550_000_u64, 0)
-			.saturating_add(RocksDbWeight::get().reads(2_u64))
-			.saturating_add(RocksDbWeight::get().writes(2_u64))
-	}
-	// Storage: `DdcCustomers::ClusterLedger` (r:1 w:1)
-	// Proof: `DdcCustomers::ClusterLedger` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	// Storage: `System::Account` (r:1 w:1)
-	// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
-	fn withdraw_unlocked_deposit_kill() -> Weight {
-		Weight::from_parts(86_410_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}

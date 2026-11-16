@@ -53,8 +53,6 @@ benchmarks! {
 			NodeParams::StorageParams(StorageNodeParams {
 				mode: StorageNodeMode::Storage,
 				host: vec![1u8; 255],
-				domain: vec![2u8; 255],
-				ssl: true,
 				http_port: 35000u16,
 				grpc_port: 25000u16,
 				p2p_port: 15000u16,
@@ -177,7 +175,6 @@ benchmarks! {
 				erasure_coding_required: 0,
 				erasure_coding_total: 0,
 				replication_total: 0,
-				inspection_dry_run_params: None,
 			},
 			ClusterProtocolParams {
 				treasury_share: Perquintill::default(),
@@ -222,7 +219,6 @@ benchmarks! {
 				erasure_coding_required: 0,
 				erasure_coding_total: 0,
 				replication_total: 0,
-				inspection_dry_run_params: None,
 			},
 			ClusterProtocolParams {
 				treasury_share: Perquintill::default(),
@@ -267,7 +263,6 @@ benchmarks! {
 				erasure_coding_required: 0,
 				erasure_coding_total: 0,
 				replication_total: 0,
-				inspection_dry_run_params: None,
 			},
 			ClusterProtocolParams {
 				treasury_share: Perquintill::default(),

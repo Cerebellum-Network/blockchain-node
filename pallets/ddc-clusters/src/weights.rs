@@ -31,7 +31,6 @@ pub trait WeightInfo {
 	fn join_cluster() -> Weight;
 	fn remove_node() -> Weight;
 	fn set_cluster_params() -> Weight;
-	fn validate_node() -> Weight;
 }
 
 /// Weights for pallet_ddc_clusters using the Substrate node and recommended hardware.
@@ -126,17 +125,6 @@ impl<T: polkadot_sdk::frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
-	// Storage: `DdcClusters::Clusters` (r:1 w:0)
-	// Proof: `DdcClusters::Clusters` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	// Storage: `DdcClusters::ClustersNodesStats` (r:1 w:1)
-	// Proof: `DdcClusters::ClustersNodesStats` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	// Storage: `DdcClusters::ClustersNodes` (r:1 w:1)
-	// Proof: `DdcClusters::ClustersNodes` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	fn validate_node() -> Weight {
-		Weight::from_parts(36_309_000_u64, 0)
-			.saturating_add(T::DbWeight::get().reads(3_u64))
-			.saturating_add(T::DbWeight::get().writes(2_u64))
-	}
 }
 
 // For backwards compatibility and tests
@@ -229,16 +217,5 @@ impl WeightInfo for () {
 		Weight::from_parts(28_660_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
-	}
-	// Storage: `DdcClusters::Clusters` (r:1 w:0)
-	// Proof: `DdcClusters::Clusters` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	// Storage: `DdcClusters::ClustersNodesStats` (r:1 w:1)
-	// Proof: `DdcClusters::ClustersNodesStats` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	// Storage: `DdcClusters::ClustersNodes` (r:1 w:1)
-	// Proof: `DdcClusters::ClustersNodes` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	fn validate_node() -> Weight {
-		Weight::from_parts(36_309_000_u64, 0)
-			.saturating_add(RocksDbWeight::get().reads(3_u64))
-			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
 }

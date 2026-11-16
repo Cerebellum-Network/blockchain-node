@@ -746,6 +746,9 @@ impl ExtBuilder {
 
 		// endow system account to allow dispatching transaction
 		balances.push((DdcClustersGov::account_id(), ENDOWMENT));
+		// An account that provides several nodes, or manages the cluster too, is endowed once.
+		balances.sort_by(|a, b| a.0.cmp(&b.0));
+		balances.dedup_by(|a, b| a.0 == b.0);
 
 		let _ =
 			polkadot_sdk::pallet_balances::GenesisConfig::<Test> { balances, ..Default::default() }

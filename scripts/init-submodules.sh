@@ -20,6 +20,13 @@ set -e
 
 ORML_PATH="third_party/open-runtime-module-library"
 
+# A Docker build context carries the submodule sources but not .git (see
+# .dockerignore), so there is nothing to initialize there.
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "*** Not a git work tree; using the submodule sources as provided"
+  exit 0
+fi
+
 echo "*** Initializing submodules"
 git submodule update --init --recursive
 

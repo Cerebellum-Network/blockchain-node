@@ -70,8 +70,6 @@ mod benchmarks {
 			StorageNodeProps {
 				mode: StorageNodeMode::Storage,
 				host: vec![3u8; 255].try_into().unwrap(),
-				domain: vec![4u8; 255].try_into().unwrap(),
-				ssl: true,
 				http_port: 45000u16,
 				grpc_port: 55000u16,
 				p2p_port: 65000u16,

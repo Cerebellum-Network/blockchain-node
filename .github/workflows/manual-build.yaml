@@ -86,7 +86,10 @@ jobs:
           submodules: true
 
       - name: "Configure Git"
-        run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+        run: |
+          git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+          git config --global http.https://github.com/.extraheader \
+            "AUTHORIZATION: basic $(printf 'x-access-token:%s' '${{ secrets.GH_READ_TOKEN }}' | base64 | tr -d '\n')"
 
       - name: "Cache cargo registry"
         uses: actions/cache@v4

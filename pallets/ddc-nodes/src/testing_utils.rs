@@ -18,8 +18,6 @@ pub fn create_user_and_config<T: Config>(
 	let storage_node_params = NodeParams::StorageParams(StorageNodeParams {
 		mode: StorageNodeMode::Storage,
 		host: vec![1u8; 255],
-		domain: vec![2u8; 255],
-		ssl: false,
 		http_port: 35000u16,
 		grpc_port: 25000u16,
 		p2p_port: 15000u16,
@@ -28,8 +26,6 @@ pub fn create_user_and_config<T: Config>(
 	let new_storage_node_params = NodeParams::StorageParams(StorageNodeParams {
 		mode: StorageNodeMode::Storage,
 		host: vec![3u8; 255],
-		domain: vec![4u8; 255],
-		ssl: true,
 		http_port: 45000u16,
 		grpc_port: 55000u16,
 		p2p_port: 65000u16,

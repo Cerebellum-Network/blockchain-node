@@ -93,14 +93,12 @@ impl<T: polkadot_sdk::frame_system::Config> NodeTrait<T> for Node<T> {
 #[derive(Debug, PartialEq)]
 pub enum NodeError {
 	StorageHostLenExceedsLimit,
-	StorageDomainLenExceedsLimit,
 }
 
 impl<T> From<NodeError> for Error<T> {
 	fn from(error: NodeError) -> Self {
 		match error {
 			NodeError::StorageHostLenExceedsLimit => Error::<T>::HostLenExceedsLimit,
-			NodeError::StorageDomainLenExceedsLimit => Error::<T>::DomainLenExceedsLimit,
 		}
 	}
 }

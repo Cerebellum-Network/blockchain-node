@@ -977,7 +977,6 @@ pub mod v4_mbm {
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
 				replication_total: 3,
-				inspection_dry_run_params: None,
 			};
 
 			let _ = <T as pallet::Config>::ClusterCreator::create_cluster(
@@ -1421,7 +1420,6 @@ pub mod v5_mbm {
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
 				replication_total: 3,
-				inspection_dry_run_params: None,
 			};
 
 			let create_cluster_result = <T as pallet::Config>::ClusterCreator::create_cluster(
