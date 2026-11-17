@@ -1533,6 +1533,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	const OCW_INTERVAL: u16 = 1; // every block
 	const OCW_LOCK_TTL_MILLIS: u64 = 2 * 60 * 60 * 1_000; // 2h
 	const OCW_CLUSTER_QUARANTINE_MILLIS: u64 = 60 * 60 * 1_000; // 1h
+
 	// A cluster is quarantined when at least OCW_CLUSTER_UNREACHABLE_MIN_WALKS lookups found none
 	// of its collectors AND at least OCW_CLUSTER_UNREACHABLE_TOLERANCE_MILLIS has passed since the
 	// first of them. One lookup runs per OCW pass (about OCW_INTERVAL x 6s), so at interval 1 the
@@ -1667,6 +1668,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	const OCW_INTERVAL: u16 = 1; // every block
 	const OCW_LOCK_TTL_MILLIS: u64 = 2 * 60 * 60 * 1_000; // 2h
 	const OCW_CLUSTER_QUARANTINE_MILLIS: u64 = 60 * 60 * 1_000; // 1h
+
 	// A cluster is quarantined when at least OCW_CLUSTER_UNREACHABLE_MIN_WALKS lookups found none
 	// of its collectors AND at least OCW_CLUSTER_UNREACHABLE_TOLERANCE_MILLIS has passed since the
 	// first of them. One lookup runs per OCW pass (about OCW_INTERVAL x 6s), so at interval 1 the
