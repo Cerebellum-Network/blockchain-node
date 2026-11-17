@@ -53,6 +53,7 @@ mod tests;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
+pub mod migrations;
 pub mod weights;
 pub use weights::WeightInfo;
 
@@ -73,17 +74,17 @@ pub struct Votes<AccountId, BlockNumber> {
 	seats: MemberCount,
 	/// The number of approval votes that are needed to pass the proposal.
 	threshold: MemberCount,
-	/// The current set of voters that approved it.
-	ayes: Vec<AccountId>,
-	/// The current set of voters that rejected it.
-	nays: Vec<AccountId>,
+	/// The seats that approved it: each voter with the member it voted as.
+	ayes: Vec<(AccountId, ClusterMember)>,
+	/// The seats that rejected it: each voter with the member it voted as.
+	nays: Vec<(AccountId, ClusterMember)>,
 	/// Block at which proposal was inited.
 	start: BlockNumber,
 	/// The hard end time of this vote.
 	end: BlockNumber,
 }
 
-#[derive(Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo, PartialEq)]
+#[derive(Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo, PartialEq, Eq)]
 pub enum ClusterMember {
 	ClusterManager,
 	NodeProvider(NodePubKey),
@@ -117,7 +118,7 @@ pub mod pallet {
 
 	/// The current storage version.
 	const STORAGE_VERSION: polkadot_sdk::frame_support::traits::StorageVersion =
-		polkadot_sdk::frame_support::traits::StorageVersion::new(0);
+		polkadot_sdk::frame_support::traits::StorageVersion::new(1);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -376,8 +377,8 @@ pub mod pallet {
 			member: ClusterMember,
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
-			Self::ensure_allowed_voter(caller_id.clone(), cluster_id, member)?;
-			let _ = Self::do_vote(caller_id, cluster_id, approve)?;
+			Self::ensure_allowed_voter(caller_id.clone(), cluster_id, member.clone())?;
+			let _ = Self::do_vote(caller_id, cluster_id, member, approve)?;
 			Ok(())
 		}
 
@@ -561,20 +562,23 @@ pub mod pallet {
 		fn do_vote(
 			voter_id: T::AccountId,
 			cluster_id: ClusterId,
+			member: ClusterMember,
 			approve: bool,
 		) -> Result<bool, DispatchError> {
 			let mut voting =
 				ClusterProposalVoting::<T>::get(cluster_id).ok_or(Error::<T>::ProposalMissing)?;
 
-			let position_yes = voting.ayes.iter().position(|a| a == &voter_id);
-			let position_no = voting.nays.iter().position(|a| a == &voter_id);
+			// One vote per seat: an account holding several seats votes each of them.
+			let seat = (voter_id.clone(), member);
+			let position_yes = voting.ayes.iter().position(|a| a == &seat);
+			let position_no = voting.nays.iter().position(|a| a == &seat);
 
 			// Detects first vote of the member in the motion
 			let is_account_voting_first_time = position_yes.is_none() && position_no.is_none();
 
 			if approve {
 				if position_yes.is_none() {
-					voting.ayes.push(voter_id.clone());
+					voting.ayes.push(seat);
 				} else {
 					return Err(Error::<T>::DuplicateVote.into());
 				}
@@ -583,7 +587,7 @@ pub mod pallet {
 				}
 			} else {
 				if position_no.is_none() {
-					voting.nays.push(voter_id.clone());
+					voting.nays.push(seat);
 				} else {
 					return Err(Error::<T>::DuplicateVote.into());
 				}
@@ -650,7 +654,7 @@ pub mod pallet {
 			);
 
 			let cluster_manager = T::ClusterManager::get_manager_account_id(&cluster_id)?;
-			let cluster_manager_vote = voting.ayes.iter().any(|a| a == &cluster_manager);
+			let cluster_manager_vote = voting.ayes.iter().any(|(a, _)| a == &cluster_manager);
 
 			// default voting strategy.
 			let default = T::DefaultVote::default_vote(

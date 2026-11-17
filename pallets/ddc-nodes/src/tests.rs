@@ -3,7 +3,7 @@
 use ddc_primitives::{NodePubKey, StorageNodeMode, StorageNodeParams};
 use polkadot_sdk::frame_support::{assert_noop, assert_ok};
 use polkadot_sdk::sp_runtime::AccountId32;
-use storage_node::{MaxDomainLen, MaxHostLen};
+use storage_node::MaxHostLen;
 
 use super::{mock::*, *};
 
@@ -16,8 +16,6 @@ fn create_storage_node_works() {
 		let storage_node_params = StorageNodeParams {
 			mode: StorageNodeMode::Storage,
 			host: vec![1u8; 255],
-			domain: vec![2u8; 255],
-			ssl: true,
 			http_port: 35000u16,
 			grpc_port: 25000u16,
 			p2p_port: 15000u16,
@@ -33,32 +31,12 @@ fn create_storage_node_works() {
 				NodeParams::StorageParams(StorageNodeParams {
 					mode: StorageNodeMode::Storage,
 					host: vec![1u8; 256],
-					domain: vec![2u8; 255],
-					ssl: true,
 					http_port: 35000u16,
 					grpc_port: 25000u16,
 					p2p_port: 15000u16,
 				})
 			),
 			Error::<Test>::HostLenExceedsLimit
-		);
-
-		// Host length exceeds limit
-		assert_noop!(
-			DdcNodes::create_node(
-				RuntimeOrigin::signed(account_id1.clone()),
-				NodePubKey::StoragePubKey(node_pub_key.clone()),
-				NodeParams::StorageParams(StorageNodeParams {
-					mode: StorageNodeMode::Storage,
-					host: vec![1u8; 255],
-					domain: vec![2u8; 256],
-					ssl: true,
-					http_port: 35000u16,
-					grpc_port: 25000u16,
-					p2p_port: 15000u16,
-				})
-			),
-			Error::<Test>::DomainLenExceedsLimit
 		);
 
 		// Node created
@@ -71,15 +49,11 @@ fn create_storage_node_works() {
 		let created_storage_node = StorageNodes::<Test>::get(&node_pub_key).unwrap();
 		let expected_host: BoundedVec<u8, MaxHostLen> =
 			storage_node_params.clone().host.try_into().unwrap();
-		let expected_domain: BoundedVec<u8, MaxDomainLen> =
-			storage_node_params.clone().domain.try_into().unwrap();
 
 		assert_eq!(created_storage_node.pub_key, node_pub_key);
 		assert_eq!(created_storage_node.provider_id, account_id1);
 		assert_eq!(created_storage_node.cluster_id, None);
 		assert_eq!(created_storage_node.props.host, expected_host);
-		assert_eq!(created_storage_node.props.domain, expected_domain);
-		assert_eq!(created_storage_node.props.ssl, storage_node_params.ssl);
 		assert_eq!(created_storage_node.props.http_port, storage_node_params.http_port);
 		assert_eq!(created_storage_node.props.grpc_port, storage_node_params.grpc_port);
 		assert_eq!(created_storage_node.props.p2p_port, storage_node_params.p2p_port);
@@ -123,8 +97,6 @@ fn set_storage_node_params_works() {
 		let storage_node_params = StorageNodeParams {
 			mode: StorageNodeMode::Storage,
 			host: vec![1u8; 255],
-			domain: vec![2u8; 255],
-			ssl: true,
 			http_port: 35000u16,
 			grpc_port: 25000u16,
 			p2p_port: 15000u16,
@@ -153,8 +125,6 @@ fn set_storage_node_params_works() {
 		let updated_params = StorageNodeParams {
 			mode: StorageNodeMode::Full,
 			host: vec![3u8; 255],
-			domain: vec![4u8; 255],
-			ssl: false,
 			http_port: 35000u16,
 			grpc_port: 25000u16,
 			p2p_port: 15000u16,
@@ -169,15 +139,11 @@ fn set_storage_node_params_works() {
 
 		let updated_storage_node = StorageNodes::<Test>::get(&node_pub_key).unwrap();
 		let expected_host: BoundedVec<u8, MaxHostLen> = updated_params.host.try_into().unwrap();
-		let expected_domain: BoundedVec<u8, MaxDomainLen> =
-			updated_params.domain.try_into().unwrap();
 
 		assert_eq!(updated_storage_node.pub_key, node_pub_key);
 		assert_eq!(updated_storage_node.provider_id, account_id1.clone());
 		assert_eq!(updated_storage_node.cluster_id, None);
 		assert_eq!(updated_storage_node.props.host, expected_host);
-		assert_eq!(updated_storage_node.props.domain, expected_domain);
-		assert_eq!(updated_storage_node.props.ssl, updated_params.ssl);
 		assert_eq!(updated_storage_node.props.http_port, updated_params.http_port);
 		assert_eq!(updated_storage_node.props.grpc_port, updated_params.grpc_port);
 		assert_eq!(updated_storage_node.props.p2p_port, updated_params.p2p_port);
@@ -216,32 +182,12 @@ fn set_storage_node_params_works() {
 				NodeParams::StorageParams(StorageNodeParams {
 					mode: StorageNodeMode::Storage,
 					host: vec![1u8; 256],
-					domain: vec![2u8; 255],
-					ssl: true,
 					http_port: 35000u16,
 					grpc_port: 25000u16,
 					p2p_port: 15000u16,
 				})
 			),
 			Error::<Test>::HostLenExceedsLimit
-		);
-
-		// Storage domain length exceeds limit
-		assert_noop!(
-			DdcNodes::set_node_params(
-				RuntimeOrigin::signed(account_id1),
-				NodePubKey::StoragePubKey(node_pub_key.clone()),
-				NodeParams::StorageParams(StorageNodeParams {
-					mode: StorageNodeMode::Storage,
-					host: vec![1u8; 255],
-					domain: vec![2u8; 256],
-					ssl: true,
-					http_port: 35000u16,
-					grpc_port: 25000u16,
-					p2p_port: 15000u16,
-				})
-			),
-			Error::<Test>::DomainLenExceedsLimit
 		);
 
 		// Checking that event was emitted
@@ -262,8 +208,6 @@ fn delete_storage_node_works() {
 		let storage_node_params = StorageNodeParams {
 			mode: StorageNodeMode::Storage,
 			host: vec![1u8; 255],
-			domain: vec![2u8; 255],
-			ssl: true,
 			http_port: 35000u16,
 			grpc_port: 25000u16,
 			p2p_port: 15000u16,

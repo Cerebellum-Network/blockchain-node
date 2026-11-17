@@ -11,6 +11,10 @@ use polkadot_sdk::sp_runtime::Perquintill;
 use super::{mock_clusters_gov::*, *};
 use crate::SubmissionDeposit as ReferendaSubmissionDeposit;
 
+fn voters(seats: &[(AccountId, ClusterMember)]) -> Vec<AccountId> {
+	seats.iter().map(|(account, _)| account.clone()).collect()
+}
+
 fn next_block() {
 	System::set_block_number(System::block_number() + 1);
 	Scheduler::on_initialize(System::block_number());
@@ -23,7 +27,7 @@ fn fast_forward_to(n: u64) {
 	}
 }
 
-fn default_cluster_protocol_params<T: Config>(
+pub(crate) fn default_cluster_protocol_params<T: Config>(
 ) -> ClusterProtocolParams<Balance, BlockNumber, AccountId> {
 	ClusterProtocolParams {
 		customer_deposit_contract: AccountId::from(CLUSTER_CUSTOMER_DEPOSIT_CONTRACT),
@@ -1073,7 +1077,7 @@ fn cluster_protocol_activation_proposal_early_approved_with_supermajority_consen
 		));
 
 		let votes = ClusterProposalVoting::<Test>::get(cluster_id).unwrap();
-		assert_eq!(votes.ayes, vec![cluster_manager.clone()]);
+		assert_eq!(voters(&votes.ayes), vec![cluster_manager.clone()]);
 		System::assert_last_event(
 			Event::Voted {
 				account: cluster_manager.clone(),
@@ -1114,7 +1118,10 @@ fn cluster_protocol_activation_proposal_early_approved_with_supermajority_consen
 			ClusterMember::NodeProvider(cluster_node_1_key.clone()),
 		));
 		let votes = ClusterProposalVoting::<Test>::get(cluster_id).unwrap();
-		assert_eq!(votes.ayes, vec![cluster_manager.clone(), cluster_node_1_provider.clone()]);
+		assert_eq!(
+			voters(&votes.ayes),
+			vec![cluster_manager.clone(), cluster_node_1_provider.clone()]
+		);
 		System::assert_last_event(
 			Event::Voted {
 				account: cluster_node_1_provider.clone(),
@@ -1134,7 +1141,7 @@ fn cluster_protocol_activation_proposal_early_approved_with_supermajority_consen
 		));
 		let votes = ClusterProposalVoting::<Test>::get(cluster_id).unwrap();
 		assert_eq!(
-			votes.ayes,
+			voters(&votes.ayes),
 			vec![
 				cluster_manager.clone(),
 				cluster_node_1_provider.clone(),
@@ -1160,7 +1167,7 @@ fn cluster_protocol_activation_proposal_early_approved_with_supermajority_consen
 		));
 		let votes = ClusterProposalVoting::<Test>::get(cluster_id).unwrap();
 		assert_eq!(
-			votes.ayes,
+			voters(&votes.ayes),
 			vec![
 				cluster_manager.clone(),
 				cluster_node_1_provider.clone(),
@@ -1831,7 +1838,7 @@ fn cluster_protocol_activation_proposal_early_approved_with_unanimous_consensus_
 		));
 
 		let votes = ClusterProposalVoting::<Test>::get(cluster_id).unwrap();
-		assert_eq!(votes.ayes, vec![cluster_manager.clone()]);
+		assert_eq!(voters(&votes.ayes), vec![cluster_manager.clone()]);
 		System::assert_last_event(
 			Event::Voted {
 				account: cluster_manager.clone(),
@@ -1872,7 +1879,10 @@ fn cluster_protocol_activation_proposal_early_approved_with_unanimous_consensus_
 			ClusterMember::NodeProvider(cluster_node_1_key.clone()),
 		));
 		let votes = ClusterProposalVoting::<Test>::get(cluster_id).unwrap();
-		assert_eq!(votes.ayes, vec![cluster_manager.clone(), cluster_node_1_provider.clone()]);
+		assert_eq!(
+			voters(&votes.ayes),
+			vec![cluster_manager.clone(), cluster_node_1_provider.clone()]
+		);
 		System::assert_last_event(
 			Event::Voted {
 				account: cluster_node_1_provider.clone(),
@@ -1892,7 +1902,7 @@ fn cluster_protocol_activation_proposal_early_approved_with_unanimous_consensus_
 		));
 		let votes = ClusterProposalVoting::<Test>::get(cluster_id).unwrap();
 		assert_eq!(
-			votes.ayes,
+			voters(&votes.ayes),
 			vec![
 				cluster_manager.clone(),
 				cluster_node_1_provider.clone(),
@@ -1918,7 +1928,7 @@ fn cluster_protocol_activation_proposal_early_approved_with_unanimous_consensus_
 		));
 		let votes = ClusterProposalVoting::<Test>::get(cluster_id).unwrap();
 		assert_eq!(
-			votes.ayes,
+			voters(&votes.ayes),
 			vec![
 				cluster_manager.clone(),
 				cluster_node_1_provider.clone(),
@@ -2641,7 +2651,7 @@ fn cluster_protocol_update_proposal_early_approved_with_supermajority_consensus_
 		));
 
 		let votes = ClusterProposalVoting::<Test>::get(cluster_id).unwrap();
-		assert_eq!(votes.ayes, vec![cluster_manager.clone()]);
+		assert_eq!(voters(&votes.ayes), vec![cluster_manager.clone()]);
 		System::assert_last_event(
 			Event::Voted {
 				account: cluster_manager.clone(),
@@ -2682,7 +2692,10 @@ fn cluster_protocol_update_proposal_early_approved_with_supermajority_consensus_
 			ClusterMember::NodeProvider(cluster_node_1_key.clone()),
 		));
 		let votes = ClusterProposalVoting::<Test>::get(cluster_id).unwrap();
-		assert_eq!(votes.ayes, vec![cluster_manager.clone(), cluster_node_1_provider.clone()]);
+		assert_eq!(
+			voters(&votes.ayes),
+			vec![cluster_manager.clone(), cluster_node_1_provider.clone()]
+		);
 		System::assert_last_event(
 			Event::Voted {
 				account: cluster_node_1_provider.clone(),
@@ -2702,7 +2715,7 @@ fn cluster_protocol_update_proposal_early_approved_with_supermajority_consensus_
 		));
 		let votes = ClusterProposalVoting::<Test>::get(cluster_id).unwrap();
 		assert_eq!(
-			votes.ayes,
+			voters(&votes.ayes),
 			vec![
 				cluster_manager.clone(),
 				cluster_node_1_provider.clone(),
@@ -2728,7 +2741,7 @@ fn cluster_protocol_update_proposal_early_approved_with_supermajority_consensus_
 		));
 		let votes = ClusterProposalVoting::<Test>::get(cluster_id).unwrap();
 		assert_eq!(
-			votes.ayes,
+			voters(&votes.ayes),
 			vec![
 				cluster_manager.clone(),
 				cluster_node_1_provider.clone(),
@@ -3410,7 +3423,7 @@ fn cluster_protocol_update_proposal_early_approved_with_unanimous_consensus_and_
 		));
 
 		let votes = ClusterProposalVoting::<Test>::get(cluster_id).unwrap();
-		assert_eq!(votes.ayes, vec![cluster_manager.clone()]);
+		assert_eq!(voters(&votes.ayes), vec![cluster_manager.clone()]);
 		System::assert_last_event(
 			Event::Voted {
 				account: cluster_manager.clone(),
@@ -3451,7 +3464,10 @@ fn cluster_protocol_update_proposal_early_approved_with_unanimous_consensus_and_
 			ClusterMember::NodeProvider(cluster_node_1_key.clone()),
 		));
 		let votes = ClusterProposalVoting::<Test>::get(cluster_id).unwrap();
-		assert_eq!(votes.ayes, vec![cluster_manager.clone(), cluster_node_1_provider.clone()]);
+		assert_eq!(
+			voters(&votes.ayes),
+			vec![cluster_manager.clone(), cluster_node_1_provider.clone()]
+		);
 		System::assert_last_event(
 			Event::Voted {
 				account: cluster_node_1_provider.clone(),
@@ -3471,7 +3487,7 @@ fn cluster_protocol_update_proposal_early_approved_with_unanimous_consensus_and_
 		));
 		let votes = ClusterProposalVoting::<Test>::get(cluster_id).unwrap();
 		assert_eq!(
-			votes.ayes,
+			voters(&votes.ayes),
 			vec![
 				cluster_manager.clone(),
 				cluster_node_1_provider.clone(),
@@ -3497,7 +3513,7 @@ fn cluster_protocol_update_proposal_early_approved_with_unanimous_consensus_and_
 		));
 		let votes = ClusterProposalVoting::<Test>::get(cluster_id).unwrap();
 		assert_eq!(
-			votes.ayes,
+			voters(&votes.ayes),
 			vec![
 				cluster_manager.clone(),
 				cluster_node_1_provider.clone(),
@@ -4131,5 +4147,135 @@ fn cluster_protocol_update_proposal_cannot_be_closed_if_threshold_is_not_reached
 
 		MockedDefaultVote::reset_and_release_lock(lock1);
 		MockedSeatsConsensus::reset_and_release_lock(lock2);
+	})
+}
+
+fn unanimous_cluster_with_providers(providers: [[u8; 32]; 3]) -> (BuiltCluster, Vec<BuiltNode>) {
+	let cluster = build_cluster(
+		CLUSTER_ID,
+		CLUSTER_MANAGER_ID,
+		CLUSTER_RESERVE_ID,
+		ClusterParams::default(),
+		default_cluster_protocol_params::<Test>(),
+		ClusterStatus::Bonded,
+	);
+	let nodes = [NODE_PUB_KEY_1, NODE_PUB_KEY_2, NODE_PUB_KEY_3]
+		.into_iter()
+		.zip(providers)
+		.map(|(key, provider)| {
+			build_cluster_node(
+				key,
+				provider,
+				StorageNodeParams::default(),
+				CLUSTER_ID,
+				ClusterNodeStatus::ValidationSucceeded,
+				ClusterNodeKind::Genesis,
+			)
+		})
+		.collect();
+	(cluster, nodes)
+}
+
+fn vote_as(account: [u8; 32], member: ClusterMember) -> DispatchResult {
+	DdcClustersGov::vote_proposal(
+		RuntimeOrigin::signed(AccountId::from(account)),
+		ClusterId::from(CLUSTER_ID),
+		true,
+		member,
+	)
+}
+
+fn node_member(key: [u8; 32]) -> ClusterMember {
+	ClusterMember::NodeProvider(NodePubKey::StoragePubKey(AccountId::from(key)))
+}
+
+fn propose_unanimous_activation_and_vote_every_seat(seats: Vec<([u8; 32], ClusterMember)>) {
+	let lock1 = MockedDefaultVote::set_and_hold_lock(MockDefaultVote {
+		strategy: DefaultVoteVariant::NayAsDefaultVote,
+	});
+	let lock2 = MockedSeatsConsensus::set_and_hold_lock(MockSeatsConsensus {
+		consensus: ConsensusVariant::Unanimous,
+	});
+	fast_forward_to(1);
+	let cluster_id = ClusterId::from(CLUSTER_ID);
+	assert_ok!(DdcClustersGov::propose_activate_cluster_protocol(
+		RuntimeOrigin::signed(AccountId::from(CLUSTER_MANAGER_ID)),
+		cluster_id,
+		default_cluster_protocol_params::<Test>()
+	));
+	fast_forward_to(2);
+
+	for (account, member) in seats {
+		assert_ok!(vote_as(account, member));
+	}
+	assert_eq!(ClusterProposalVoting::<Test>::get(cluster_id).unwrap().ayes.len(), 4);
+
+	assert_ok!(DdcClustersGov::close_proposal(
+		RuntimeOrigin::signed(AccountId::from(CLUSTER_MANAGER_ID)),
+		cluster_id,
+		ClusterMember::ClusterManager,
+	));
+	assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
+	System::assert_has_event(Event::Approved { cluster_id }.into());
+
+	MockedDefaultVote::reset_and_release_lock(lock1);
+	MockedSeatsConsensus::reset_and_release_lock(lock2);
+}
+
+#[test]
+fn a_provider_with_two_nodes_votes_both_seats_and_a_unanimous_proposal_passes() {
+	let (cluster, nodes) = unanimous_cluster_with_providers([
+		NODE_PROVIDER_ID_1,
+		NODE_PROVIDER_ID_1,
+		NODE_PROVIDER_ID_3,
+	]);
+	ExtBuilder.build_and_execute(cluster, nodes, || {
+		propose_unanimous_activation_and_vote_every_seat(vec![
+			(CLUSTER_MANAGER_ID, ClusterMember::ClusterManager),
+			(NODE_PROVIDER_ID_1, node_member(NODE_PUB_KEY_1)),
+			(NODE_PROVIDER_ID_1, node_member(NODE_PUB_KEY_2)),
+			(NODE_PROVIDER_ID_3, node_member(NODE_PUB_KEY_3)),
+		]);
+	})
+}
+
+#[test]
+fn a_cluster_manager_providing_a_node_votes_both_seats_and_a_unanimous_proposal_passes() {
+	let (cluster, nodes) = unanimous_cluster_with_providers([
+		CLUSTER_MANAGER_ID,
+		NODE_PROVIDER_ID_2,
+		NODE_PROVIDER_ID_3,
+	]);
+	ExtBuilder.build_and_execute(cluster, nodes, || {
+		propose_unanimous_activation_and_vote_every_seat(vec![
+			(CLUSTER_MANAGER_ID, ClusterMember::ClusterManager),
+			(CLUSTER_MANAGER_ID, node_member(NODE_PUB_KEY_1)),
+			(NODE_PROVIDER_ID_2, node_member(NODE_PUB_KEY_2)),
+			(NODE_PROVIDER_ID_3, node_member(NODE_PUB_KEY_3)),
+		]);
+	})
+}
+
+#[test]
+fn the_same_seat_cannot_vote_twice() {
+	let (cluster, nodes) = unanimous_cluster_with_providers([
+		NODE_PROVIDER_ID_1,
+		NODE_PROVIDER_ID_1,
+		NODE_PROVIDER_ID_3,
+	]);
+	ExtBuilder.build_and_execute(cluster, nodes, || {
+		fast_forward_to(1);
+		assert_ok!(DdcClustersGov::propose_activate_cluster_protocol(
+			RuntimeOrigin::signed(AccountId::from(CLUSTER_MANAGER_ID)),
+			ClusterId::from(CLUSTER_ID),
+			default_cluster_protocol_params::<Test>()
+		));
+		fast_forward_to(2);
+
+		assert_ok!(vote_as(NODE_PROVIDER_ID_1, node_member(NODE_PUB_KEY_1)));
+		assert_noop!(
+			vote_as(NODE_PROVIDER_ID_1, node_member(NODE_PUB_KEY_1)),
+			Error::<Test>::DuplicateVote
+		);
 	})
 }

@@ -52,9 +52,9 @@ use polkadot_sdk::frame_support::{
 			imbalance::ResolveTo, Fortitude, PayFromAccount, Preservation,
 			UnityAssetBalanceConversion,
 		},
-		ConstBool, ConstU128, ConstU16, ConstU32, ConstU64, Currency, EitherOf, EitherOfDiverse,
-		EqualPrivilegeOnly, Imbalance, InstanceFilter, KeyOwnerProofSystem, LinearStoragePrice,
-		Nothing, OnUnbalanced, VariantCountOf, WithdrawReasons,
+		ConstBool, ConstU128, ConstU16, ConstU32, ConstU64, ConstU8, Currency, EitherOf,
+		EitherOfDiverse, EqualPrivilegeOnly, Imbalance, InstanceFilter, KeyOwnerProofSystem,
+		LinearStoragePrice, Nothing, OnUnbalanced, VariantCountOf, WithdrawReasons,
 	},
 	weights::{
 		constants::{
@@ -170,10 +170,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 80023,
+	spec_version: 80041,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 27,
+	transaction_version: 28,
 	system_version: 0,
 };
 
@@ -1389,11 +1389,9 @@ impl polkadot_sdk::pallet_nomination_pools::Config for Runtime {
 
 parameter_types! {
 	pub const DdcCustomersPalletId: PalletId = PalletId(*b"accounts"); // DDC maintainer's stake
-	pub const UnlockingDelay: BlockNumber = 100800_u32; // 1 hour * 24 * 7 = 7 days; (1 hour is 600 blocks)
 }
 
 impl pallet_ddc_customers::Config for Runtime {
-	type UnlockingDelay = UnlockingDelay;
 	type Currency = Balances;
 	type PalletId = DdcCustomersPalletId;
 	type RuntimeEvent = RuntimeEvent;
@@ -1472,6 +1470,23 @@ parameter_types! {
 	};
 }
 
+/// The keys settlement accepts an inspection receipt or an assignment table
+/// from: the current validator set and those ddc-verification retains.
+pub struct DdcPermittedInspectors;
+
+impl pallet_ddc_payouts::PermittedInspectors for DdcPermittedInspectors {
+	fn permitted_inspector_keys() -> Vec<Vec<u8>> {
+		DdcVerification::permitted_inspector_keys()
+	}
+
+	// The very value ddc-verification builds every assignment table with:
+	// settlement refuses a table below it, so a second constant that drifted
+	// from it would refuse every honest era.
+	fn min_inspection_redundancy_factor() -> u8 {
+		<Runtime as pallet_ddc_verification::Config>::MinInspRedundancyFactor::get()
+	}
+}
+
 impl pallet_ddc_payouts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	// USD-denominated pricing (ADR-001). Cluster protocol params are quoted in
@@ -1485,7 +1500,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
 	type PalletId = PayoutsPalletId;
 	type Currency = Balances;
-	type CustomerBalanceSource = pallet_ddc_payouts::CustomerBalancePallet<Runtime, DdcCustomers>;
+	type CustomerBalanceSource = pallet_ddc_payouts::CustomerBalanceContract<Runtime>;
 	type BucketManager = DdcCustomers;
 	type ClusterProtocol = DdcClusters;
 	type TreasuryVisitor = TreasuryWrapper;
@@ -1502,11 +1517,10 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
 	type UnsignedPriority = ConstU64<500_000_000>;
 	type DacExecConfig = DacExecConfigConst;
+	type PermittedInspectors = DdcPermittedInspectors;
 	type FeeHandler = FeeHandler;
 	type ForcePayoutOrigin = pallet_ddc_payouts::EnsureRootForForcePayout<AccountId>;
 
-	#[cfg(feature = "runtime-benchmarks")]
-	type CustomerDepositor = DdcCustomers;
 	#[cfg(feature = "runtime-benchmarks")]
 	type ClusterCreator = DdcClusters;
 	#[cfg(feature = "runtime-benchmarks")]
@@ -1516,9 +1530,20 @@ impl pallet_ddc_payouts::Config for Runtime {
 
 	const MAX_PAYOUT_BATCH_SIZE: u16 = 100;
 	const MAX_PAYOUT_BATCH_COUNT: u16 = 1000;
-	const OCW_INTERVAL: u16 = 5; // every 5th block
+	const OCW_INTERVAL: u16 = 1; // every block
 	const OCW_LOCK_TTL_MILLIS: u64 = 2 * 60 * 60 * 1_000; // 2h
 	const OCW_CLUSTER_QUARANTINE_MILLIS: u64 = 60 * 60 * 1_000; // 1h
+
+	// A cluster is quarantined when at least OCW_CLUSTER_UNREACHABLE_MIN_WALKS lookups found none
+	// of its collectors AND at least OCW_CLUSTER_UNREACHABLE_TOLERANCE_MILLIS has passed since the
+	// first of them. One lookup runs per OCW pass (about OCW_INTERVAL x 6s), so at interval 1 the
+	// 3 walks take about 12s and the 180s tolerance decides.
+	const OCW_CLUSTER_UNREACHABLE_MIN_WALKS: u32 = 3;
+	const OCW_CLUSTER_UNREACHABLE_TOLERANCE_MILLIS: u64 = 3 * 60 * 1_000; // 180s
+	const OCW_CLUSTER_UNREACHABLE_QUARANTINE_MILLIS: u64 = 10 * 60 * 1_000; // 10m
+	const OCW_CLUSTER_PAYOUT_BUDGET_MILLIS: u64 = 30_000; // 30s
+	const OCW_MAX_JOB_AGE_MILLIS: u64 = 5 * 60 * 1_000; // 5m
+	const EHD_COLLECTOR_DISCOVERY_TIMEOUT_MILLIS: u64 = 5_000; // 5s
 }
 
 parameter_types! {
@@ -1612,6 +1637,9 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: polkadot_sdk::frame_system::Config> Ge
 parameter_types! {
 	pub const VerificationPalletId: PalletId = PalletId(*b"verifypa");
 	pub const TenPercentOfValidators: Percent = Percent::from_percent(10);
+	// The validator sets retained for checking inspection receipts and
+	// assignment tables: the bonding window, 18 sessions of 4 hours, 72 hours.
+	pub ValidatorSetWindow: u32 = BondingDuration::get() * SessionsPerEra::get();
 }
 
 impl pallet_ddc_verification::Config for Runtime {
@@ -1629,19 +1657,31 @@ impl pallet_ddc_verification::Config for Runtime {
 	type Currency = Balances;
 	type CustomerVisitor = DdcCustomers;
 	type BucketManager = DdcCustomers;
-	type InspReceiptsInterceptor = pallet_ddc_verification::NoReceiptsInterceptor;
 
 	type InspRedundancyFactor = TenPercentOfValidators;
 	type InspBackupsFactor = TenPercentOfValidators;
+	type MinInspRedundancyFactor = ConstU8<3>;
+	type ValidatorSetWindow = ValidatorSetWindow;
 	type DacExecConfig = DacExecConfigConst;
+	type TimeProvider = Timestamp;
 
-	const OCW_INTERVAL: u16 = 10; // every 10th block
+	const OCW_INTERVAL: u16 = 1; // every block
 	const OCW_LOCK_TTL_MILLIS: u64 = 2 * 60 * 60 * 1_000; // 2h
 	const OCW_CLUSTER_QUARANTINE_MILLIS: u64 = 60 * 60 * 1_000; // 1h
+
+	// A cluster is quarantined when at least OCW_CLUSTER_UNREACHABLE_MIN_WALKS lookups found none
+	// of its collectors AND at least OCW_CLUSTER_UNREACHABLE_TOLERANCE_MILLIS has passed since the
+	// first of them. One lookup runs per OCW pass (about OCW_INTERVAL x 6s), so at interval 1 the
+	// 3 walks take about 12s and the 180s tolerance decides.
+	const OCW_CLUSTER_UNREACHABLE_MIN_WALKS: u32 = 3;
+	const OCW_CLUSTER_UNREACHABLE_TOLERANCE_MILLIS: u64 = 3 * 60 * 1_000; // 180s
+	const OCW_CLUSTER_UNREACHABLE_QUARANTINE_MILLIS: u64 = 10 * 60 * 1_000; // 10m
+	const OCW_MAX_JOB_AGE_MILLIS: u64 = 5 * 60 * 1_000; // 5m
+	const EHD_COLLECTOR_DISCOVERY_TIMEOUT_MILLIS: u64 = 5_000; // 5s
 	const TCA_INSPECTION_STEP: u64 = 0;
-	const MIN_INSP_REDUNDANCY_FACTOR: u8 = 3;
 	const MIN_INSP_BACKUPS_FACTOR: u8 = 3;
 	const INSP_BACKUP_BLOCK_DELAY: u32 = 25;
+	const INSP_ERA_GIVE_UP_DISTANCE: u32 = 4; // 4h at 1h eras
 }
 
 parameter_types! {
@@ -1651,7 +1691,11 @@ parameter_types! {
 impl polkadot_sdk::pallet_migrations::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	#[cfg(not(feature = "runtime-benchmarks"))]
-	type Migrations = ();
+	type Migrations = (
+		pallet_ddc_payouts::migrations::v6::MigrateToV6<Runtime>,
+		pallet_ddc_payouts::migrations::v7::MigrateToV7<Runtime>,
+		pallet_ddc_payouts::migrations::v8::MigrateToV8<Runtime>,
+	);
 	// type Migrations = pallet_ddc_customers::migrations::v5_mbm::LazyMigrationV4ToV5<Runtime>; // enable after migrating Cluster Gov Params
 	// Benchmarks need mocked migrations to guarantee that they succeed.
 	#[cfg(feature = "runtime-benchmarks")]
@@ -2062,7 +2106,11 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Tx
 // 	>,
 // );
 
-type Migrations = ();
+type Migrations = (
+	pallet_ddc_clusters::migrations::v7::MigrateToV7<Runtime>,
+	pallet_ddc_nodes::migrations::v3::MigrateToV3<Runtime>,
+	pallet_ddc_clusters_gov::migrations::v1::MigrateToV1<Runtime>,
+);
 
 parameter_types! {
 	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
@@ -2110,8 +2158,11 @@ pub mod migrations {
 		pallet_ddc_clusters::migrations::v6::MigrateToV6<Runtime>,
 	);
 
-	pub type UnreleasedMultiblock =
-		(pallet_ddc_customers::migrations::v4_mbm::LazyMigrationV3ToV4<Runtime>,);
+	pub type UnreleasedMultiblock = (
+		pallet_ddc_customers::migrations::v4_mbm::LazyMigrationV3ToV4<Runtime>,
+		pallet_ddc_payouts::migrations::v6::MigrateToV6<Runtime>,
+		pallet_ddc_payouts::migrations::v7::MigrateToV7<Runtime>,
+	);
 }
 
 /// Executive: handles dispatch to the various modules.
@@ -2679,6 +2730,26 @@ mod tests {
 			.collect();
 		let _: UpperOf<OnChainAccuracy> =
 			maximum_chain_accuracy.iter().fold(0, |acc, x| acc.checked_add(*x).unwrap());
+	}
+
+	#[test]
+	fn customers_are_charged_through_the_deposit_contract() {
+		use core::any::TypeId;
+
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_ddc_payouts::Config>::CustomerBalanceSource>(),
+			TypeId::of::<pallet_ddc_payouts::CustomerBalanceContract<Runtime>>()
+		);
+	}
+
+	#[test]
+	fn the_minimum_irf_is_in_metadata_for_the_storage_nodes() {
+		let constant = pallet_ddc_verification::Pallet::<Runtime>::pallet_constants_metadata()
+			.into_iter()
+			.find(|c| c.name == "MinInspRedundancyFactor")
+			.expect("DdcVerification exposes MinInspRedundancyFactor");
+
+		assert_eq!(constant.value, codec::Encode::encode(&3u8));
 	}
 
 	#[test]

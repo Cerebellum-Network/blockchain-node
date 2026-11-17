@@ -51,7 +51,6 @@ fn create_cluster_works() {
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
 				replication_total: 3,
-				inspection_dry_run_params: None,
 			},
 			cluster_protocol_params.clone()
 		));
@@ -115,7 +114,6 @@ fn create_cluster_works() {
 					erasure_coding_required: 4,
 					erasure_coding_total: 6,
 					replication_total: 3,
-					inspection_dry_run_params: None,
 				},
 				cluster_protocol_params
 			),
@@ -174,7 +172,6 @@ fn add_join_and_delete_node_works() {
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
 				replication_total: 3,
-				inspection_dry_run_params: None,
 			},
 			ClusterProtocolParams {
 				treasury_share: Perquintill::from_float(0.05),
@@ -213,7 +210,6 @@ fn add_join_and_delete_node_works() {
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
 				replication_total: 3,
-				inspection_dry_run_params: None,
 			},
 		));
 
@@ -250,8 +246,6 @@ fn add_join_and_delete_node_works() {
 		let storage_node_params = StorageNodeParams {
 			mode: StorageNodeMode::Storage,
 			host: vec![1u8; 255],
-			domain: vec![2u8; 255],
-			ssl: true,
 			http_port: 35000u16,
 			grpc_port: 25000u16,
 			p2p_port: 15000u16,
@@ -283,7 +277,6 @@ fn add_join_and_delete_node_works() {
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
 				replication_total: 3,
-				inspection_dry_run_params: None,
 			},
 		));
 
@@ -317,6 +310,19 @@ fn add_join_and_delete_node_works() {
 			&NodePubKey::StoragePubKey(node_pub_key.clone()),
 			None
 		));
+		assert_eq!(
+			ClustersNodes::<Test>::get(cluster_id, NodePubKey::StoragePubKey(node_pub_key.clone()))
+				.map(|state| state.status),
+			Some(ClusterNodeStatus::ValidationSucceeded)
+		);
+		assert_eq!(
+			ClustersNodesStats::<Test>::get(cluster_id).map(|stats| (
+				stats.await_validation,
+				stats.validation_succeeded,
+				stats.validation_failed
+			)),
+			Some((0, 1, 0))
+		);
 
 		// Node already assigned
 		assert_noop!(
@@ -384,6 +390,19 @@ fn add_join_and_delete_node_works() {
 			&NodePubKey::StoragePubKey(node_pub_key.clone()),
 			None
 		));
+		assert_eq!(
+			ClustersNodes::<Test>::get(cluster_id, NodePubKey::StoragePubKey(node_pub_key.clone()))
+				.map(|state| state.status),
+			Some(ClusterNodeStatus::ValidationSucceeded)
+		);
+		assert_eq!(
+			ClustersNodesStats::<Test>::get(cluster_id).map(|stats| (
+				stats.await_validation,
+				stats.validation_succeeded,
+				stats.validation_failed
+			)),
+			Some((0, 1, 0))
+		);
 
 		// Checking that event was emitted
 		System::assert_last_event(
@@ -483,7 +502,6 @@ fn set_cluster_params_works() {
 					erasure_coding_required: 4,
 					erasure_coding_total: 6,
 					replication_total: 3,
-					inspection_dry_run_params: None,
 				},
 			),
 			Error::<Test>::ClusterDoesNotExist
@@ -499,7 +517,6 @@ fn set_cluster_params_works() {
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
 				replication_total: 3,
-				inspection_dry_run_params: None,
 			},
 			ClusterProtocolParams {
 				treasury_share: Perquintill::from_float(0.05),
@@ -528,7 +545,6 @@ fn set_cluster_params_works() {
 					erasure_coding_required: 4,
 					erasure_coding_total: 6,
 					replication_total: 3,
-					inspection_dry_run_params: None,
 				},
 			),
 			Error::<Test>::OnlyClusterManager
@@ -543,7 +559,6 @@ fn set_cluster_params_works() {
 					erasure_coding_required: 1,
 					erasure_coding_total: 6,
 					replication_total: 3,
-					inspection_dry_run_params: None,
 				},
 			),
 			Error::<Test>::ErasureCodingRequiredDidNotMeetMinimum
@@ -558,7 +573,6 @@ fn set_cluster_params_works() {
 					erasure_coding_required: 4,
 					erasure_coding_total: 1,
 					replication_total: 3,
-					inspection_dry_run_params: None,
 				},
 			),
 			Error::<Test>::ErasureCodingTotalNotMeetMinimum
@@ -573,7 +587,6 @@ fn set_cluster_params_works() {
 					erasure_coding_required: 4,
 					erasure_coding_total: 6,
 					replication_total: 1,
-					inspection_dry_run_params: None,
 				},
 			),
 			Error::<Test>::ReplicationTotalDidNotMeetMinimum
@@ -587,7 +600,6 @@ fn set_cluster_params_works() {
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
 				replication_total: 3,
-				inspection_dry_run_params: None,
 			},
 		));
 
@@ -631,7 +643,6 @@ fn set_last_validated_era_works() {
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
 				replication_total: 3,
-				inspection_dry_run_params: None,
 			},
 			ClusterProtocolParams {
 				treasury_share: Perquintill::from_float(0.05),
@@ -700,7 +711,6 @@ fn cluster_visitor_works() {
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
 				replication_total: 3,
-				inspection_dry_run_params: None,
 			},
 			cluster_protocol_params
 		));
@@ -847,7 +857,6 @@ fn cluster_creator_works() {
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
 				replication_total: 3,
-				inspection_dry_run_params: None,
 			},
 			cluster_protocol_params,
 		));
@@ -855,4 +864,29 @@ fn cluster_creator_works() {
 		assert!(Clusters::<Test>::contains_key(cluster_id));
 		assert!(ClustersGovParams::<Test>::contains_key(cluster_id));
 	})
+}
+
+#[test]
+fn every_node_status_keeps_its_encoded_index() {
+	assert_eq!(ClusterNodeStatus::AwaitsValidation.encode(), vec![0]);
+	assert_eq!(ClusterNodeStatus::ValidationSucceeded.encode(), vec![1]);
+	assert_eq!(ClusterNodeStatus::ValidationFailed.encode(), vec![2]);
+	for index in 0u8..=2 {
+		assert!(ClusterNodeStatus::decode(&mut &[index][..]).is_ok());
+	}
+}
+
+#[test]
+fn nodes_are_no_longer_validated_by_a_call() {
+	use polkadot_sdk::frame_support::traits::{GetCallIndex, GetCallName};
+
+	assert!(!Call::<Test>::get_call_names().contains(&"validate_node"));
+	assert!(!Call::<Test>::get_call_indices().contains(&4));
+}
+
+#[test]
+fn cluster_era_paid_keeps_its_encoded_index() {
+	let event = Event::<Test>::ClusterEraPaid { cluster_id: ClusterId::from([1; 20]), era_id: 1 };
+
+	assert_eq!(event.encode()[0], 10);
 }

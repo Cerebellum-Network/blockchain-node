@@ -71,7 +71,6 @@ pub fn create_cluster_with_nodes<T: Config>(
 		erasure_coding_required: 0,
 		erasure_coding_total: 0,
 		replication_total: 0,
-		inspection_dry_run_params: None,
 	};
 
 	T::ClusterCreator::create_cluster(
@@ -94,8 +93,6 @@ pub fn create_cluster_with_nodes<T: Config>(
 		let node_params = NodeParams::StorageParams(StorageNodeParams {
 			mode: StorageNodeMode::Storage,
 			host: vec![1u8; 255],
-			domain: vec![2u8; 255],
-			ssl: true,
 			http_port: 8080_u16,
 			grpc_port: 9090_u16,
 			p2p_port: 9070_u16,
@@ -115,9 +112,6 @@ pub fn create_cluster_with_nodes<T: Config>(
 
 		T::ClusterManager::add_node(&cluster_id, node_pub_key, &ClusterNodeKind::Genesis)
 			.expect("Node could not be added to the cluster");
-
-		T::ClusterManager::validate_node(&cluster_id, node_pub_key, true)
-			.expect("Node could not be validated in the cluster");
 	}
 
 	if is_activated {
@@ -239,7 +233,7 @@ benchmarks! {
 	}: vote_proposal(RawOrigin::Signed(node_provider_1.clone()), cluster_id, true, ClusterMember::NodeProvider(node_pub_key_1.clone()))
 	verify {
 		let votes = ClusterProposalVoting::<T>::get(cluster_id).unwrap();
-		assert_eq!(votes.ayes, vec![node_provider_1.clone()]);
+		assert_eq!(votes.ayes, vec![(node_provider_1.clone(), ClusterMember::NodeProvider(node_pub_key_1.clone()))]);
 	}
 
 	close_early_approved {

@@ -28,7 +28,6 @@ pub fn config_cluster<T: Config>(
 		erasure_coding_required: 4,
 		erasure_coding_total: 6,
 		replication_total: 3,
-		inspection_dry_run_params: None,
 	};
 	let cluster_protocol_params: ClusterProtocolParams<
 		BalanceOf<T>,
@@ -74,13 +73,10 @@ where
 		erasure_coding_required: 4,
 		erasure_coding_total: 6,
 		replication_total: 3,
-		inspection_dry_run_params: None,
 	};
 	let storage_node_params = StorageNodeParams {
 		mode: StorageNodeMode::Storage,
 		host: vec![1u8; 255],
-		domain: vec![2u8; 255],
-		ssl: true,
 		http_port: 35000u16,
 		grpc_port: 25000u16,
 		p2p_port: 15000u16,
@@ -145,7 +141,6 @@ where
 		erasure_coding_required: 4,
 		erasure_coding_total: 6,
 		replication_total: 3,
-		inspection_dry_run_params: None,
 	};
 	// Register auth contract
 	let _ = DdcClusters::<T>::set_cluster_params(

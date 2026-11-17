@@ -71,8 +71,6 @@ pub fn create_stash_controller_node<T: Config>(
 		NodeParams::StorageParams(StorageNodeParams {
 			mode: StorageNodeMode::Storage,
 			host: vec![1u8; 255],
-			domain: vec![2u8; 255],
-			ssl: true,
 			http_port: 35000u16,
 			grpc_port: 25000u16,
 			p2p_port: 15000u16,
@@ -111,8 +109,6 @@ pub fn create_stash_controller_node_with_balance<T: Config>(
 				NodeParams::StorageParams(StorageNodeParams {
 					mode: StorageNodeMode::Storage,
 					host: vec![1u8; 255],
-					domain: vec![2u8; 255],
-					ssl: true,
 					http_port: 35000u16,
 					grpc_port: 25000u16,
 					p2p_port: 15000u16,
@@ -127,7 +123,6 @@ pub fn create_stash_controller_node_with_balance<T: Config>(
 		erasure_coding_required: 4,
 		erasure_coding_total: 6,
 		replication_total: 3,
-		inspection_dry_run_params: None,
 	};
 	let cluster_protocol_params: ClusterProtocolParams<
 		BalanceOf<T>,

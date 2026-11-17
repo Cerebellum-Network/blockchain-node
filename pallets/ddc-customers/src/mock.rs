@@ -6,7 +6,7 @@ use ddc_primitives::{
 	traits::cluster::{ClusterCreator, ClusterManager, ClusterProtocol, ClusterQuery},
 	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterNodeKind, ClusterNodeState,
 	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
-	ClusterProtocolParams, ClusterStatus, InspectionDryRunParams, NodePubKey, NodeType,
+	ClusterProtocolParams, ClusterStatus, NodePubKey, NodeType,
 };
 use polkadot_sdk::frame_support::{
 	construct_runtime, derive_impl, parameter_types,
@@ -82,7 +82,6 @@ impl polkadot_sdk::pallet_timestamp::Config for Test {
 
 parameter_types! {
 	pub const DdcCustomersPalletId: PalletId = PalletId(*b"accounts"); // DDC maintainer's stake
-	pub const UnlockingDelay: BlockNumber = 10u64; // 10 blocks for test
 }
 
 parameter_types! {
@@ -144,7 +143,6 @@ impl polkadot_sdk::pallet_contracts::Config for Test {
 impl polkadot_sdk::pallet_insecure_randomness_collective_flip::Config for Test {}
 
 impl crate::pallet::Config for Test {
-	type UnlockingDelay = UnlockingDelay;
 	type Currency = Balances;
 	type PalletId = DdcCustomersPalletId;
 	type RuntimeEvent = RuntimeEvent;
@@ -328,21 +326,7 @@ impl ClusterManager<AccountId, BlockNumber> for TestClusterManager {
 		unimplemented!()
 	}
 
-	fn validate_node(
-		_cluster_id: &ClusterId,
-		_node_pub_key: &NodePubKey,
-		_succeeded: bool,
-	) -> Result<(), DispatchError> {
-		unimplemented!()
-	}
-
 	fn get_clusters(_status: ClusterStatus) -> Result<Vec<ClusterId>, DispatchError> {
-		unimplemented!()
-	}
-
-	fn get_inspection_dry_run_params(
-		_cluster_id: &ClusterId,
-	) -> Result<Option<InspectionDryRunParams>, DispatchError> {
 		unimplemented!()
 	}
 }
@@ -402,11 +386,9 @@ impl ExtBuilder {
 		}
 		.assimilate_storage(&mut storage);
 
-		let _customer_genesis = pallet_ddc_customers::GenesisConfig::<Test> {
-			feeder_account: None,
-			buckets: Default::default(),
-		}
-		.assimilate_storage(&mut storage);
+		let _customer_genesis =
+			pallet_ddc_customers::GenesisConfig::<Test> { buckets: Default::default() }
+				.assimilate_storage(&mut storage);
 
 		TestExternalities::new(storage)
 	}

@@ -35,7 +35,8 @@ on:
 env:
   # Feed the GH_READ_TOKEN rewrite to git through its environment form rather
   # than `git config --global`, matching ci.yaml.
-  GIT_CONFIG_COUNT: 1
+  # GIT_CONFIG_COUNT is set to 2 by the "Configure git authentication header" step in each
+  # job, which adds an http extraheader as entry 1 alongside this insteadOf rewrite.
   GIT_CONFIG_KEY_0: url.https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/.insteadOf
   GIT_CONFIG_VALUE_0: https://github.com/
 
@@ -55,6 +56,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: true
+      - name: Configure git authentication header
+        run: |
+          header_b64="$(printf 'x-access-token:%s' '${{ secrets.GH_READ_TOKEN }}' | base64 | tr -d '\n')"
+          echo "::add-mask::${header_b64}"
+          {
+            echo "GIT_CONFIG_COUNT=2"
+            echo "GIT_CONFIG_KEY_1=http.https://github.com/.extraheader"
+            echo "GIT_CONFIG_VALUE_1=AUTHORIZATION: basic ${header_b64}"
+          } >> "$GITHUB_ENV"
 
       - name: Pick network and runtime
         id: target
@@ -115,7 +125,7 @@ jobs:
 
       - name: Install try-runtime
         if: steps.trycli-cache.outputs.cache-hit != 'true'
-        run: cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.8.0 --locked
+        run: cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.8.0 --locked --force
 
       - name: Restore latest ${{ steps.target.outputs.network }} snapshot
         id: snap
