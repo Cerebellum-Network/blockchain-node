@@ -170,7 +170,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 80040,
+	spec_version: 80041,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 28,
@@ -1530,9 +1530,16 @@ impl pallet_ddc_payouts::Config for Runtime {
 
 	const MAX_PAYOUT_BATCH_SIZE: u16 = 100;
 	const MAX_PAYOUT_BATCH_COUNT: u16 = 1000;
-	const OCW_INTERVAL: u16 = 5; // every 5th block
+	const OCW_INTERVAL: u16 = 1; // every block
 	const OCW_LOCK_TTL_MILLIS: u64 = 2 * 60 * 60 * 1_000; // 2h
 	const OCW_CLUSTER_QUARANTINE_MILLIS: u64 = 60 * 60 * 1_000; // 1h
+
+	// A cluster is quarantined when at least OCW_CLUSTER_UNREACHABLE_MIN_WALKS lookups found none
+	// of its collectors AND at least OCW_CLUSTER_UNREACHABLE_TOLERANCE_MILLIS has passed since the
+	// first of them. One lookup runs per OCW pass (about OCW_INTERVAL x 6s), so at interval 1 the
+	// 3 walks take about 12s and the 180s tolerance decides.
+	const OCW_CLUSTER_UNREACHABLE_MIN_WALKS: u32 = 3;
+	const OCW_CLUSTER_UNREACHABLE_TOLERANCE_MILLIS: u64 = 3 * 60 * 1_000; // 180s
 	const OCW_CLUSTER_UNREACHABLE_QUARANTINE_MILLIS: u64 = 10 * 60 * 1_000; // 10m
 	const OCW_CLUSTER_PAYOUT_BUDGET_MILLIS: u64 = 30_000; // 30s
 	const OCW_MAX_JOB_AGE_MILLIS: u64 = 5 * 60 * 1_000; // 5m
@@ -1658,9 +1665,16 @@ impl pallet_ddc_verification::Config for Runtime {
 	type DacExecConfig = DacExecConfigConst;
 	type TimeProvider = Timestamp;
 
-	const OCW_INTERVAL: u16 = 10; // every 10th block
+	const OCW_INTERVAL: u16 = 1; // every block
 	const OCW_LOCK_TTL_MILLIS: u64 = 2 * 60 * 60 * 1_000; // 2h
 	const OCW_CLUSTER_QUARANTINE_MILLIS: u64 = 60 * 60 * 1_000; // 1h
+
+	// A cluster is quarantined when at least OCW_CLUSTER_UNREACHABLE_MIN_WALKS lookups found none
+	// of its collectors AND at least OCW_CLUSTER_UNREACHABLE_TOLERANCE_MILLIS has passed since the
+	// first of them. One lookup runs per OCW pass (about OCW_INTERVAL x 6s), so at interval 1 the
+	// 3 walks take about 12s and the 180s tolerance decides.
+	const OCW_CLUSTER_UNREACHABLE_MIN_WALKS: u32 = 3;
+	const OCW_CLUSTER_UNREACHABLE_TOLERANCE_MILLIS: u64 = 3 * 60 * 1_000; // 180s
 	const OCW_CLUSTER_UNREACHABLE_QUARANTINE_MILLIS: u64 = 10 * 60 * 1_000; // 10m
 	const OCW_MAX_JOB_AGE_MILLIS: u64 = 5 * 60 * 1_000; // 5m
 	const EHD_COLLECTOR_DISCOVERY_TIMEOUT_MILLIS: u64 = 5_000; // 5s
