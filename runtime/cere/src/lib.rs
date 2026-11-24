@@ -170,7 +170,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 80044,
+	spec_version: 80045,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 28,
@@ -1440,9 +1440,9 @@ parameter_types! {
 	/// huge resources on small validator hosts:
 	///   * 5-min per-invoke deadline — only fires on genuine runaway
 	///     loops; healthy single-invoke ops complete in milliseconds.
-	///   * 512 MiB linear-memory hard cap — 2x previous, comfortably
-	///     above proto decode + clone + canonical-hash for the largest
-	///     tables observed (4 MiB proto + structural expansion).
+	///   * 2 GiB linear-memory hard cap — dac.wasm declares no memory
+	///     maximum, so this limiter is its only ceiling; covers decode and
+	///     verify of the largest input the runtime can pass (32 MiB).
 	///   * 4 GiB virtual reservation — wasmtime-typical, no physical
 	///     RAM until pages are touched. Stays safe on 8 GiB hosts.
 	///   * 4 MiB wasm stack — bounds runaway recursion without
@@ -1457,7 +1457,7 @@ parameter_types! {
 		epoch_tick_ms: 250,
 		fuel_per_invoke: None,
 		max_wasm_stack_bytes: 4 * 1024 * 1024,
-		max_memory_bytes: 512 * 1024 * 1024,
+		max_memory_bytes: 2 * 1024 * 1024 * 1024,
 		memory_guard_size: 2 * 1024 * 1024,
 		memory_reservation: 4 * 1024 * 1024 * 1024,
 		memory_init_cow: true,
