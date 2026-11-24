@@ -10251,7 +10251,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=chore%2Fprefetch-window-cascade#a0254480533dc16508d1a6d61269e73d3a3bfaf6"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#cad56b5a5d0ae5ccb7277d2208334d213ef25ac6"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
