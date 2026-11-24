@@ -2530,6 +2530,7 @@ dependencies = [
  "clap",
  "ddc-dac-host",
  "polkadot-sdk",
+ "sc-cli",
  "substrate-build-script-utils",
  "url",
 ]

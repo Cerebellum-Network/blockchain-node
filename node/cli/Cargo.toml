@@ -27,6 +27,9 @@ url.workspace = true
 
 # Substrate / Polkadot SDK
 polkadot-sdk = { workspace = true, default-features = false, features = ["sc-executor", "sc-network", "sp-io", "sp-runtime"] }
+# The umbrella crate brings sc-cli in without default features and has no
+# rocksdb feature; without this, --database rocksdb does not exist.
+sc-cli = { workspace = true, optional = true, features = ["rocksdb"] }
 
 # Local
 cere-client = { workspace = true, optional = true }
@@ -41,6 +44,7 @@ default = ["cli", "cere-native", "cere-dev-native"]
 cli = [
   "clap",
   "polkadot-sdk/sc-cli",
+  "sc-cli",
   "polkadot-sdk/sc-service",
   "polkadot-sdk/frame-benchmarking-cli",
   "polkadot-sdk/std",
