@@ -16,6 +16,17 @@ jobs:
   tag-and-push:
     runs-on: [self-hosted, cere-network-xlarge]
     steps:
+      - name: "Remove git credentials from the runner's global config"
+        # Earlier runs left a GH_READ_TOKEN insteadOf rewrite and an auth extraheader in this
+        # runner's global gitconfig, which makes checkout fail with HTTP 400. Matched by key
+        # pattern; nothing is printed.
+        run: |
+          git config --global --unset-all http.https://github.com/.extraheader 2>/dev/null || true
+          keys="$(git config --global --get-regexp '^url\..*\.insteadof$' '^https://github\.com/$' 2>/dev/null | cut -d' ' -f1)" || true
+          for key in $keys; do
+            git config --global --unset-all "$key" 2>/dev/null || true
+          done
+
       - name: Configure aws credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
