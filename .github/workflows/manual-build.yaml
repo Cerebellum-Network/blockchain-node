@@ -65,9 +65,10 @@ jobs:
           docker system df || true
           docker volume ls --filter 'name=buildx_buildkit_' || true
 
-          # Drop stopped containers + dangling images + unused networks.
+          # Drop stopped containers, then every image no container uses. -a also
+          # takes tagged images (past pos-node builds), which plain prune keeps.
           docker container prune --force || true
-          docker image prune --force || true
+          echo "image prune: $(docker image prune -a --force 2>&1 | tail -n 1)" || true
 
           # Buildkit state volumes from prior `Set up Docker Buildx`
           # runs accumulate when builders aren't cleanly removed
