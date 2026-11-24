@@ -18,6 +18,11 @@ jobs:
     env:
       HCLOUD_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
       HCLOUD_VERSION: 1.50.0
+      # GH_READ_TOKEN reaches git through its environment form, the one way workflows here configure
+      # git auth. "Configure git authentication header" sets GIT_CONFIG_COUNT
+      # and adds the extraheader as entry 1.
+      GIT_CONFIG_KEY_0: url.https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/.insteadOf
+      GIT_CONFIG_VALUE_0: https://github.com/
 
     steps:
       - uses: actions/checkout@v3
@@ -32,11 +37,15 @@ jobs:
           tar xzf /tmp/hcloud-linux-amd64.tar.gz -C /tmp
           sudo install -m 0755 /tmp/hcloud /usr/local/bin/hcloud
 
-      - name: Configure GitHub token for private deps
+      - name: "Configure git authentication header"
         run: |
-          git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
-          git config --global http.https://github.com/.extraheader \
-            "AUTHORIZATION: basic $(printf 'x-access-token:%s' '${{ secrets.GH_READ_TOKEN }}' | base64 | tr -d '\n')"
+          header_b64="$(printf 'x-access-token:%s' '${{ secrets.GH_READ_TOKEN }}' | base64 | tr -d '\n')"
+          echo "::add-mask::${header_b64}"
+          {
+            echo "GIT_CONFIG_COUNT=2"
+            echo "GIT_CONFIG_KEY_1=http.https://github.com/.extraheader"
+            echo "GIT_CONFIG_VALUE_1=AUTHORIZATION: basic ${header_b64}"
+          } >> "$GITHUB_ENV"
 
       - name: Generate ephemeral SSH key
         id: sshkey
@@ -86,7 +95,9 @@ jobs:
           rustup component add clippy rustfmt rust-src
           rustup target add wasm32-unknown-unknown
           
-          git config --global url."https://\${GH_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+          export GIT_CONFIG_COUNT=1
+          export GIT_CONFIG_KEY_0="url.https://\${GH_TOKEN}:x-oauth-basic@github.com/.insteadOf"
+          export GIT_CONFIG_VALUE_0="https://github.com/"
           git clone --branch "\$BRANCH" --single-branch https://github.com/Cerebellum-Network/blockchain-node.git
           cd blockchain-node
           
