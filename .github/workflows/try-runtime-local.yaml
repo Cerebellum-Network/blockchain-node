@@ -6,6 +6,13 @@ on:
     # Run weekly on Sundays at 2 AM UTC
     - cron: '0 2 * * 0'
 
+env:
+  # GH_READ_TOKEN reaches git through its environment form, never the global config, so nothing
+  # persists on a self-hosted runner. "Configure git authentication header" sets GIT_CONFIG_COUNT
+  # and adds the extraheader as entry 1.
+  GIT_CONFIG_KEY_0: url.https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/.insteadOf
+  GIT_CONFIG_VALUE_0: https://github.com/
+
 jobs:
   try-runtime-local:
     name: Try-Runtime Local Test
@@ -13,6 +20,17 @@ jobs:
     timeout-minutes: 60
     continue-on-error: true
     steps:
+      - name: "Remove git credentials from the runner's global config"
+        # Earlier runs left a GH_READ_TOKEN insteadOf rewrite and an auth extraheader in this
+        # runner's global gitconfig, which makes checkout fail with HTTP 400. Matched by key
+        # pattern; nothing is printed.
+        run: |
+          git config --global --unset-all http.https://github.com/.extraheader 2>/dev/null || true
+          keys="$(git config --global --get-regexp '^url\..*\.insteadof$' '^https://github\.com/$' 2>/dev/null | cut -d' ' -f1)" || true
+          for key in $keys; do
+            git config --global --unset-all "$key" 2>/dev/null || true
+          done
+
       - uses: actions/checkout@v4
         with:
           submodules: true
@@ -31,11 +49,15 @@ jobs:
         with:
           shared-key: "runtime-build"
           cache-on-failure: true
-      - name: Configure Git
+      - name: "Configure git authentication header"
         run: |
-          git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
-          git config --global http.https://github.com/.extraheader \
-            "AUTHORIZATION: basic $(printf 'x-access-token:%s' '${{ secrets.GH_READ_TOKEN }}' | base64 | tr -d '\n')"
+          header_b64="$(printf 'x-access-token:%s' '${{ secrets.GH_READ_TOKEN }}' | base64 | tr -d '\n')"
+          echo "::add-mask::${header_b64}"
+          {
+            echo "GIT_CONFIG_COUNT=2"
+            echo "GIT_CONFIG_KEY_1=http.https://github.com/.extraheader"
+            echo "GIT_CONFIG_VALUE_1=AUTHORIZATION: basic ${header_b64}"
+          } >> "$GITHUB_ENV"
 
       - name: Install try-runtime
         run: cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.8.0 --locked
