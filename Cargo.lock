@@ -10298,7 +10298,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#8dd457814456d755702ec7a4fdf358568f0df188"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#88c42622967a5360f8f995c498d43791d96746f7"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
