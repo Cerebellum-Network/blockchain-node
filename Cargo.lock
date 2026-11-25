@@ -10252,7 +10252,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#4e8d882bd49f660b62f4aa3587aa2025046bf934"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#2e84aaa14215a8826f6a9d57387442bb6ed01f82"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
@@ -10298,7 +10298,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#806fc2ffbf64d15742bdbbf37e47c527b407a7ce"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#8dd457814456d755702ec7a4fdf358568f0df188"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
