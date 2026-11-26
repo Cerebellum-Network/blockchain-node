@@ -10252,7 +10252,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Fv1-bucket-weighted-coverage#1f7c06dcabf2adf9f09cba1df2149a48535f6a7f"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Fv1-bucket-weighted-coverage#a7ad33049653bf005810c9a36156a0541adb7d03"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
@@ -10298,7 +10298,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=feat%2Fv1-bucket-weighted-coverage#6aa327bc89b520ca28e4ee827d755840333ad80f"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=feat%2Fv1-bucket-weighted-coverage#3f0f8d6d0f6978df9cce4e9f1756d0dfc188a8a2"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
