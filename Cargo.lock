@@ -4540,7 +4540,7 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.3"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=feat%2Fv1-bucket-weighted-coverage#e6ac7b40e7e56b338db973779fd1f71f7273be72"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=feat%2Fv1-bucket-weighted-coverage#271148531a1afcabfe64c84f328743697f9f8ee8"
 dependencies = [
  "blake2 0.10.6",
  "blake3",
@@ -4562,7 +4562,7 @@ dependencies = [
 [[package]]
 name = "ddc-dac-host"
 version = "0.1.1"
-source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=feat%2Fv1-bucket-weighted-coverage#0a0d6899ae2b60871e3fe99782f9385b536a3d6a"
+source = "git+https://github.com/Cerebellum-Network/ddc-dac-host.git?branch=feat%2Fv1-bucket-weighted-coverage#a2fd337e5ef957b3872fa1ea692810c2cd68ddcb"
 dependencies = [
  "ddc-api",
  "log",
@@ -10252,7 +10252,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Fv1-bucket-weighted-coverage#841e043c00c36f43c5568f4105b5bc7710eb57de"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat%2Fv1-bucket-weighted-coverage#b2e01cfa2380d708a091e1eb9aa5999a0c7b20b6"
 dependencies = [
  "array-bytes 6.2.3",
  "byte-unit",
@@ -10298,7 +10298,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "8.0.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=feat%2Fv1-bucket-weighted-coverage#5b97dcd47b2b8da965aeee7cd7ddf66d43b6fb20"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=feat%2Fv1-bucket-weighted-coverage#c4bf183b1e0feb9653e5e7585be9e2ccb11df599"
 dependencies = [
  "array-bytes 6.2.3",
  "base64ct",
@@ -10306,6 +10306,7 @@ dependencies = [
  "ddc-api",
  "ddc-dac-host",
  "ddc-primitives",
+ "environmental",
  "hex",
  "itertools 0.13.0",
  "log",
